@@ -1,0 +1,76 @@
+---
+title: "Get Delivery Status"
+description: "Read the per-recipient delivery outcome for a notification."
+api: "GET https://api.atelerix.dev/v1/{project-id}/notifications/{id}/deliveries"
+authMethod: "key"
+playground: "interactive"
+---
+
+Returns one entry per recipient the notification was actually sent to, with
+the real outcome APNs/FCM reported — not just the notification's overall
+status. Useful for seeing exactly which devices received it and why any
+individual delivery failed.
+
+<Note>
+  See the [API introduction](/api-reference/introductaion) to set up your base URL and private key before making requests.
+</Note>
+
+## Parameters
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  Your project ID from **Project Settings** in the [dashboard](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  The `notificationId` returned when the notification was sent.
+</ParamField>
+
+<ParamField query="apiKey" type="string" required placeholder="your-private-key">
+  Your private key from **Project Settings**.
+</ParamField>
+
+## Response
+
+```json 200 OK
+[
+  {
+    "id": "3f1e2b0a-1c3f-4b3e-9c3f-4b3e9c3f4b3e",
+    "platform": "ios",
+    "status": "sent",
+    "error": null,
+    "deviceToken": "a1b2c3d4e5f6...",
+    "createdAt": "2026-09-01T10:00:03.000Z"
+  },
+  {
+    "id": "9c3f4b3e-1c3f-4b3e-9c3f-4b3e9c3f4b3e",
+    "platform": "android",
+    "status": "failed",
+    "error": "messaging/registration-token-not-registered",
+    "deviceToken": null,
+    "createdAt": "2026-09-01T10:00:03.000Z"
+  }
+]
+```
+
+<ResponseField name="platform" type="string">
+  `ios` or `android`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  `sent` or `failed`, the real outcome APNs/FCM reported for this recipient.
+</ResponseField>
+
+<ResponseField name="error" type="string | null">
+  The provider's failure reason when `status` is `failed`; `null` otherwise.
+</ResponseField>
+
+<ResponseField name="deviceToken" type="string | null">
+  The device token this delivery targeted. `null` if the token was
+  automatically removed after being reported permanently invalid — the
+  delivery record is kept even after its token is gone.
+</ResponseField>
+
+An empty array means nothing has been attempted yet — for example, the
+notification is still `scheduled`, or was `canceled` before it was due.
+
+On failure, the response follows the shape documented in [Error & success codes](/developers/errors-responses).

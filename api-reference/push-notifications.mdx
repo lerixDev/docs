@@ -48,11 +48,32 @@ device subscribed to a topic.
 <ParamField body="sound" type="string" placeholder="sound.mp3">
   Name of a custom notification sound. The file itself must already be
   bundled inside your app project — Atelerix only passes the filename
-  through to APNs/FCM, it doesn't host or upload sound files. On iOS this is
-  the sound file's name with its extension (e.g. `sound.mp3`, `.caf`/`.wav`
-  also supported); on Android it's the resource name without an extension,
-  matching a file under `res/raw/` (e.g. `sound`). Leave empty to use the
-  device's default notification sound.
+  through to APNs/FCM, it doesn't host or upload sound files. Leave empty to
+  use the device's default notification sound.
+
+  **iOS**: the sound file's name with its extension (e.g. `sound.mp3`;
+  `.caf`/`.wav` also supported).
+
+  **Android**: the resource name **without** an extension, matching a file
+  under `res/raw/` (e.g. `sound` for a file at `res/raw/sound.mp3`).
+  - Supported formats: `.wav`, `.mp3`, `.ogg`.
+  - Keep the filename lowercase — some tooling/devices ignore uppercase
+    letters in resource names.
+  - Keep the file small and under ~30 seconds; large files may not play on
+    some devices.
+  - If the named file isn't found, the notification falls back to the
+    device's default sound rather than failing.
+  - A given sound is locked in the first time it's used on a device — Android
+    fixes a notification channel's sound at creation and never lets it
+    change afterward, so switching to a different `sound` value later
+    creates a new channel rather than updating the old one.
+</ParamField>
+
+<ParamField body="metadata" type="object" placeholder='{"orderId": "123"}'>
+  Arbitrary custom data to attach to the notification. Any JSON object; omit
+  for no metadata. Delivered to the device alongside `title`/`body` and
+  readable from the SDK as `payload.metadata` in
+  `setOnNotificationReceived`/`setOnNotificationTapped`.
 </ParamField>
 
 <ParamField body="projectSlug" type="string" required placeholder="my-project-slug">
@@ -67,17 +88,29 @@ device subscribed to a topic.
   Where the notification was sent from.
 </ParamField>
 
+<ParamField body="sentAt" type="string" placeholder="2026-09-01T10:00:00.000Z">
+  An ISO 8601 timestamp to schedule delivery for later instead of sending
+  immediately. Omit it (or pass a time in the past) to send right away. A
+  scheduled notification can be edited or canceled before it goes out — see
+  [Update a notification](/api-reference/update-notification) and
+  [Cancel a scheduled notification](/api-reference/cancel-notification).
+</ParamField>
+
 <Warning>
   Never expose your private key in client-side code or public repositories. Send API requests from a trusted backend only.
 </Warning>
 
 ## Response
 
-```json 200 OK
+```json 201 Created
 {
   "success": true,
-  "message": "Notification sent successfully"
+  "message": "Notification sent successfully",
+  "notificationId": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e"
 }
 ```
+
+Save `notificationId` — it's what you pass to the other notification endpoints
+(update, unsend, cancel, and delivery status).
 
 On failure, the response follows the shape documented in [Error & success codes](/developers/errors-responses).

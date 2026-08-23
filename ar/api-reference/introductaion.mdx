@@ -1,0 +1,58 @@
+---
+title: "مقدمة"
+description: "صادِق وأرسل الطلبات إلى REST API الخاص بـ Atelerix."
+---
+
+## الرابط الأساسي (Base URL)
+
+تُرسَل جميع طلبات الـ API إلى نقطة نهاية مشروعك:
+
+```
+https://api.atelerix.dev/v1/:project-id
+```
+
+استبدل `:project-id` بمعرّف مشروعك من [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+
+**مثال:**
+
+```
+https://api.atelerix.dev/v1/my-project-id
+```
+
+## المصادقة (Authentication)
+
+قبل استدعاء الـ API، أنشئ **مفتاحاً خاصاً (private key)** من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+
+أرسل المفتاح الخاص في كل طلب ضمن ترويسة (header) باسم `atelerix-api-key`:
+
+```bash
+curl https://api.atelerix.dev/v1/my-project-id/endpoint \
+  -H "atelerix-api-key: <your-private-key>"
+```
+
+<Warning>
+  حافظ على سرّية مفتاحك الخاص. لا تضِفه إلى نظام التحكّم بالإصدارات، ولا تعرضه في كود جهة العميل (client-side)، ولا تشاركه علناً.
+</Warning>
+
+## الخطوات التالية
+
+<CardGroup cols={2}>
+  <Card title="الإشعارات" icon="bell" href="/ar/api-reference/push-notifications">
+    أرسل إشعارات عبر REST API.
+  </Card>
+  <Card title="تحديث إشعار" icon="pen" href="/ar/api-reference/update-notification">
+    غيّر عنوان الإشعار ونصّه.
+  </Card>
+  <Card title="إلغاء إرسال إشعار" icon="bell-slash" href="/ar/api-reference/unsend-notification">
+    أزِل إشعاراً تم تسليمه بالفعل من الأجهزة.
+  </Card>
+  <Card title="إلغاء إشعار مجدوَل" icon="clock" href="/ar/api-reference/cancel-notification">
+    أوقِف إشعاراً مجدولاً قبل إرساله.
+  </Card>
+  <Card title="الحصول على حالة التسليم" icon="list-check" href="/ar/api-reference/notification-deliveries">
+    اطّلع على نتائج التسليم لكل مستلم.
+  </Card>
+  <Card title="رموز الأخطاء والنجاح" icon="hashtag" href="/ar/developers/errors-responses">
+    مرجع لرموز استجابة الـ API الشائعة.
+  </Card>
+</CardGroup>

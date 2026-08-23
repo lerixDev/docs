@@ -77,7 +77,16 @@
                 "icon": "code",
                 "pages": [
                   "api-reference/introductaion",
-                  "api-reference/push-notifications"
+                  {
+                    "group": "Push Notifications",
+                    "pages": [
+                      "api-reference/push-notifications",
+                      "api-reference/update-notification",
+                      "api-reference/unsend-notification",
+                      "api-reference/cancel-notification",
+                      "api-reference/notification-deliveries"
+                    ]
+                  }
                 ]
               },
               {
@@ -92,12 +101,74 @@
          
         ]
       },
-      { 
+      {
         "language": "ar",
         "pages": [
-          "fr/index",
-          "fr/quickstart",
-          "fr/dashboard"
+          {
+            "group": "البدء",
+            "pages": [
+              "ar/index",
+              "ar/quickstart",
+              "ar/dashboard"
+            ]
+          },
+          {
+            "group": "أطر العمل",
+            "icon": "code",
+            "pages": [
+              {
+                "group": "Flutter SDK",
+                "icon": "flutter",
+                "pages": [
+                  "ar/frameworks/flutter/installation",
+                  "ar/frameworks/flutter/push-notifications",
+                  "ar/frameworks/flutter/error-tracking"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "الوحدات",
+            "icon": "rocket",
+            "pages": [
+              "ar/modules/error-tracking",
+              "ar/modules/push-notifications",
+              "ar/modules/analytics",
+              "ar/modules/in-app-messages",
+              "ar/modules/feedback",
+              "ar/modules/updates"
+            ]
+          },
+          {
+            "group": "المطورون",
+            "icon": "laptop-code",
+            "pages": [
+              {
+                "group": "مرجع API",
+                "icon": "code",
+                "pages": [
+                  "ar/api-reference/introductaion",
+                  {
+                    "group": "الإشعارات",
+                    "pages": [
+                      "ar/api-reference/push-notifications",
+                      "ar/api-reference/update-notification",
+                      "ar/api-reference/unsend-notification",
+                      "ar/api-reference/cancel-notification",
+                      "ar/api-reference/notification-deliveries"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "رموز الأخطاء والنجاح",
+                "icon": "hashtag",
+                "pages": [
+                  "ar/developers/errors-responses"
+                ]
+              }
+            ]
+          }
         ]
       }
     ]

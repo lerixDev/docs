@@ -1,0 +1,59 @@
+---
+title: "Update a Notification"
+description: "Change a notification's title and body after it's been sent or scheduled."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/{id}/update"
+authMethod: "key"
+playground: "interactive"
+---
+
+Edits a notification's `title` and `body`, using the `notificationId` returned
+from [Send a notification](/api-reference/push-notifications).
+
+<Note>
+  See the [API introduction](/api-reference/introductaion) to set up your base URL and private key before making requests.
+</Note>
+
+## How this behaves by status
+
+| Current status | What happens |
+|---|---|
+| `scheduled` | Edited in place — nothing is sent yet, so the new `title`/`body` is simply what gets delivered once it's actually due. |
+| `sent`, `failed`, `unsent` | Already had its delivery attempt, so "updating" means **redelivering immediately** with the new content to the current recipients (for a topic, whoever is subscribed right now — not a stale snapshot). |
+| `canceled` | Can't be updated — returns `CANNOT_UPDATE_CANCELED_NOTIFICATION`. |
+
+## Parameters
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  Your project ID from **Project Settings** in the [dashboard](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  The `notificationId` returned when the notification was sent.
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  Your private key from **Project Settings**.
+</ParamField>
+
+<ParamField body="title" type="string" required placeholder="Hello">
+  New notification title.
+</ParamField>
+
+<ParamField body="body" type="string" required placeholder="You have a new message.">
+  New notification message body.
+</ParamField>
+
+## Response
+
+```json 201 Created
+{
+  "id": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e",
+  "title": "Hello",
+  "body": "You have a new message.",
+  "status": "scheduled",
+  "updatedAt": "2026-09-01T10:00:00.000Z"
+  // ...remaining notification fields
+}
+```
+
+On failure, the response follows the shape documented in [Error & success codes](/developers/errors-responses).

@@ -1,0 +1,51 @@
+---
+title: "إلغاء إرسال إشعار"
+description: "أزِل إشعاراً تم تسليمه بالفعل من أجهزة المستلمين."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/{id}/unsend"
+authMethod: "key"
+playground: "interactive"
+---
+
+يطلب من كل جهاز أكّد استلام إشعار إزالته من درج الإشعارات، باستخدام طلب
+صامت لاحق (silent push). صالح فقط للإشعارات التي حالتها `sent` — الإشعار
+`scheduled` لم يُسلَّم أصلاً (استخدم [إلغاء إشعار مجدوَل](/ar/api-reference/cancel-notification)
+بدلاً من ذلك)، والإشعارات `failed`/`canceled`/`unsent` لم يبقَ منها شيء على
+الجهاز لإزالته.
+
+يبقى الإشعار في سجلّك؛ تصبح حالته `unsent`. هذا يصل إلى الجهاز فقط — لا يحذف
+شيئاً من السجلّ أبداً.
+
+<Note>
+  راجع [مقدمة الـ API](/ar/api-reference/introductaion) لإعداد الرابط الأساسي ومفتاحك الخاص قبل إرسال الطلبات.
+</Note>
+
+<Warning>
+  يتطلّب هذا أن يكون تطبيق المستلم يعمل بإصدار من الـ SDK يدعم إلغاء
+  الإرسال (يحتاج إلى ربط معالج إزالة الإشعار داخل `AppDelegate.swift` على
+  iOS). الأجهزة على إصدار تطبيق أقدم لا يمكن استرجاع إشعارها، بغضّ النظر عمّا
+  تفعله نقطة النهاية هذه من جهة الخادم.
+</Warning>
+
+## المعاملات (Parameters)
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  معرّف مشروعك من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  `notificationId` المُرجَع عند إرسال الإشعار.
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  مفتاحك الخاص من **إعدادات المشروع**.
+</ParamField>
+
+## الاستجابة (Response)
+
+```json 201 Created
+{
+  "message": "Notification unsent"
+}
+```
+
+عند الفشل، تتبع الاستجابة الشكل الموثّق في [رموز الأخطاء والنجاح](/ar/developers/errors-responses).

@@ -1,0 +1,43 @@
+---
+title: "إلغاء إشعار مجدوَل"
+description: "أوقِف إشعاراً مجدولاً قبل تسليمه."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/{id}/cancel"
+authMethod: "key"
+playground: "interactive"
+---
+
+يلغي إشعاراً لم يُسلَّم بعد — صالح فقط بينما حالته `scheduled`. حذف صفّ
+الإشعار وحده لن يكفي لأن التسليم غير متزامن (asynchronous)؛ لذا يضع هذا
+حالته `canceled` حتى تتجاهله مهمّة التسليم المجدولة عند حلول موعدها.
+
+استدعاء هذا على إشعار حالته بالفعل `sent`، أو `failed`، أو `unsent`، أو
+`canceled` يُرجِع `CANNOT_CANCEL_SENT_NOTIFICATION`.
+
+<Note>
+  راجع [مقدمة الـ API](/ar/api-reference/introductaion) لإعداد الرابط الأساسي ومفتاحك الخاص قبل إرسال الطلبات.
+</Note>
+
+## المعاملات (Parameters)
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  معرّف مشروعك من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  `notificationId` المُرجَع عند جدولة الإشعار (راجع [إرسال إشعار](/ar/api-reference/push-notifications)
+  ومعامله `sentAt`).
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  مفتاحك الخاص من **إعدادات المشروع**.
+</ParamField>
+
+## الاستجابة (Response)
+
+```json 201 Created
+{
+  "message": "Scheduled notification canceled"
+}
+```
+
+عند الفشل، تتبع الاستجابة الشكل الموثّق في [رموز الأخطاء والنجاح](/ar/developers/errors-responses).

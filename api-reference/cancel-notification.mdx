@@ -1,0 +1,45 @@
+---
+title: "Cancel a Scheduled Notification"
+description: "Stop a scheduled notification before it's delivered."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/{id}/cancel"
+authMethod: "key"
+playground: "interactive"
+---
+
+Cancels a notification that hasn't been delivered yet — only valid while its
+status is `scheduled`. Deleting a notification's row wouldn't be enough on its
+own since the delivery is asynchronous; this marks it `canceled` so the
+scheduled-delivery job skips it when its time comes.
+
+Calling this on a notification that's already `sent`, `failed`, `unsent`, or
+already `canceled` returns `CANNOT_CANCEL_SENT_NOTIFICATION`.
+
+<Note>
+  See the [API introduction](/api-reference/introductaion) to set up your base URL and private key before making requests.
+</Note>
+
+## Parameters
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  Your project ID from **Project Settings** in the [dashboard](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  The `notificationId` returned when the notification was scheduled (see
+  [Send a notification](/api-reference/push-notifications) and its `sentAt`
+  parameter).
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  Your private key from **Project Settings**.
+</ParamField>
+
+## Response
+
+```json 201 Created
+{
+  "message": "Scheduled notification canceled"
+}
+```
+
+On failure, the response follows the shape documented in [Error & success codes](/developers/errors-responses).

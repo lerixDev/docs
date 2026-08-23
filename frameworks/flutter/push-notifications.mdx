@@ -75,17 +75,107 @@ await Atelerix.notifications.init();
 
 final granted = await Atelerix.notifications.requestPermissions();
 
-Atelerix.notifications.setOnNotificationReceived((notification) {
-  // Handle notification received while the app is open
+Atelerix.notifications.setOnNotificationReceived((payload) {
+  // Fired while the app is open (foreground) — show an in-app banner, etc.
+  debugPrint("Notification received: ${payload.title} — ${payload.body}");
 });
 
-Atelerix.notifications.setOnNotificationTapped((notification) {
-  // Handle notification tap
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  // Fired when the user taps the notification — including one that
+  // launched the app from a fully closed state (see the note below).
+  debugPrint("Notification tapped: ${payload.metadata}");
 });
 
-final token = await Atelerix.notifications.getDeviceToken();
+final deviceId = await Atelerix.notifications.getDeviceId();
 final status = await Atelerix.notifications.checkPermissionStatus();
 // "authorized", "denied", "notDetermined"
+```
+
+Register `setOnNotificationTapped` somewhere that has access to navigation (e.g. a global `navigatorKey`), since a tap almost always means routing to a specific screen based on `payload.metadata` rather than just logging it.
+
+## The notification payload
+
+`setOnNotificationReceived` and `setOnNotificationTapped` both receive an `AtelerixNotificationPayload` — the same shape on iOS and Android, regardless of how differently each platform actually delivers the underlying push:
+
+```dart
+class AtelerixNotificationPayload {
+  String? notificationId; // this notification's id in Atelerix — the same id used for delivery status and unsend
+  String? title;
+  String? body;
+  Map<String, dynamic> metadata; // whatever you passed as `metadata` when sending
+}
+```
+
+```dart
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  final screen = payload.metadata['screen'];
+  final orderId = payload.metadata['orderId'];
+  // Navigate based on payload.metadata, etc.
+});
+```
+
+<Note>
+  A tap is delivered reliably even when it's what launched the app from a
+  fully terminated state — call `setOnNotificationTapped` right after
+  `Atelerix.notifications.init()` and any tap that happened before your app
+  finished starting up is replayed automatically once the callback is
+  registered.
+</Note>
+
+## Device identifiers: `getDeviceId()` vs `getDeviceToken()`
+
+These look similar but answer different questions — use the right one for what you're doing:
+
+| Method | Returns | Use it for |
+|---|---|---|
+| `getDeviceId()` | Atelerix's own id for this device, assigned the first time `init()` registers it with the backend | The value to put in `deviceTokens` when sending a notification to this specific device — from the dashboard, or the [REST API](/api-reference/push-notifications) |
+| `getDeviceToken()` | The raw platform push token — the APNs device token on iOS, the FCM registration token on Android | Rarely needed directly; useful for diagnostics or if you're calling APNs/FCM yourself outside of Atelerix |
+
+```dart
+final deviceId = await Atelerix.notifications.getDeviceId();
+print('Send test notifications to: $deviceId');
+
+final token = await Atelerix.notifications.getDeviceToken();
+print('Raw platform token: $token');
+```
+
+Both return `null` until registration completes, which `Atelerix.notifications.init()` handles automatically — no separate call needed.
+
+## Sending a custom sound
+
+Set `sound` when sending a notification — from the dashboard's **Send notification** tab, or the REST API's [`sound` parameter](/api-reference/push-notifications) — to play a bundled sound file instead of the device default:
+
+- The file must already ship inside your app project — Atelerix only passes the filename through, it never hosts or uploads sound files.
+- **iOS**: pass the filename with its extension, e.g. `sound.mp3` (`.wav`/`.caf` also supported).
+- **Android**: pass the filename **without** an extension, matching a file under `res/raw/` (e.g. `sound` for `res/raw/sound.mp3`). Supported formats: `.wav`, `.mp3`, `.ogg`.
+
+<Note>
+  On Android, a sound is locked in the first time it's used on a given
+  device — the OS fixes a notification channel's sound at creation and never
+  lets it change afterward. Sending a different `sound` value later creates a
+  new channel rather than updating the old one; that's expected Android
+  behavior, not a bug.
+</Note>
+
+No SDK code is required to play the sound — it happens automatically as part of the system notification.
+
+## Sending metadata
+
+Attach arbitrary custom data with `metadata` (a JSON object) when sending — from the dashboard's **Send notification** tab, or the REST API's [`metadata` parameter](/api-reference/push-notifications). It's delivered back to the device inside `payload.metadata`:
+
+```json
+{
+  "title": "New message from John",
+  "body": "Hey, are you free later?",
+  "metadata": { "chatId": "456", "screen": "chat" }
+}
+```
+
+```dart
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  final chatId = payload.metadata['chatId'];
+  // Navigate to the chat screen, etc.
+});
 ```
 
 ## Topics

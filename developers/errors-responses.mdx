@@ -49,6 +49,11 @@ a human-readable description and may change wording over time — don't parse it
 | 400 | *(generic — "Bad Request")* | Notification limit reached for your plan |
 | 404 | *(generic — "Not Found")* | None of the given `deviceTokens` matched a registered device |
 | 400 | *(generic — "Bad Request")* | A device resolved to iOS, but no Apple push key is configured for this project yet — upload one from **Notifications → Settings** |
+| 404 | `NOTIFICATION_NOT_FOUND` | `notificationId` (the `{id}` path parameter) doesn't match any notification for this API key's project |
+| 404 | `SCHEDULED_NOTIFICATION_NOT_FOUND` | Same as `NOTIFICATION_NOT_FOUND`, returned by [Cancel a scheduled notification](/api-reference/cancel-notification) |
+| 400 | `CANNOT_CANCEL_SENT_NOTIFICATION` | [Cancel](/api-reference/cancel-notification) was called on a notification that isn't `scheduled` anymore |
+| 400 | `CANNOT_UPDATE_CANCELED_NOTIFICATION` | [Update](/api-reference/update-notification) was called on a `canceled` notification |
+| 400 | `CANNOT_UNSEND_NOTIFICATION` | [Unsend](/api-reference/unsend-notification) was called on a notification whose status isn't `sent` |
 
 ## Validation errors
 

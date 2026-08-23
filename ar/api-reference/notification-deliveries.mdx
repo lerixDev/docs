@@ -1,0 +1,77 @@
+---
+title: "الحصول على حالة التسليم"
+description: "اطّلع على نتيجة التسليم لكل مستلم لإشعار معيّن."
+api: "GET https://api.atelerix.dev/v1/{project-id}/notifications/{id}/deliveries"
+authMethod: "key"
+playground: "interactive"
+---
+
+يُرجِع إدخالاً واحداً لكل مستلم أُرسل إليه الإشعار فعلياً، مع النتيجة
+الحقيقية التي أبلغت عنها APNs/FCM — وليست فقط حالة الإشعار الإجمالية. مفيد
+لمعرفة أي الأجهزة استلمته تحديداً، ولماذا فشل أي تسليم فردي.
+
+<Note>
+  راجع [مقدمة الـ API](/ar/api-reference/introductaion) لإعداد الرابط الأساسي ومفتاحك الخاص قبل إرسال الطلبات.
+</Note>
+
+## المعاملات (Parameters)
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  معرّف مشروعك من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  `notificationId` المُرجَع عند إرسال الإشعار.
+</ParamField>
+
+<ParamField query="apiKey" type="string" required placeholder="your-private-key">
+  مفتاحك الخاص من **إعدادات المشروع**.
+</ParamField>
+
+## الاستجابة (Response)
+
+```json 200 OK
+[
+  {
+    "id": "3f1e2b0a-1c3f-4b3e-9c3f-4b3e9c3f4b3e",
+    "platform": "ios",
+    "status": "sent",
+    "error": null,
+    "deviceToken": "a1b2c3d4e5f6...",
+    "createdAt": "2026-09-01T10:00:03.000Z"
+  },
+  {
+    "id": "9c3f4b3e-1c3f-4b3e-9c3f-4b3e9c3f4b3e",
+    "platform": "android",
+    "status": "failed",
+    "error": "messaging/registration-token-not-registered",
+    "deviceToken": null,
+    "createdAt": "2026-09-01T10:00:03.000Z"
+  }
+]
+```
+
+<ResponseField name="platform" type="string">
+  `ios` أو `android`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  `sent` أو `failed`، النتيجة الحقيقية التي أبلغت عنها APNs/FCM لهذا
+  المستلم.
+</ResponseField>
+
+<ResponseField name="error" type="string | null">
+  سبب الفشل من مزوّد الخدمة عندما تكون `status` بقيمة `failed`؛ `null` خلاف
+  ذلك.
+</ResponseField>
+
+<ResponseField name="deviceToken" type="string | null">
+  رمز الجهاز الذي استهدفه هذا التسليم. تكون القيمة `null` إذا أُزيل الرمز
+  تلقائياً بعد أن أُبلِغ عنه كرمز غير صالح بشكل دائم — يُحتفَظ بسجلّ التسليم
+  حتى بعد زوال رمزه.
+</ResponseField>
+
+مصفوفة فارغة تعني أنه لم تجرِ أي محاولة بعد — مثلاً، لا يزال الإشعار
+`scheduled`، أو أُلغي قبل حلول موعده.
+
+عند الفشل، تتبع الاستجابة الشكل الموثّق في [رموز الأخطاء والنجاح](/ar/developers/errors-responses).

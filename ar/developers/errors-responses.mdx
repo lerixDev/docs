@@ -1,0 +1,70 @@
+---
+title: "رموز الأخطاء والنجاح"
+description: "أشكال الاستجابة ورموز الأخطاء في REST API الخاص بـ Atelerix."
+---
+
+## استجابة النجاح
+
+يرجع الطلب الناجح حالة HTTP `200` أو `201` مع محتوى JSON:
+
+```json
+{
+  "success": true,
+  "message": "Notification sent successfully"
+}
+```
+
+## شكل استجابة الخطأ
+
+ترجع معظم الأخطاء بالشكل التالي:
+
+```json
+{
+  "message": "This Project Not Founded",
+  "error": "PROJECT_NOT_FOUND",
+  "statusCode": 400
+}
+```
+
+`error` هو رمز ثابت قابل للقراءة برمجياً يمكنك المطابقة معه بأمان. أما
+`message` فهو وصف مقروء للبشر وقد تتغيّر صياغته مع الوقت — لا تعتمد على
+تحليله (parsing) نصياً.
+
+<Note>
+  بعض مسارات الفشل الأقل شيوعاً (مثل تجاوز حد الإشعارات في خطتك، أو عدم
+  العثور على رمز جهاز/مفتاح تمّ حلّه) تطرح استثناء Nest عاماً بدلاً من رمز
+  مخصّص. في هذه الحالات، يعود `error` إلى عبارة سبب HTTP العامة (مثل
+  `"Bad Request"`، `"Not Found"`) بدلاً من رمز محدّد — تحقّق من حالة HTTP
+  ونص `message` في هذه الحالة.
+</Note>
+
+## رموز الأخطاء الشائعة
+
+| حالة HTTP | `error` | المعنى |
+|---|---|---|
+| 400 | `PROJECT_NOT_FOUND` | لا يطابق `projectSlug` أي مشروع |
+| 400 | `DONT_HAVE_ACCSESS_PROJECT` | الهوية المصادَق عليها لا تملك وصولاً لهذا المشروع |
+| 404 | `API_KEY_NOT_VALID` | لا يطابق `apiKey` أي مفتاح لهذا المشروع |
+| 400 | `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | مفتاح الـ API موجود لكن لم يُمنَح الصلاحية التي تحتاجها هذه النقطة (مثل إرسال إشعارات) |
+| 404 | `TOPIC_NOT_FOUND` | كان `sendByTopic` بقيمة `true` لكن لا يوجد موضوع يطابق `topic` لهذا المشروع |
+| 400 | *(عام — "Bad Request")* | تم بلوغ حد الإشعارات في خطتك |
+| 404 | *(عام — "Not Found")* | لم يطابق أيٌّ من `deviceTokens` المُرسَلة جهازاً مسجّلاً |
+| 400 | *(عام — "Bad Request")* | تمّ تحديد جهاز يعمل بـ iOS، لكن لا يوجد مفتاح Apple push مُعدّ لهذا المشروع بعد — ارفع واحداً من **الإشعارات ← الإعدادات** |
+| 404 | `NOTIFICATION_NOT_FOUND` | لا يطابق `notificationId` (معامل المسار `{id}`) أي إشعار ضمن مشروع مفتاح الـ API هذا |
+| 404 | `SCHEDULED_NOTIFICATION_NOT_FOUND` | نفس `NOTIFICATION_NOT_FOUND`، تُرجَع من [إلغاء إشعار مجدوَل](/ar/api-reference/cancel-notification) |
+| 400 | `CANNOT_CANCEL_SENT_NOTIFICATION` | تم استدعاء [الإلغاء](/ar/api-reference/cancel-notification) على إشعار لم تعد حالته `scheduled` |
+| 400 | `CANNOT_UPDATE_CANCELED_NOTIFICATION` | تم استدعاء [التحديث](/ar/api-reference/update-notification) على إشعار حالته `canceled` |
+| 400 | `CANNOT_UNSEND_NOTIFICATION` | تم استدعاء [إلغاء الإرسال](/ar/api-reference/unsend-notification) على إشعار حالته ليست `sent` |
+
+## أخطاء التحقق (Validation)
+
+الحقول المطلوبة الناقصة أو غير الصحيحة (مثل `title` فارغ) ترجع `400` مع مصفوفة
+`message` تصف كل حقل فاشل، بنفس شكل validation-pipe القياسي في NestJS:
+
+```json
+{
+  "message": ["title should not be empty"],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```

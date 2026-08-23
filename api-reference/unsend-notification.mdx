@@ -1,0 +1,52 @@
+---
+title: "Unsend a Notification"
+description: "Remove an already-delivered push notification from recipients' devices."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/{id}/unsend"
+authMethod: "key"
+playground: "interactive"
+---
+
+Tells every device that confirmed receipt of a notification to remove it from
+its notification tray, using a silent follow-up push. Only valid for
+notifications with status `sent` — one that's `scheduled` was never delivered
+(use [Cancel a scheduled notification](/api-reference/cancel-notification)
+instead), and `failed`/`canceled`/`unsent` ones have nothing left on a device
+to remove.
+
+The notification stays in your history; its status becomes `unsent`. This
+only reaches out to the device — it never deletes anything from history.
+
+<Note>
+  See the [API introduction](/api-reference/introductaion) to set up your base URL and private key before making requests.
+</Note>
+
+<Warning>
+  This requires the recipient's app to be running a client SDK version that
+  supports unsend (it needs the notification-removal handler wired into
+  `AppDelegate.swift` on iOS). Devices on an older app version can't have a
+  notification recalled, no matter what this endpoint does server-side.
+</Warning>
+
+## Parameters
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  Your project ID from **Project Settings** in the [dashboard](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  The `notificationId` returned when the notification was sent.
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  Your private key from **Project Settings**.
+</ParamField>
+
+## Response
+
+```json 201 Created
+{
+  "message": "Notification unsent"
+}
+```
+
+On failure, the response follows the shape documented in [Error & success codes](/developers/errors-responses).

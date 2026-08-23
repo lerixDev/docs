@@ -1,0 +1,131 @@
+---
+title: "Flutter — التثبيت"
+description: "أضف Atelerix إلى تطبيق Flutter الخاص بك في خطوات قليلة."
+---
+
+## المتطلبات
+
+- Flutter `>=3.0.0`
+- Dart `>=3.0.0`
+
+### متطلبات iOS
+
+- جهاز يعمل بـ iOS 12+‎ أو iPadOS 12+‎، أو محاكي Xcode يعمل بـ iOS 16.2+‎
+- Swift Package Manager (يتطلب تفعيلاً يدوياً) أو CocoaPods 1.16.2+‎
+
+### متطلبات Android
+
+- جهاز أو محاكي Android 7.0+‎ مع تثبيت خدمات Google Play
+
+## 1. أضف الاعتمادية (Dependency)
+
+أضف `atelerix` إلى ملف `pubspec.yaml`:
+
+```yaml pubspec.yaml
+dependencies:
+  atelerix: ^0.0.1
+```
+
+ثم نفّذ:
+
+```bash
+flutter pub get
+```
+
+## 2. هيّئ الـ SDK
+
+استدعِ `Atelerix.init()` في أقرب وقت ممكن — يُفضّل في بداية `main()` داخل `main.dart`. التهيئة تُعِدّ مراقبة الأخطاء والإبلاغ عنها فقط. هي **لا** تُهيّئ الإشعارات؛ استدعِ `Atelerix.notifications.init()` بشكل منفصل عند الحاجة لتلك الوحدة.
+
+```dart main.dart
+import 'package:atelerix/atelerix.dart';
+
+void main() {
+  Atelerix.init(
+    url: 'https://api.atelerix.dev',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    builder: () => runApp(const MyApp()),
+  );
+}
+```
+
+<Note>
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+</Note>
+
+### المعاملات (Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `url` | `String` | نعم | رابط مشروعك (مثال: `https://api.atelerix.dev`) |
+| `apiKey` | `String` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
+| `projectId` | `String` | نعم | معرّف مشروعك من لوحة التحكم |
+| `builder` | `Function` | نعم | دالة تستدعي `runApp()` لبدء تشغيل تطبيقك |
+| `debugMode` | `bool` | لا | تفعيل سجلّات التصحيح (الافتراضي: `false`) |
+| `onError` | `Function` | لا | معالج أخطاء مخصّص يُستدعى عند التقاط خطأ |
+
+### التهيئة غير المتزامنة (Async)
+
+إذا احتاج `builder` إلى إعداد غير متزامن قبل `runApp()`، استدعِ `WidgetsFlutterBinding.ensureInitialized()` أولاً:
+
+```dart main.dart
+void main() {
+  Atelerix.init(
+    url: 'https://api.atelerix.dev',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    builder: () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await loadConfig();
+      runApp(const MyApp());
+    },
+  );
+}
+```
+
+### وضع التصحيح (Debug mode)
+
+فعّل `debugMode: true` أثناء التطوير لطباعة سجلّات الـ SDK في الـ console:
+
+```dart main.dart
+Atelerix.init(
+  url: 'https://api.atelerix.dev',
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  debugMode: true,
+  builder: () => runApp(const MyApp()),
+);
+```
+
+### معالج أخطاء مخصّص
+
+استخدم `onError` لتشغيل منطقك الخاص عند التقاط الـ SDK لخطأ — مثلاً لعرض واجهة بديلة أو تسجيله في خدمة أخرى:
+
+```dart main.dart
+Atelerix.init(
+  url: 'https://api.atelerix.dev',
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  builder: () => runApp(const MyApp()),
+  onError: (error) {
+    print('Custom error handler: ${error.message}');
+  },
+);
+```
+
+## 3. تحقّق من التكامل
+
+أرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
+
+```dart main.dart
+await Atelerix.throwError(
+  Exception('Test error'),
+  StackTrace.current,
+);
+```
+
+ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<Check>
+  كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/flutter/error-tracking) لإرسال أخطاء مخصّصة، أو إلى [الإشعارات](/ar/frameworks/flutter/push-notifications) لتفعيل الإشعارات.
+</Check>

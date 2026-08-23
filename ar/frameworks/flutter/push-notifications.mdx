@@ -1,0 +1,188 @@
+---
+title: "Flutter — الإشعارات"
+description: "أعِدّ الإشعارات لأنظمة Android وiOS وHuawei في Flutter."
+---
+
+## مقدمة
+
+يُرسِل Atelerix الإشعارات باستخدام الخدمة الأصلية لكل منصة — Firebase Cloud Messaging (FCM) على Android، وApple Push Notification service (APNs) مباشرةً على iOS، بدون الحاجة إلى Firebase. بعد إتمام [تثبيت Flutter](/ar/frameworks/flutter/installation)، اتّبع خطوات كل منصة أدناه لتفعيل تسليم الإشعارات في تطبيقك.
+
+<Note>
+  تأكّد من تهيئة الـ SDK عبر `Atelerix.init()` قبل إعداد الإشعارات.
+</Note>
+
+## إعداد Android
+
+لا حاجة لأي إعداد إضافي في الـ SDK على Android. كل ما تحتاجه هو إضافة ملف `google-services.json` الخاص بـ Firebase إلى المشروع.
+
+1. أنشئ أو افتح تطبيقك في [Firebase Console](https://console.firebase.google.com/).
+2. نزّل ملف `google-services.json` لتطبيق Android الخاص بك.
+3. ارفع الملف إلى لوحة تحكم Atelerix.
+
+لمعرفة خطوات الإعداد الكاملة، راجع [دليل Firebase لإعداد عميل Android](https://firebase.google.com/docs/cloud-messaging/android/client).
+
+## إعداد iOS
+
+تحتاج إلى [حساب Apple Developer](https://developer.apple.com/programs/) نشط لإرسال إشعارات على iOS.
+
+### إعداد مصادقة APNs
+
+1. في [بوابة Apple Developer](https://developer.apple.com/account/resources/authkeys/list)، اذهب إلى **Certificates, Identifiers & Profiles → Keys**.
+2. أنشئ مفتاحاً جديداً مع تفعيل **Apple Push Notifications service (APNs)**.
+3. نزّل مفتاح المصادقة `.p8` ولاحظ **Key ID**. يمكنك تنزيل المفتاح مرة واحدة فقط.
+4. ارفع ملف `.p8` إلى لوحة تحكم Atelerix.
+
+لمعرفة خطوات الإعداد الكاملة، راجع [دليل Apple لتسجيل تطبيقك لدى APNs](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
+
+### إعداد AppDelegate
+
+أضف الاستدعاءات التالية إلى `ios/Runner/AppDelegate.swift`:
+
+```swift AppDelegate.swift
+import atelerix
+
+override func application(
+  _ application: UIApplication,
+  didRegisterForRemoteNotificationsWithDeviceToken deviceData: Data
+) {
+  atelerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceData)
+}
+
+override func application(
+  _ application: UIApplication,
+  didFailToRegisterForRemoteNotificationsWithError error: Error
+) {
+  atelerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
+}
+```
+
+## إعداد Huawei
+
+<Badge>قريباً</Badge>
+
+دعم إشعارات Huawei غير متوفر بعد. تابعنا قريباً للحصول على تعليمات الإعداد.
+
+## إعدادات لوحة التحكم
+
+بعد رفع ملف `google-services.json` (لـ Android) و/أو مفتاح `.p8` (لـ iOS) من تبويب **الإشعارات ← الإعدادات** في لوحة تحكم مشروعك، تظهر شارة **تم الإعداد (Configured)** على بطاقة تلك المنصة مع بيانات الاعتماد التي تحملها — يمكنك الضغط عليها مجدداً في أي وقت لمراجعتها أو رفع بديل لها.
+
+## كود Flutter
+
+جميع دوال الإشعارات موجودة على `Atelerix.notifications`، وتتطلّب أن يكون `await Atelerix.notifications.init()` قد اكتمل تنفيذه أولاً — يتم التسجيل مع APNs/FCM تلقائياً كجزء من `init()`، لذا لا حاجة لاستدعاء "تسجيل" منفصل في السير الطبيعي للعمل.
+
+```dart main.dart
+await Atelerix.notifications.init();
+
+final granted = await Atelerix.notifications.requestPermissions();
+
+Atelerix.notifications.setOnNotificationReceived((payload) {
+  // يُستدعى أثناء فتح التطبيق (foreground) — اعرض إشعاراً داخل التطبيق مثلاً.
+  debugPrint("Notification received: ${payload.title} — ${payload.body}");
+});
+
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح التطبيق
+  // من حالة إغلاق كامل (راجع الملاحظة أدناه).
+  debugPrint("Notification tapped: ${payload.metadata}");
+});
+
+final deviceId = await Atelerix.notifications.getDeviceId();
+final status = await Atelerix.notifications.checkPermissionStatus();
+// "authorized", "denied", "notDetermined"
+```
+
+سجّل `setOnNotificationTapped` في مكان لديه وصول إلى التنقّل (navigation) — مثل `navigatorKey` عام — لأن الضغط على إشعار يعني غالباً الانتقال إلى شاشة محددة بناءً على `payload.metadata`، وليس مجرد تسجيله في السجلّات.
+
+## البيانات (Payload) المُستلَمة مع الإشعار
+
+يستقبل كل من `setOnNotificationReceived` و`setOnNotificationTapped` كائناً من نوع `AtelerixNotificationPayload` — بنفس الشكل على iOS وAndroid، بغضّ النظر عن اختلاف طريقة تسليم كل منصة للإشعار الأصلي:
+
+```dart
+class AtelerixNotificationPayload {
+  String? notificationId; // معرّف هذا الإشعار في Atelerix — نفس المعرّف المستخدم لحالة التسليم وإلغاء الإرسال
+  String? title;
+  String? body;
+  Map<String, dynamic> metadata; // أي بيانات مررتها كـ metadata عند الإرسال
+}
+```
+
+```dart
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  final screen = payload.metadata['screen'];
+  final orderId = payload.metadata['orderId'];
+  // انتقل بناءً على payload.metadata، إلخ.
+});
+```
+
+<Note>
+  يصل الضغط (tap) بشكل موثوق حتى لو كان هو ما فتح التطبيق من حالة إغلاق كامل —
+  سجّل `setOnNotificationTapped` مباشرة بعد `Atelerix.notifications.init()`،
+  وأي ضغط حدث قبل انتهاء تشغيل التطبيق يُعاد تشغيله تلقائياً بمجرد تسجيل الدالة.
+</Note>
+
+## معرّفات الجهاز: `getDeviceId()` مقابل `getDeviceToken()`
+
+يتشابه هذان الاسمان لكنهما يخدمان غرضين مختلفين — استخدم المناسب حسب ما تفعله:
+
+| الدالة | ترجع | استخدمها من أجل |
+|---|---|---|
+| `getDeviceId()` | معرّف Atelerix الخاص بهذا الجهاز، يُخصَّص أول مرة يسجّله `init()` لدى الباك إند | القيمة التي تضعها في `deviceTokens` عند إرسال إشعار لهذا الجهاز تحديداً — من لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
+| `getDeviceToken()` | رمز الدفع (push token) الأصلي للمنصة — رمز جهاز APNs على iOS، ورمز تسجيل FCM على Android | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs/FCM بنفسك خارج Atelerix |
+
+```dart
+final deviceId = await Atelerix.notifications.getDeviceId();
+print('Send test notifications to: $deviceId');
+
+final token = await Atelerix.notifications.getDeviceToken();
+print('Raw platform token: $token');
+```
+
+كلاهما يرجعان `null` حتى يكتمل التسجيل، وهو ما يتولّاه `Atelerix.notifications.init()` تلقائياً — لا حاجة لاستدعاء منفصل.
+
+## إرسال صوت مخصّص
+
+اضبط `sound` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`sound`](/ar/api-reference/push-notifications) في REST API — لتشغيل ملف صوت مُرفق بدلاً من صوت الجهاز الافتراضي:
+
+- يجب أن يكون الملف موجوداً بالفعل داخل مشروع تطبيقك — يمرّر Atelerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
+- **iOS**: مرّر اسم الملف مع امتداده، مثل `sound.mp3` (مدعوم أيضاً `.wav`/`.caf`).
+- **Android**: مرّر اسم الملف **بدون** امتداد، بحيث يطابق ملفاً تحت `res/raw/` (مثال: `sound` لملف عند `res/raw/sound.mp3`). الصيغ المدعومة: `.wav`، `.mp3`، `.ogg`.
+
+<Note>
+  على Android، يُثبَّت الصوت أول مرة يُستخدم فيها على جهاز معيّن — يُثبّت النظام
+  صوت قناة الإشعارات (notification channel) عند إنشائها ولا يسمح بتغييره لاحقاً.
+  إرسال قيمة `sound` مختلفة لاحقاً يُنشئ قناة جديدة بدلاً من تحديث القناة
+  القديمة؛ هذا سلوك متوقّع من Android، وليس خطأً.
+</Note>
+
+لا حاجة لأي كود في الـ SDK لتشغيل الصوت — يعمل تلقائياً كجزء من الإشعار في النظام.
+
+## إرسال بيانات وصفية (Metadata)
+
+أرفق بيانات مخصّصة عبر `metadata` (كائن JSON) عند الإرسال — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`metadata`](/ar/api-reference/push-notifications) في REST API. تصل هذه البيانات إلى الجهاز داخل `payload.metadata`:
+
+```json
+{
+  "title": "New message from John",
+  "body": "Hey, are you free later?",
+  "metadata": { "chatId": "456", "screen": "chat" }
+}
+```
+
+```dart
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  final chatId = payload.metadata['chatId'];
+  // انتقل إلى شاشة المحادثة، إلخ.
+});
+```
+
+## المواضيع (Topics)
+
+بدلاً من استهداف رموز أجهزة محددة، يمكن للجهاز الاشتراك في موضوع (topic) باسم معيّن — أرسِل إشعاراً واحداً إلى الموضوع ليصل لكل مشترك فيه. لا حاجة لإنشاء الموضوع مسبقاً؛ يُنشأ تلقائياً أول مرة يشترك فيها أي جهاز. يمكنك أيضاً عرض المواضيع وإنشاءها وحذفها من تبويب **الإشعارات ← المواضيع** في لوحة التحكم.
+
+```dart
+final subscribed = await Atelerix.notifications.subscribeToTopic('promotions');
+
+await Atelerix.notifications.unsubscribeFromTopic('promotions');
+```
+
+للإرسال إلى موضوع، استخدم تبويب **إرسال إشعار** في لوحة التحكم (اختر "Topic" كجمهور مستهدف)، أو استدعِ [REST API](/ar/api-reference/push-notifications) مع `sendByTopic: true`.

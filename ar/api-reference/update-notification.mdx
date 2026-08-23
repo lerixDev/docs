@@ -1,0 +1,59 @@
+---
+title: "تحديث إشعار"
+description: "غيّر عنوان الإشعار ونصّه بعد إرساله أو جدولته."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/{id}/update"
+authMethod: "key"
+playground: "interactive"
+---
+
+يعدّل `title` و`body` لإشعار، باستخدام `notificationId` المُرجَع من
+[إرسال إشعار](/ar/api-reference/push-notifications).
+
+<Note>
+  راجع [مقدمة الـ API](/ar/api-reference/introductaion) لإعداد الرابط الأساسي ومفتاحك الخاص قبل إرسال الطلبات.
+</Note>
+
+## كيف يتصرّف حسب الحالة
+
+| الحالة الحالية | ما الذي يحدث |
+|---|---|
+| `scheduled` | يُعدَّل مباشرة — لم يُرسَل شيء بعد، لذا فإن `title`/`body` الجديدين هما ما سيُسلَّم بمجرد حلول موعده. |
+| `sent`، `failed`، `unsent` | كان قد جرت محاولة تسليمه بالفعل، لذا فإن "التحديث" يعني **إعادة التسليم فوراً** بالمحتوى الجديد للمستلمين الحاليين (بالنسبة لموضوع، من هم مشتركون الآن — وليست لقطة قديمة). |
+| `canceled` | لا يمكن تحديثه — يُرجِع `CANNOT_UPDATE_CANCELED_NOTIFICATION`. |
+
+## المعاملات (Parameters)
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  معرّف مشروعك من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+</ParamField>
+
+<ParamField path="id" type="string" required placeholder="b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e">
+  `notificationId` المُرجَع عند إرسال الإشعار.
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  مفتاحك الخاص من **إعدادات المشروع**.
+</ParamField>
+
+<ParamField body="title" type="string" required placeholder="Hello">
+  عنوان الإشعار الجديد.
+</ParamField>
+
+<ParamField body="body" type="string" required placeholder="You have a new message.">
+  نص رسالة الإشعار الجديد.
+</ParamField>
+
+## الاستجابة (Response)
+
+```json 201 Created
+{
+  "id": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e",
+  "title": "Hello",
+  "body": "You have a new message.",
+  "status": "scheduled",
+  "updatedAt": "2026-09-01T10:00:00.000Z"
+  // ...بقية حقول الإشعار
+}
+```
+
+عند الفشل، تتبع الاستجابة الشكل الموثّق في [رموز الأخطاء والنجاح](/ar/developers/errors-responses).

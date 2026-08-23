@@ -1,0 +1,113 @@
+---
+title: "الإشعارات"
+description: "أرسل إشعارات لجهاز واحد أو أكثر عبر REST API الخاص بـ Atelerix."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/send"
+authMethod: "key"
+playground: "interactive"
+---
+
+أرسل إشعاراً لواحد أو أكثر من رموز الأجهزة المسجّلة، أو لكل جهاز مشترك في
+موضوع (topic).
+
+<Note>
+  راجع [مقدمة الـ API](/ar/api-reference/introductaion) لإعداد الرابط الأساسي ومفتاحك الخاص قبل إرسال الطلبات.
+</Note>
+
+## المعاملات (Parameters)
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  معرّف مشروعك من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+</ParamField>
+
+<ParamField body="title" type="string" required placeholder="Hello">
+  عنوان الإشعار الذي يظهر للمستخدم.
+</ParamField>
+
+<ParamField body="body" type="string" required placeholder="You have a new message.">
+  نص رسالة الإشعار.
+</ParamField>
+
+<ParamField body="deviceTokens" type="string[]" placeholder='["device-token-1"]'>
+  رمز جهاز واحد أو أكثر لتسليم الإشعار إليه. مطلوب ما لم يكن `sendByTopic`
+  بقيمة `true`.
+</ParamField>
+
+<ParamField body="sendByTopic" type="boolean" default="false">
+  اضبطه على `true` للتسليم لكل جهاز مشترك في `topic` بدلاً من `deviceTokens`
+  محددة — عند `true` يتم تجاهل `deviceTokens` حتى لو كانت موجودة. تشترك
+  الأجهزة في موضوع من تطبيقك عبر الـ SDK؛ يُنشأ الموضوع تلقائياً أول مرة يشترك
+  فيها جهاز، أو يمكنك إنشاء واحد يدوياً من تبويب **المواضيع** في لوحة
+  التحكم.
+</ParamField>
+
+<ParamField body="topic" type="string" placeholder="promotions">
+  مفتاح الموضوع الذي يتم البث إليه. مطلوب عندما يكون `sendByTopic` بقيمة
+  `true`، ويُتجاهَل خلاف ذلك.
+</ParamField>
+
+<ParamField body="sound" type="string" placeholder="sound.mp3">
+  اسم صوت إشعار مخصّص. يجب أن يكون الملف نفسه مُرفقاً بالفعل داخل مشروع
+  تطبيقك — يمرّر Atelerix اسم الملف فقط إلى APNs/FCM، ولا يستضيف أو يرفع
+  ملفات الصوت. اتركه فارغاً لاستخدام صوت الإشعار الافتراضي للجهاز.
+
+  **iOS**: اسم ملف الصوت مع امتداده (مثال: `sound.mp3`؛ مدعوم أيضاً
+  `.caf`/`.wav`).
+
+  **Android**: اسم المورد (resource) **بدون** امتداد، بحيث يطابق ملفاً تحت
+  `res/raw/` (مثال: `sound` لملف عند `res/raw/sound.mp3`).
+  - الصيغ المدعومة: `.wav`، `.mp3`، `.ogg`.
+  - اجعل اسم الملف بأحرف صغيرة (lowercase) — بعض الأدوات/الأجهزة تتجاهل
+    الأحرف الكبيرة في أسماء الموارد.
+  - اجعل حجم الملف صغيراً وأقل من ~30 ثانية؛ قد لا تعمل الملفات الكبيرة على
+    بعض الأجهزة.
+  - إذا لم يُعثر على الملف المحدّد، يعود الإشعار إلى صوت الجهاز الافتراضي
+    بدلاً من الفشل.
+  - يُثبَّت الصوت المحدّد أول مرة يُستخدم فيها على الجهاز — يُثبّت Android
+    صوت قناة الإشعارات (notification channel) عند إنشائها ولا يسمح بتغييره
+    لاحقاً، لذا فإن التبديل إلى قيمة `sound` مختلفة لاحقاً يُنشئ قناة جديدة
+    بدلاً من تحديث القناة القديمة.
+</ParamField>
+
+<ParamField body="metadata" type="object" placeholder='{"orderId": "123"}'>
+  بيانات مخصّصة حرّة لإرفاقها بالإشعار. أي كائن JSON؛ اتركه فارغاً لعدم إرفاق
+  أي بيانات وصفية. تصل إلى الجهاز جنباً إلى جنب مع `title`/`body`، وتُقرأ من
+  الـ SDK كـ `payload.metadata` في
+  `setOnNotificationReceived`/`setOnNotificationTapped`.
+</ParamField>
+
+<ParamField body="projectSlug" type="string" required placeholder="my-project-slug">
+  اسم المسار (slug) الخاص بمشروعك من **إعدادات المشروع**.
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  مفتاحك الخاص من **إعدادات المشروع**.
+</ParamField>
+
+<ParamField body="source" type="string" default="API">
+  المصدر الذي أُرسل منه الإشعار.
+</ParamField>
+
+<ParamField body="sentAt" type="string" placeholder="2026-09-01T10:00:00.000Z">
+  طابع زمني بصيغة ISO 8601 لجدولة التسليم لوقت لاحق بدلاً من الإرسال الفوري.
+  اتركه فارغاً (أو مرّر وقتاً في الماضي) للإرسال فوراً. يمكن تعديل الإشعار
+  المجدوَل أو إلغاؤه قبل إرساله — راجع [تحديث إشعار](/ar/api-reference/update-notification) و[إلغاء إشعار مجدوَل](/ar/api-reference/cancel-notification).
+</ParamField>
+
+<Warning>
+  لا تعرِض مفتاحك الخاص أبداً في كود جهة العميل (client-side) أو في مستودعات عامة. أرسل طلبات الـ API من باك إند موثوق فقط.
+</Warning>
+
+## الاستجابة (Response)
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Notification sent successfully",
+  "notificationId": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e"
+}
+```
+
+احتفظ بـ `notificationId` — فهو ما تمرّره إلى نقاط النهاية الأخرى الخاصة
+بالإشعارات (التحديث، إلغاء الإرسال، الإلغاء، وحالة التسليم).
+
+عند الفشل، تتبع الاستجابة الشكل الموثّق في [رموز الأخطاء والنجاح](/ar/developers/errors-responses).

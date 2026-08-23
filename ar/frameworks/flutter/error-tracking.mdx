@@ -1,0 +1,85 @@
+---
+title: "Flutter — تتبع الأخطاء"
+description: "أبلغ عن الأخطاء والاستثناءات من تطبيق Flutter إلى لوحة تحكم Atelerix."
+---
+
+## مقدمة
+
+يلتقط Atelerix الأخطاء والاستثناءات من تطبيق Flutter الخاص بك لتتمكّن من تصحيح المشاكل بشكل أسرع. بعد إتمام [تثبيت Flutter](/ar/frameworks/flutter/installation)، استخدم `Atelerix.throwError` لإرسال أخطاء مخصّصة أو استثناءات ملتقطة إلى لوحة التحكم.
+
+<Note>
+  تأكّد من تهيئة الـ SDK عبر `Atelerix.init()` قبل الإبلاغ عن الأخطاء.
+</Note>
+
+## الإبلاغ عن خطأ
+
+استخدم `Atelerix.throwError` للإبلاغ عن خطأ يدوياً. هذا مفيد عندما تلتقط استثناءً داخل `try/catch` وتريد إرساله إلى Atelerix مع سياق إضافي.
+
+```dart main.dart
+try {
+  await riskyOperation();
+} catch (e, stack) {
+  await Atelerix.throwError(
+    e,
+    stack,
+    bugSeverity: BugSeverity.high,
+    metaData: {
+      'userId': '123',
+      'action': 'payment',
+      'amount': 100.0,
+    },
+  );
+}
+```
+
+### المعاملات (Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `error` | `Object` | نعم | كائن الخطأ أو نص الرسالة |
+| `stack` | `StackTrace` | نعم | تتبّع المكدس (Stack trace) المرتبط بالخطأ |
+| `bugType` | `BugType` | لا | تصنيف نوع الخطأ |
+| `bugSeverity` | `BugSeverity` | لا | مستوى الخطورة |
+| `metaData` | `Map<String, dynamic>` | لا | سياق إضافي يُرفق بالتقرير |
+
+### قيم `BugType`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `runtimeError` | استثناء غير معالَج يُرمى أثناء التشغيل |
+| `logicBug` | سلوك غير صحيح لا يرمي استثناءً |
+| `uiBug` | خلل بصري أو في التخطيط (layout) |
+| `networkError` | طلب شبكة فاشل أو مُشوَّه |
+| `performance` | بطء، تقطّع (jank)، أو استهلاك موارد مفرط |
+| `compatibility` | خلل يظهر على جهاز أو إصدار نظام أو منصة محدّدة |
+| `validationError` | إدخال غير صالح تجاوز التحقق رغم أنه لا ينبغي |
+| `security` | خلل متعلّق بالأمان |
+| `crash` | توقّف التطبيق بشكل غير متوقّع |
+| `unknown` | لا شيء مما سبق |
+
+### قيم `BugSeverity`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `critical` | يعطّل وظيفة أساسية أو يؤثّر على جميع المستخدمين |
+| `high` | تأثير كبير، لكن يوجد حل بديل (workaround) |
+| `medium` | ملحوظ لكن تأثيره محدود |
+| `low` | بسيط أو شكلي |
+| `unknown` | لم يتم تقييم الخطورة بعد |
+
+### الالتقاط التلقائي للأخطاء
+
+بمجرد تشغيل `Atelerix.init()`، يتم التقاط أخطاء إطار عمل Flutter غير الملتقطة (عبر `FlutterError.onError`) وأخطاء Dart غير الملتقطة (عبر `PlatformDispatcher.instance.onError`) وإرسالها تلقائياً — لا حاجة لتغليف تطبيقك بالكامل داخل `try`/`catch` للحصول على تغطية أساسية. `Atelerix.throwError` مخصّص للحالات التي تلتقطها بنفسك وتريد إضافة تصنيف أو بيانات وصفية (metadata) لها.
+
+### تحقّق من التكامل
+
+أرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
+
+```dart main.dart
+await Atelerix.throwError(
+  Exception('Test error'),
+  StackTrace.current,
+);
+```
+
+ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
