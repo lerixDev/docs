@@ -1,0 +1,50 @@
+---
+title: "Push Notifications"
+description: "Send push notifications to specific devices or entire topics, from the dashboard or the REST API."
+icon: "bell"
+---
+
+## What it does
+
+Push Notifications lets you reach your users on iOS and Android without
+running your own APNs/FCM infrastructure — configure your platform
+credentials once from the dashboard, then send from the dashboard or the
+REST API.
+
+- **Native delivery.** Apple Push Notification service (APNs) directly on
+  iOS — no Firebase required — and Firebase Cloud Messaging (FCM) on
+  Android.
+- **Target specific devices, or a whole topic.** Send to one or more
+  registered device tokens, or to every device subscribed to a topic (a
+  topic is created automatically the first time a device subscribes to it —
+  no dashboard setup required to start using one).
+- **Custom sound.** Set a custom notification sound per send, so long as the
+  sound file is already bundled inside your app.
+- **Send from the dashboard or the API.** Compose and send from the
+  **Send notification** tab, or call the REST API from your own backend.
+
+## Dashboard tabs
+
+Each project's **Notifications** section in the dashboard has:
+
+| Tab | What it's for |
+|---|---|
+| **Overview** | Total notifications sent, delivery rate, pending count, registered devices, and which platforms are configured |
+| **History** | Every notification ever sent, searchable and filterable by status |
+| **Send notification** | Compose and send to specific devices or a topic |
+| **Topics** | Create, view subscriber counts for, and delete topics |
+| **Settings** | Upload your Apple `.p8` key and Android `google-services.json` — a platform shows a **Configured** badge once it has credentials, and you can review or replace them any time |
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Flutter" icon="flutter" href="/frameworks/flutter/push-notifications">
+    Configure notifications and topics in a Flutter app.
+  </Card>
+  <Card title="REST API" icon="code" href="/api-reference/push-notifications">
+    Send notifications directly from your backend.
+  </Card>
+</CardGroup>
+
+More framework guides are on the way — see the [Getting Started](/) page for
+current platform availability.

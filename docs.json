@@ -5,7 +5,7 @@
   "colors": {
     "primary": "#64523C",
     "light": "#997668",
-    "dark": "#64523C"
+    "dark": "#8F7656"
   },
   "fonts": {
     "family": "Alexandria"
@@ -36,8 +36,8 @@
           {
             "group": "Getting Started",
             "pages": [
-              "index"
-              
+              "index",
+              "dashboard"
             ]
           },
           {
@@ -96,7 +96,8 @@
         "language": "ar",
         "pages": [
           "fr/index",
-          "fr/quickstart"
+          "fr/quickstart",
+          "fr/dashboard"
         ]
       }
     ]

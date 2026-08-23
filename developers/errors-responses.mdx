@@ -1,0 +1,65 @@
+---
+title: "Error & success codes"
+description: "Response shapes and error codes for the Atelerix REST API."
+---
+
+## Success response
+
+A successful request returns HTTP `200` or `201` with a JSON body:
+
+```json
+{
+  "success": true,
+  "message": "Notification sent successfully"
+}
+```
+
+## Error response shape
+
+Most errors return:
+
+```json
+{
+  "message": "This Project Not Founded",
+  "error": "PROJECT_NOT_FOUND",
+  "statusCode": 400
+}
+```
+
+`error` is a stable, machine-readable code you can safely match on. `message` is
+a human-readable description and may change wording over time — don't parse it.
+
+<Note>
+  A few less common failure paths (like exceeding your plan's notification
+  limit, or a resolved device token/key not being found) throw a generic Nest
+  exception instead of a coded one. For those, `error` falls back to the
+  generic HTTP reason phrase (e.g. `"Bad Request"`, `"Not Found"`) rather than
+  a specific code — check the HTTP status and `message` text in that case.
+</Note>
+
+## Common error codes
+
+| HTTP status | `error` | Meaning |
+|---|---|---|
+| 400 | `PROJECT_NOT_FOUND` | `projectSlug` doesn't match any project |
+| 400 | `DONT_HAVE_ACCSESS_PROJECT` | The authenticated identity doesn't have access to this project |
+| 404 | `API_KEY_NOT_VALID` | `apiKey` doesn't match any key on this project |
+| 400 | `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | The API key exists but isn't granted the permission this endpoint needs (e.g. Send Push Notifications) |
+| 404 | `TOPIC_NOT_FOUND` | `sendByTopic` was `true` but no topic matches `topic` for this project |
+| 400 | *(generic — "Bad Request")* | Notification limit reached for your plan |
+| 404 | *(generic — "Not Found")* | None of the given `deviceTokens` matched a registered device |
+| 400 | *(generic — "Bad Request")* | A device resolved to iOS, but no Apple push key is configured for this project yet — upload one from **Notifications → Settings** |
+
+## Validation errors
+
+Missing or malformed required fields (e.g. an empty `title`) return `400` with
+a `message` array describing each failing field, in the standard NestJS
+validation-pipe shape:
+
+```json
+{
+  "message": ["title should not be empty"],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```

@@ -1,0 +1,80 @@
+---
+title: "The Dashboard"
+description: "A tour of the Atelerix dashboard — organizations, projects, and where each module lives."
+---
+
+## Overview
+
+Everything you configure and monitor lives in the [Atelerix dashboard](https://app.atelerix.com), organized into two levels: **organizations** and **projects**.
+
+```
+Organization
+├── Members & roles
+├── Billing & subscription
+└── Projects
+    ├── Issues (Error Tracking)
+    ├── Notifications
+    └── Project settings
+```
+
+## Organizations
+
+An organization is the top-level container for your team. From an
+organization you manage:
+
+- **Members** — invite teammates and manage their roles.
+- **Billing** — your current plan, usage against plan limits, payment
+  history, and upgrading/downgrading. If you have a redeem code, you apply it
+  here when creating a new organization to activate its plan.
+- **Projects** — every project that belongs to this organization.
+
+## Projects
+
+A project is a single app you're monitoring — most teams create one project
+per app (or per app per environment). Each project has its own **API key**,
+so data from different apps never mixes.
+
+### Project settings
+
+- **General** — the project's name and basic configuration.
+- **API** — your project's API key and slug, used to initialize the SDK
+  (`apiKey`, `projectId`) and to authenticate REST API requests.
+- **Members** — who on your organization has access to this specific
+  project.
+- **Integrations** — connect external tools (e.g. GitHub, for linking issues
+  to repositories).
+
+### Issues (Error Tracking)
+
+Every error and crash your app reports shows up here — searchable, with the
+device/app context attached automatically. Open an issue to see its full
+stack trace, affected users, and an AI-generated summary to help you triage
+faster.
+
+### Notifications
+
+Everything related to push notifications for this project:
+
+| Tab | What it's for |
+|---|---|
+| **Overview** | Total notifications sent, delivery rate, pending count, registered devices, and which platforms (iOS/Android) are configured |
+| **History** | Every notification ever sent, searchable and filterable by status |
+| **Send notification** | Compose and send to specific devices or a topic |
+| **Topics** | Create, view subscriber counts for, and delete topics |
+| **Devices** | Registered device tokens for this project |
+| **Apps** | The platform apps (iOS/Android) registered under this project |
+| **Settings** | Upload your Apple `.p8` key and Android `google-services.json` — a platform shows a **Configured** badge once it has credentials |
+
+See [Push Notifications](/modules/push-notifications) for the full picture.
+
+## Account settings
+
+Your personal profile, email, and account security live under your account
+menu, separate from any specific organization or project.
+
+<Note>
+  The dashboard is where you configure and monitor your app. Everything your
+  app does at runtime — reporting errors, registering devices, sending
+  notifications — goes through the SDK or REST API, covered in the rest of
+  these docs.
+</Note>

@@ -5,7 +5,7 @@ description: "Configure push notifications for Android, iOS, and Huawei on Flutt
 
 ## Introduction
 
-Atelerix uses Firebase Cloud Messaging (FCM) to deliver push notifications on Android and iOS. After you complete the [Flutter installation](/frameworks/flutter/installation), follow the platform steps below to enable push delivery in your app.
+Atelerix delivers push notifications using each platform's native service — Firebase Cloud Messaging (FCM) on Android, and Apple Push Notification service (APNs) directly on iOS, no Firebase required. After you complete the [Flutter installation](/frameworks/flutter/installation), follow the platform steps below to enable push delivery in your app.
 
 <Note>
   Make sure you have initialized the SDK with `Atelerix.init()` before configuring push notifications.
@@ -19,7 +19,7 @@ No additional SDK setup is required for Android. You only need to add your Fireb
 2. Download `google-services.json` for your Android app.
 3. Upload the file to the Atelerix dashboard.
 
-For the full setup steps, see the [Firebase Android setup guide](#).
+For the full setup steps, see [Firebase's Android client setup guide](https://firebase.google.com/docs/cloud-messaging/android/client).
 
 ## iOS configuration
 
@@ -32,7 +32,7 @@ You need an active [Apple Developer account](https://developer.apple.com/program
 3. Download the `.p8` authentication key and note the **Key ID**. You can only download the key once.
 4. Upload the `.p8` file to the Atelerix dashboard.
 
-For the full setup steps, see the [APNs authentication guide](#).
+For the full setup steps, see [Apple's guide to registering your app with APNs](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
 
 ### AppDelegate configuration
 
@@ -62,16 +62,18 @@ override func application(
 
 Huawei push notification support is not available yet. Check back soon for setup instructions.
 
+## Dashboard settings
+
+Once you've uploaded your `google-services.json` (Android) and/or `.p8` key (iOS) from the project's **Notifications → Settings** tab in the dashboard, that platform card shows a **Configured** badge and the credentials it holds — click it again any time to review them or upload a replacement.
+
 ## Flutter code
 
-Call `await Atelerix.notifications.init()` to initialize notifications.
-
-Call `await Atelerix.notifications.requestPermissions()` to request notification permissions.
+All notification methods live on `Atelerix.notifications`, and require `await Atelerix.notifications.init()` to have run first — registration with APNs/FCM happens automatically as part of `init()`, so there's no separate "register" call for the normal flow.
 
 ```dart main.dart
 await Atelerix.notifications.init();
 
-await Atelerix.notifications.requestPermissions();
+final granted = await Atelerix.notifications.requestPermissions();
 
 Atelerix.notifications.setOnNotificationReceived((notification) {
   // Handle notification received while the app is open
@@ -81,5 +83,19 @@ Atelerix.notifications.setOnNotificationTapped((notification) {
   // Handle notification tap
 });
 
-final deviceToken = await Atelerix.notifications.deviceToken;
+final token = await Atelerix.notifications.getDeviceToken();
+final status = await Atelerix.notifications.checkPermissionStatus();
+// "authorized", "denied", "notDetermined"
 ```
+
+## Topics
+
+Instead of targeting specific device tokens, a device can subscribe to a named topic — send one notification to the topic and every subscriber receives it. A topic doesn't need to be created ahead of time; it's created automatically the first time any device subscribes to it. You can also view, create, and delete topics from the **Notifications → Topics** tab in the dashboard.
+
+```dart
+final subscribed = await Atelerix.notifications.subscribeToTopic('promotions');
+
+await Atelerix.notifications.unsubscribeFromTopic('promotions');
+```
+
+To send to a topic, use the dashboard's **Send notification** tab (select "Topic" as the audience), or call the [REST API](/api-reference/push-notifications) with `sendByTopic: true`.

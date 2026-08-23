@@ -19,11 +19,11 @@ description: "Add Atelerix to your Flutter app in a few steps."
 
 ## 1. Add the dependency
 
-Add `atelerix_flutter` to your `pubspec.yaml`:
+Add `atelerix` to your `pubspec.yaml`:
 
 ```yaml pubspec.yaml
 dependencies:
-  atelerix_flutter: ^1.0.0
+  atelerix: ^0.0.1
 ```
 
 Then run:
@@ -37,7 +37,7 @@ flutter pub get
 Call `Atelerix.init()` as early as possible — ideally at the top of `main()` in `main.dart`. Initialization sets up error monitoring and reporting. It does **not** initialize push notifications; call `Atelerix.notifications.init()` separately when you need that module.
 
 ```dart main.dart
-import 'package:atelerix_flutter/atelerix_flutter.dart';
+import 'package:atelerix/atelerix.dart';
 
 void main() {
   Atelerix.init(

@@ -1,0 +1,42 @@
+---
+title: "Error Tracking"
+description: "Automatic and manual error capture, with AI-assisted triage."
+icon: "bug"
+---
+
+## What it does
+
+Error Tracking captures crashes and exceptions from your app and turns them
+into actionable issues in your dashboard — without you having to build your
+own crash-reporting pipeline.
+
+- **Automatic capture.** Once the SDK is initialized, uncaught errors are
+  reported without any extra code on your part.
+- **Manual reporting.** Catch an exception yourself and send it with extra
+  context — a `bugType`, a `bugSeverity`, and arbitrary metadata (user ID,
+  the action being performed, anything else useful for debugging).
+- **Device and app context on every report.** Device model, OS/version,
+  architecture, timezone, country, and your app's version/build number are
+  attached automatically — you don't have to collect and send them yourself.
+- **AI-assisted summaries.** Bug details in the dashboard include an AI
+  summary panel that helps you understand what went wrong faster.
+- **Assign and discuss.** Assign a bug to a teammate and comment on it
+  directly in the dashboard as you work through a fix.
+
+## Classification
+
+Reports carry a `bugType` (e.g. `crash`, `networkError`, `uiBug`,
+`performance`) and a `bugSeverity` (`critical` down to `low`) so you can
+triage what matters first. See your framework's guide for the full list of
+values.
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Flutter" icon="flutter" href="/frameworks/flutter/error-tracking">
+    Set up automatic and manual error reporting in a Flutter app.
+  </Card>
+</CardGroup>
+
+More framework guides are on the way — see the [Getting Started](/) page for
+current platform availability.

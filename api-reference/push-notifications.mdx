@@ -34,8 +34,10 @@ device subscribed to a topic.
 
 <ParamField body="sendByTopic" type="boolean" default="false">
   Set to `true` to deliver to every device subscribed to `topic` instead of
-  specific `deviceTokens`. Devices subscribe to a topic from your app using
-  the SDK; create the topic itself from the **Topics** tab in the dashboard.
+  specific `deviceTokens` — when `true`, `deviceTokens` is ignored even if
+  present. Devices subscribe to a topic from your app using the SDK; a topic
+  is created automatically the first time a device subscribes to it, or you
+  can create one manually from the **Topics** tab in the dashboard.
 </ParamField>
 
 <ParamField body="topic" type="string" placeholder="promotions">
@@ -68,3 +70,14 @@ device subscribed to a topic.
 <Warning>
   Never expose your private key in client-side code or public repositories. Send API requests from a trusted backend only.
 </Warning>
+
+## Response
+
+```json 200 OK
+{
+  "success": true,
+  "message": "Notification sent successfully"
+}
+```
+
+On failure, the response follows the shape documented in [Error & success codes](/developers/errors-responses).

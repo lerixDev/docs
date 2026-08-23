@@ -42,6 +42,35 @@ try {
 | `bugSeverity` | `BugSeverity` | No | Severity level |
 | `metaData` | `Map<String, dynamic>` | No | Additional context to attach to the report |
 
+### `BugType` values
+
+| Value | Description |
+|-------|-------------|
+| `runtimeError` | An unhandled exception thrown at runtime |
+| `logicBug` | Incorrect behavior that doesn't throw |
+| `uiBug` | A visual or layout defect |
+| `networkError` | A failed or malformed network request |
+| `performance` | Slowness, jank, or excessive resource use |
+| `compatibility` | Breaks on a specific device, OS version, or platform |
+| `validationError` | Invalid input passed validation it shouldn't have |
+| `security` | A security-relevant defect |
+| `crash` | The app terminated unexpectedly |
+| `unknown` | None of the above |
+
+### `BugSeverity` values
+
+| Value | Description |
+|-------|-------------|
+| `critical` | Blocks core functionality or affects all users |
+| `high` | Serious impact, but a workaround exists |
+| `medium` | Noticeable but limited impact |
+| `low` | Minor or cosmetic |
+| `unknown` | Severity not yet assessed |
+
+### Automatic error capture
+
+Once `Atelerix.init()` has run, uncaught Flutter framework errors (via `FlutterError.onError`) and uncaught Dart errors (via `PlatformDispatcher.instance.onError`) are captured and sent automatically — you don't need to wrap your whole app in a `try`/`catch` to get baseline coverage. `Atelerix.throwError` is for cases you catch yourself and want to add classification or metadata to.
+
 ### Verify the integration
 
 Throw a test error to confirm everything is working:
