@@ -1,0 +1,70 @@
+---
+title: "Push Notifications"
+description: "Send push notifications to one or more devices through the Atelerix REST API."
+api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/send"
+authMethod: "key"
+playground: "interactive"
+---
+
+Send a push notification to one or more registered device tokens, or to every
+device subscribed to a topic.
+
+<Note>
+  See the [API introduction](/api-reference/introductaion) to set up your base URL and private key before making requests.
+</Note>
+
+## Parameters
+
+<ParamField path="project-id" type="string" required placeholder="my-project-id">
+  Your project ID from **Project Settings** in the [dashboard](https://app.atelerix.com).
+</ParamField>
+
+<ParamField body="title" type="string" required placeholder="Hello">
+  Notification title shown to the user.
+</ParamField>
+
+<ParamField body="body" type="string" required placeholder="You have a new message.">
+  Notification message body.
+</ParamField>
+
+<ParamField body="deviceTokens" type="string[]" placeholder='["device-token-1"]'>
+  One or more device tokens to deliver the notification to. Required unless
+  `sendByTopic` is `true`.
+</ParamField>
+
+<ParamField body="sendByTopic" type="boolean" default="false">
+  Set to `true` to deliver to every device subscribed to `topic` instead of
+  specific `deviceTokens`. Devices subscribe to a topic from your app using
+  the SDK; create the topic itself from the **Topics** tab in the dashboard.
+</ParamField>
+
+<ParamField body="topic" type="string" placeholder="promotions">
+  The topic key to broadcast to. Required when `sendByTopic` is `true`,
+  ignored otherwise.
+</ParamField>
+
+<ParamField body="sound" type="string" placeholder="sound.mp3">
+  Name of a custom notification sound. The file itself must already be
+  bundled inside your app project — Atelerix only passes the filename
+  through to APNs/FCM, it doesn't host or upload sound files. On iOS this is
+  the sound file's name with its extension (e.g. `sound.mp3`, `.caf`/`.wav`
+  also supported); on Android it's the resource name without an extension,
+  matching a file under `res/raw/` (e.g. `sound`). Leave empty to use the
+  device's default notification sound.
+</ParamField>
+
+<ParamField body="projectSlug" type="string" required placeholder="my-project-slug">
+  Your project slug from **Project Settings**.
+</ParamField>
+
+<ParamField body="apiKey" type="string" required placeholder="your-private-key">
+  Your private key from **Project Settings**.
+</ParamField>
+
+<ParamField body="source" type="string" default="API">
+  Where the notification was sent from.
+</ParamField>
+
+<Warning>
+  Never expose your private key in client-side code or public repositories. Send API requests from a trusted backend only.
+</Warning>

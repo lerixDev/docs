@@ -1,37 +1,105 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Atelerix Docs",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#64523C",
+    "light": "#997668",
+    "dark": "#64523C"
   },
-  "favicon": "/favicon.svg",
+  "fonts": {
+    "family": "Alexandria"
+  },
+  "favicon": "/atelerix-icon.svg",
   "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
+  
     "global": {
       "anchors": [
         {
           "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
+          "href": "https://docs.atelerix.com",
           "icon": "book-open-cover"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Dashboard",
+          "href": "https://app.atelerix.com",
+          "icon": "gauge"
         }
+       
       ]
-    }
+    },
+
+    "languages": [
+      {
+        "language": "en",
+        "pages": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "index"
+              
+            ]
+          },
+          {
+            "group": "Frameworks",
+            "icon": "code",
+            "pages": [
+              {
+                "group": "Flutter SDK",
+                "icon": "flutter",
+                "pages": [
+                  "frameworks/flutter/installation",
+                  "frameworks/flutter/push-notifications",
+                  "frameworks/flutter/error-tracking"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Modules",
+            "icon": "rocket",
+            "pages": [ 
+              "modules/error-tracking",
+              "modules/push-notifications",
+              "modules/analytics",
+              "modules/in-app-messages",
+              "modules/feedback",
+              "modules/updates"
+            ]
+          },
+
+          {
+            "group": "Developers",
+            "icon": "laptop-code",
+            "pages": [
+              {
+                "group": "API Reference",
+                "icon": "code",
+                "pages": [
+                  "api-reference/introductaion",
+                  "api-reference/push-notifications"
+                ]
+              },
+              {
+                "group": "Error/Success Codes",
+                "icon": "hashtag",
+                "pages": [
+                  "developers/errors-responses"
+                ]
+              }
+            ]
+          }
+         
+        ]
+      },
+      { 
+        "language": "ar",
+        "pages": [
+          "fr/index",
+          "fr/quickstart"
+        ]
+      }
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -41,13 +109,13 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@atelerix.com"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "href": "https://app.atelerix.com"
     }
   },
   "contextual": {
@@ -56,17 +124,27 @@
       "view",
       "chatgpt",
       "claude",
-      "perplexity",
-      "mcp",
       "cursor",
       "vscode"
     ]
   },
+  "api": {
+    "playground": {
+      "display": "interactive"
+    },
+    "mdx": {
+      "server": "https://api.atelerix.dev/v1",
+      "auth": {
+        "method": "key",
+        "name": "atelerix-api-key"
+      }
+    }
+  },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/atelerixDev",
+      "github": "https://github.com/AtelerixDev",
+      "linkedin": "https://linkedin.com/company/AtelerixDev"
     }
   }
 }

@@ -1,0 +1,46 @@
+---
+title: "Introduction"
+description: "Authenticate and send requests to the Atelerix REST API."
+---
+
+## Base URL
+
+All API requests are sent to your project endpoint:
+
+```
+https://api.atelerix.dev/v1/:project-id
+```
+
+Replace `:project-id` with your project ID from the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+
+**Example:**
+
+```
+https://api.atelerix.dev/v1/my-project-id
+```
+
+## Authentication
+
+Before you call the API, create a **private key** in **Project Settings** in the [dashboard](https://app.atelerix.com).
+
+Send the private key on every request in the `atelerix-api-key` header:
+
+```bash
+curl https://api.atelerix.dev/v1/my-project-id/endpoint \
+  -H "atelerix-api-key: <your-private-key>"
+```
+
+<Warning>
+  Keep your private key secret. Do not commit it to source control, expose it in client-side code, or share it publicly.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Push Notifications" icon="bell" href="/api-reference/push-notifications">
+    Send push notifications through the REST API.
+  </Card>
+  <Card title="Error & success codes" icon="hashtag" href="/developers/errors-responses">
+    Reference common API response codes.
+  </Card>
+</CardGroup>

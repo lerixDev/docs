@@ -1,0 +1,131 @@
+---
+title: "Flutter — Installation"
+description: "Add Atelerix to your Flutter app in a few steps."
+---
+
+## Requirements
+
+- Flutter `>=3.0.0`
+- Dart `>=3.0.0`
+
+### iOS requirements
+
+- Device with iOS 12+, iPadOS 12+, or Xcode simulator running iOS 16.2+
+- Swift Package Manager (requires opt-in) or CocoaPods 1.16.2+
+
+### Android requirements
+
+- Android 7.0+ device or emulator with Google Play Store (Services) installed
+
+## 1. Add the dependency
+
+Add `atelerix_flutter` to your `pubspec.yaml`:
+
+```yaml pubspec.yaml
+dependencies:
+  atelerix_flutter: ^1.0.0
+```
+
+Then run:
+
+```bash
+flutter pub get
+```
+
+## 2. Initialize the SDK
+
+Call `Atelerix.init()` as early as possible — ideally at the top of `main()` in `main.dart`. Initialization sets up error monitoring and reporting. It does **not** initialize push notifications; call `Atelerix.notifications.init()` separately when you need that module.
+
+```dart main.dart
+import 'package:atelerix_flutter/atelerix_flutter.dart';
+
+void main() {
+  Atelerix.init(
+    url: 'https://api.atelerix.dev',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    builder: () => runApp(const MyApp()),
+  );
+}
+```
+
+<Note>
+  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+</Note>
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `String` | Yes | Your project URL (e.g. `https://api.atelerix.dev`) |
+| `apiKey` | `String` | Yes | Your project API key from the dashboard |
+| `projectId` | `String` | Yes | Your project ID from the dashboard |
+| `builder` | `Function` | Yes | Function that calls `runApp()` to start your app |
+| `debugMode` | `bool` | No | Enable debug logging (default: `false`) |
+| `onError` | `Function` | No | Custom error handler called when an error is captured |
+
+### Async initialization
+
+If your `builder` needs async setup before `runApp()`, call `WidgetsFlutterBinding.ensureInitialized()` first:
+
+```dart main.dart
+void main() {
+  Atelerix.init(
+    url: 'https://api.atelerix.dev',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    builder: () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await loadConfig();
+      runApp(const MyApp());
+    },
+  );
+}
+```
+
+### Debug mode
+
+Set `debugMode: true` during development to print SDK logs to the console:
+
+```dart main.dart
+Atelerix.init(
+  url: 'https://api.atelerix.dev',
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  debugMode: true,
+  builder: () => runApp(const MyApp()),
+);
+```
+
+### Custom error handler
+
+Use `onError` to run your own logic when the SDK captures an error — for example, showing a fallback UI or logging to a secondary service:
+
+```dart main.dart
+Atelerix.init(
+  url: 'https://api.atelerix.dev',
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  builder: () => runApp(const MyApp()),
+  onError: (error) {
+    print('Custom error handler: ${error.message}');
+  },
+);
+```
+
+## 3. Verify the integration
+
+Throw a test error to confirm everything is working:
+
+```dart main.dart
+await Atelerix.throwError(
+  Exception('Test error'),
+  StackTrace.current,
+);
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+
+<Check>
+  You're all set! Continue to [Error Tracking](/frameworks/flutter/error-tracking) to report custom errors, or [Push Notifications](/frameworks/flutter/push-notifications) to enable push delivery.
+</Check>

@@ -1,0 +1,56 @@
+---
+title: "Flutter — Error Tracking"
+description: "Report errors and exceptions from your Flutter app to the Atelerix dashboard."
+---
+
+## Introduction
+
+Atelerix captures errors and exceptions from your Flutter app so you can debug issues faster. After you complete the [Flutter installation](/frameworks/flutter/installation), use `Atelerix.throwError` to send custom errors or caught exceptions to your dashboard.
+
+<Note>
+  Make sure you have initialized the SDK with `Atelerix.init()` before reporting errors.
+</Note>
+
+## Report an error
+
+Use `Atelerix.throwError` to manually report an error. This is useful when you catch an exception in a `try/catch` block and want to send it to Atelerix with extra context.
+
+```dart main.dart
+try {
+  await riskyOperation();
+} catch (e, stack) {
+  await Atelerix.throwError(
+    e,
+    stack,
+    bugSeverity: BugSeverity.high,
+    metaData: {
+      'userId': '123',
+      'action': 'payment',
+      'amount': 100.0,
+    },
+  );
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `error` | `Object` | Yes | Error object or message |
+| `stack` | `StackTrace` | Yes | Stack trace associated with the error |
+| `bugType` | `BugType` | No | Bug classification |
+| `bugSeverity` | `BugSeverity` | No | Severity level |
+| `metaData` | `Map<String, dynamic>` | No | Additional context to attach to the report |
+
+### Verify the integration
+
+Throw a test error to confirm everything is working:
+
+```dart main.dart
+await Atelerix.throwError(
+  Exception('Test error'),
+  StackTrace.current,
+);
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.

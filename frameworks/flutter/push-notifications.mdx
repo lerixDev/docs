@@ -1,0 +1,85 @@
+---
+title: "Flutter — Push Notifications"
+description: "Configure push notifications for Android, iOS, and Huawei on Flutter."
+---
+
+## Introduction
+
+Atelerix uses Firebase Cloud Messaging (FCM) to deliver push notifications on Android and iOS. After you complete the [Flutter installation](/frameworks/flutter/installation), follow the platform steps below to enable push delivery in your app.
+
+<Note>
+  Make sure you have initialized the SDK with `Atelerix.init()` before configuring push notifications.
+</Note>
+
+## Android configuration
+
+No additional SDK setup is required for Android. You only need to add your Firebase `google-services.json` file to the project.
+
+1. Create or open your app in the [Firebase Console](https://console.firebase.google.com/).
+2. Download `google-services.json` for your Android app.
+3. Upload the file to the Atelerix dashboard.
+
+For the full setup steps, see the [Firebase Android setup guide](#).
+
+## iOS configuration
+
+You need an active [Apple Developer account](https://developer.apple.com/programs/) to send push notifications on iOS.
+
+### Set up APNs authentication
+
+1. In the [Apple Developer portal](https://developer.apple.com/account/resources/authkeys/list), go to **Certificates, Identifiers & Profiles → Keys**.
+2. Create a new key with **Apple Push Notifications service (APNs)** enabled.
+3. Download the `.p8` authentication key and note the **Key ID**. You can only download the key once.
+4. Upload the `.p8` file to the Atelerix dashboard.
+
+For the full setup steps, see the [APNs authentication guide](#).
+
+### AppDelegate configuration
+
+Add the following overrides to `ios/Runner/AppDelegate.swift`:
+
+```swift AppDelegate.swift
+import atelerix
+
+override func application(
+  _ application: UIApplication,
+  didRegisterForRemoteNotificationsWithDeviceToken deviceData: Data
+) {
+  atelerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceData)
+}
+
+override func application(
+  _ application: UIApplication,
+  didFailToRegisterForRemoteNotificationsWithError error: Error
+) {
+  atelerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
+}
+```
+
+## Huawei configuration
+
+<Badge>Coming Soon</Badge>
+
+Huawei push notification support is not available yet. Check back soon for setup instructions.
+
+## Flutter code
+
+Call `await Atelerix.notifications.init()` to initialize notifications.
+
+Call `await Atelerix.notifications.requestPermissions()` to request notification permissions.
+
+```dart main.dart
+await Atelerix.notifications.init();
+
+await Atelerix.notifications.requestPermissions();
+
+Atelerix.notifications.setOnNotificationReceived((notification) {
+  // Handle notification received while the app is open
+});
+
+Atelerix.notifications.setOnNotificationTapped((notification) {
+  // Handle notification tap
+});
+
+final deviceToken = await Atelerix.notifications.deviceToken;
+```
