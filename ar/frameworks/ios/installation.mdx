@@ -1,0 +1,91 @@
+---
+title: "iOS (Swift) — التثبيت"
+description: "أضف Lerix إلى تطبيق iOS الأصلي (native) الخاص بك في خطوات قليلة — دون الحاجة إلى Flutter."
+---
+
+## المتطلبات
+
+- iOS 13+‎
+- Xcode 15+‎، Swift 5.9+‎
+- Swift Package Manager
+
+<Note>
+  هذه هي حزمة Swift الأصلية (native) للتطبيقات التي لا تستخدم Flutter إطلاقاً. إذا كان تطبيقك مبنياً بـ Flutter، استخدم [Flutter SDK](/ar/frameworks/flutter/installation) بدلاً من ذلك — فهو يغطّي iOS وAndroid وWeb من حزمة واحدة.
+</Note>
+
+## 1. أضف الحزمة (Package)
+
+في Xcode: **File → Add Package Dependencies…** وأدخل رابط Git الخاص بالحزمة، أو أضفها مباشرة إلى ملف `Package.swift`:
+
+```swift Package.swift
+dependencies: [
+    .package(url: "https://github.com/atelerix/lerix-ios", from: "1.0.0")
+]
+```
+
+ثم أضف `Lerix` كاعتمادية (dependency) لهدف تطبيقك (app target).
+
+## 2. هيّئ الـ SDK
+
+استدعِ `Lerix.initialize()` في أقرب وقت ممكن — داخل `application(_:didFinishLaunchingWithOptions:)` في `AppDelegate`. هذا يسجّل تطبيقك/جهازك مع الخادم (backend) ويفعّل الإبلاغ التلقائي عن الأعطال (crash reporting).
+
+```swift AppDelegate.swift
+import UIKit
+import Lerix
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        Lerix.initialize(
+            apiKey: "your-api-key",
+            projectId: "your-project-id",
+            debugMode: true
+        )
+        return true
+    }
+}
+```
+
+<Note>
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+</Note>
+
+إذا كان تطبيقك يستخدم دورة حياة SwiftUI الخاصة بـ `App` بدلاً من `AppDelegate` التقليدي، أرفق واحداً باستخدام `@UIApplicationDelegateAdaptor`:
+
+```swift
+@main
+struct MyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var body: some Scene {
+        WindowGroup { ContentView() }
+    }
+}
+```
+
+### المعاملات (Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `apiKey` | `String` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
+| `projectId` | `String` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
+| `url` | `String` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.atelerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `debugMode` | `Bool` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
+| `enableCrashReporting` | `Bool` | لا | تثبيت معالج الأعطال التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/ios/error-tracking) |
+| `onError` | `((Error) -> Void)?` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
+
+## 3. تحقّق من التكامل
+
+أرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
+
+```swift
+Lerix.throwError("Test error", stack: Thread.callStackSymbols)
+```
+
+ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<Check>
+  كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/ios/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الإبلاغ التلقائي عن الأعطال، أو إلى [الإشعارات](/ar/frameworks/ios/push-notifications) لتفعيل الإشعارات.
+</Check>

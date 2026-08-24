@@ -1,0 +1,194 @@
+---
+title: "iOS (Swift) — Push Notifications"
+description: "Configure Apple Push Notification service (APNs) delivery for your native iOS app."
+---
+
+## Introduction
+
+Atelerix delivers push notifications on iOS using Apple Push Notification service (APNs) directly — no Firebase required. After you complete the [iOS installation](/frameworks/ios/installation), follow the steps below to enable push delivery in your app.
+
+<Note>
+  Make sure you have initialized the SDK with `Lerix.initialize()` before configuring push notifications.
+</Note>
+
+## Set up APNs authentication
+
+You need an active [Apple Developer account](https://developer.apple.com/programs/) to send push notifications on iOS.
+
+1. In the [Apple Developer portal](https://developer.apple.com/account/resources/authkeys/list), go to **Certificates, Identifiers & Profiles → Keys**.
+2. Create a new key with **Apple Push Notifications service (APNs)** enabled.
+3. Download the `.p8` authentication key and note the **Key ID**. You can only download the key once.
+4. Upload the `.p8` file to the Atelerix dashboard, under **Notifications → Settings**.
+5. In **Certificates, Identifiers & Profiles → Identifiers**, make sure your app's own App ID has the **Push Notifications** capability enabled. This is separate from the `.p8` key above and is required even though Atelerix's token-based auth doesn't need a per-app certificate — APNs still rejects pushes to an App ID it has no record of.
+
+For the full setup steps, see [Apple's guide to registering your app with APNs](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
+
+## Enable the capability in Xcode
+
+Add **Push Notifications** and **Background Modes → Remote notifications** under your app target's **Signing & Capabilities** tab.
+
+## Wire up the AppDelegate
+
+```swift AppDelegate.swift
+import UIKit
+import Lerix
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        Lerix.notifications.setDeviceToken(deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("Failed to register for remote notifications: \(error)")
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        Lerix.notifications.handleRemoteNotification(userInfo: userInfo)
+        completionHandler(.newData)
+    }
+}
+```
+
+## Request permission and observe notifications
+
+```swift
+Task {
+    let granted = await Lerix.notifications.requestPermissions()
+}
+
+Lerix.notifications.setOnNotificationReceived { payload in
+    // Fired while the app is open (foreground) — show an in-app banner, etc.
+    print("Notification received: \(payload.title ?? "") — \(payload.body ?? "")")
+}
+
+Lerix.notifications.setOnNotificationTapped { payload in
+    // Fired when the user taps the notification — including one that
+    // launched the app from a fully closed state (see the note below).
+    print("Notification tapped: \(payload.metadata)")
+}
+
+let status = await Lerix.notifications.checkPermissionStatus()
+// .authorized, .denied, .notDetermined, .provisional
+```
+
+Register `setOnNotificationTapped` somewhere with access to your navigation stack, since a tap almost always means routing to a specific screen based on `payload.metadata` rather than just logging it.
+
+<Note>
+  A tap is delivered reliably even when it's what launched the app from a fully
+  terminated state — call `setOnNotificationTapped` as soon as your root view
+  appears, and any tap that happened before your app finished starting up is
+  replayed automatically once the callback is registered.
+</Note>
+
+## The notification payload
+
+`setOnNotificationReceived` and `setOnNotificationTapped` both receive a `LerixNotificationPayload`:
+
+```swift
+public struct LerixNotificationPayload {
+    public let notificationId: String? // this notification's id in Atelerix
+    public let title: String?
+    public let body: String?
+    public let imageUrl: String? // whatever you passed as `imageUrl` when sending, if any
+    public let metadata: [String: Any] // whatever you passed as `metadata` when sending
+}
+```
+
+```swift
+Lerix.notifications.setOnNotificationTapped { payload in
+    let screen = payload.metadata["screen"] as? String
+    let orderId = payload.metadata["orderId"] as? String
+    // Navigate based on payload.metadata, etc.
+}
+```
+
+## Device identifiers
+
+Three different methods return three different things — use the right one for what you're doing:
+
+| Method | Returns | Use it for |
+|---|---|---|
+| `getRegisteredTokenId()` | Atelerix's own id for this registered device, assigned once `requestPermissions()` succeeds and the token is registered with the backend | The value to put in **device tokens** when sending a notification to this specific device — from the dashboard's **Send notification** tab, or the [REST API](/api-reference/push-notifications) |
+| `getDeviceToken()` | The raw APNs device token (hex-encoded) | Rarely needed directly; useful for diagnostics or if you're calling APNs yourself outside of Atelerix |
+| `getDeviceId()` | The device's `UIDevice.identifierForVendor` — a local iOS system identifier, unrelated to Atelerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
+
+```swift
+let tokenId = Lerix.notifications.getRegisteredTokenId()
+print("Send test notifications to: \(tokenId ?? "not registered yet")")
+```
+
+<Warning>
+  `getRegisteredTokenId()` is the iOS equivalent of the Flutter SDK's
+  `getDeviceId()` — the naming differs between the two SDKs, but both return
+  the same kind of value: the id the dashboard and REST API expect in their
+  device-targeting field. Pasting this SDK's `getDeviceId()` (the vendor
+  identifier) into the dashboard's send flow will fail with a "not found"
+  error — it was never registered with the backend.
+</Warning>
+
+All three return `nil` until notification permission is granted and registration completes.
+
+## Sending a custom sound
+
+Set `sound` when sending a notification — from the dashboard's **Send notification** tab, or the REST API's [`sound` parameter](/api-reference/push-notifications) — to play a bundled sound file instead of the device default.
+
+- The file must already ship inside your app's bundle — Atelerix only passes the filename through, it never hosts or uploads sound files.
+- Pass the filename with its extension, e.g. `sound.mp3` (`.wav`/`.caf` also supported).
+
+No SDK code is required to play the sound — it happens automatically as part of the system notification.
+
+## Sending metadata
+
+Attach arbitrary custom data with `metadata` (a JSON object) when sending — from the dashboard's **Send notification** tab, or the REST API's [`metadata` parameter](/api-reference/push-notifications). It's delivered back to the device inside `payload.metadata`:
+
+```json
+{
+  "title": "New message from John",
+  "body": "Hey, are you free later?",
+  "metadata": { "chatId": "456", "screen": "chat" }
+}
+```
+
+```swift
+Lerix.notifications.setOnNotificationTapped { payload in
+    let chatId = payload.metadata["chatId"] as? String
+    // Navigate to the chat screen, etc.
+}
+```
+
+## Sending an image
+
+Set `imageUrl` when sending a notification — from the dashboard's **Send notification** tab, or the REST API's [`imageUrl` parameter](/api-reference/push-notifications) — to show a rich image in the notification. APNs has no native "image" field, so this requires a one-time setup step:
+
+1. In Xcode: **File → New → Target… → Notification Service Extension**. Name it (e.g. `NotificationServiceExtension`).
+2. Copy the package's `NotificationServiceExtension/NotificationService.swift` into your new extension target, replacing the generated one.
+3. Build and run — no other configuration needed. The backend automatically sets APNs' `mutable-content` flag whenever a notification carries an `imageUrl`, which is what triggers your extension to run.
+
+<Note>
+  If the extension isn't set up, an `imageUrl` is silently ignored — the
+  notification still shows normally with no image, it doesn't fail to send.
+</Note>
+
+The image is also available in Swift as `payload.imageUrl` (in `setOnNotificationReceived`/`setOnNotificationTapped`) if you want to show it in a custom in-app banner, in addition to the OS rendering it natively.
+
+## Topics
+
+Instead of targeting specific device tokens, a device can subscribe to a named topic — send one notification to the topic and every subscriber receives it. A topic doesn't need to be created ahead of time; it's created automatically the first time any device subscribes to it. You can also view, create, and delete topics from the **Notifications → Topics** tab in the dashboard.
+
+```swift
+try await Lerix.notifications.subscribeToTopic("promotions")
+
+try await Lerix.notifications.unsubscribeFromTopic("promotions")
+```
+
+To send to a topic, use the dashboard's **Send notification** tab (select "Topic" as the audience), or call the [REST API](/api-reference/push-notifications) with `sendByTopic: true`.

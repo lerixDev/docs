@@ -54,6 +54,15 @@
                 ]
               },
               {
+                "group": "iOS SDK",
+                "icon": "swift",
+                "pages": [
+                  "frameworks/ios/installation",
+                  "frameworks/ios/push-notifications",
+                  "frameworks/ios/error-tracking"
+                ]
+              },
+              {
                 "group": "Web SDK",
                 "icon": "js",
                 "pages": [
@@ -130,6 +139,15 @@
                   "ar/frameworks/flutter/installation",
                   "ar/frameworks/flutter/push-notifications",
                   "ar/frameworks/flutter/error-tracking"
+                ]
+              },
+              {
+                "group": "iOS SDK",
+                "icon": "swift",
+                "pages": [
+                  "ar/frameworks/ios/installation",
+                  "ar/frameworks/ios/push-notifications",
+                  "ar/frameworks/ios/error-tracking"
                 ]
               },
               {

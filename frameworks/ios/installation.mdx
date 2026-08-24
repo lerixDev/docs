@@ -1,0 +1,91 @@
+---
+title: "iOS (Swift) — Installation"
+description: "Add Lerix to your native iOS app in a few steps — no Flutter required."
+---
+
+## Requirements
+
+- iOS 13+
+- Xcode 15+, Swift 5.9+
+- Swift Package Manager
+
+<Note>
+  This is the native Swift package for apps with no Flutter involved. If your app is built with Flutter, use the [Flutter SDK](/frameworks/flutter/installation) instead — it already covers iOS, Android, and Web from one package.
+</Note>
+
+## 1. Add the package
+
+In Xcode: **File → Add Package Dependencies…** and enter the package's Git URL, or add it directly to your `Package.swift`:
+
+```swift Package.swift
+dependencies: [
+    .package(url: "https://github.com/atelerix/lerix-ios", from: "1.0.0")
+]
+```
+
+Then add `Lerix` as a dependency of your app target.
+
+## 2. Initialize the SDK
+
+Call `Lerix.initialize()` as early as possible — `application(_:didFinishLaunchingWithOptions:)` in your `AppDelegate`. This registers your app/device with the backend and installs automatic crash reporting.
+
+```swift AppDelegate.swift
+import UIKit
+import Lerix
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        Lerix.initialize(
+            apiKey: "your-api-key",
+            projectId: "your-project-id",
+            debugMode: true
+        )
+        return true
+    }
+}
+```
+
+<Note>
+  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+</Note>
+
+If your app uses the SwiftUI `App` lifecycle instead of a classic `AppDelegate`, attach one with `@UIApplicationDelegateAdaptor`:
+
+```swift
+@main
+struct MyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var body: some Scene {
+        WindowGroup { ContentView() }
+    }
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `apiKey` | `String` | Yes | Your project API key from the dashboard |
+| `projectId` | `String` | Yes | Your project ID (slug) from the dashboard |
+| `url` | `String` | No | Backend base URL. Defaults to `https://api.atelerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
+| `debugMode` | `Bool` | No | Print SDK request/response logs to the console (default: `false`) |
+| `enableCrashReporting` | `Bool` | No | Install the automatic crash handler (default: `true`) — see [Error Tracking](/frameworks/ios/error-tracking) |
+| `onError` | `((Error) -> Void)?` | No | Called if initialization itself fails (e.g. network unreachable) |
+
+## 3. Verify the integration
+
+Throw a test error to confirm everything is working:
+
+```swift
+Lerix.throwError("Test error", stack: Thread.callStackSymbols)
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+
+<Check>
+  You're all set! Continue to [Error Tracking](/frameworks/ios/error-tracking) to report custom errors and enable automatic crash capture, or [Push Notifications](/frameworks/ios/push-notifications) to enable push delivery.
+</Check>

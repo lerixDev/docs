@@ -1,0 +1,192 @@
+---
+title: "iOS (Swift) — الإشعارات"
+description: "أعِدّ تسليم الإشعارات عبر Apple Push Notification service (APNs) لتطبيق iOS الأصلي (native) الخاص بك."
+---
+
+## مقدمة
+
+يُرسِل Atelerix الإشعارات على iOS باستخدام Apple Push Notification service (APNs) مباشرةً — بدون الحاجة إلى Firebase. بعد إتمام [تثبيت iOS](/ar/frameworks/ios/installation)، اتّبع الخطوات أدناه لتفعيل تسليم الإشعارات في تطبيقك.
+
+<Note>
+  تأكّد من تهيئة الـ SDK عبر `Lerix.initialize()` قبل إعداد الإشعارات.
+</Note>
+
+## إعداد مصادقة APNs
+
+تحتاج إلى [حساب Apple Developer](https://developer.apple.com/programs/) نشط لإرسال إشعارات على iOS.
+
+1. في [بوابة Apple Developer](https://developer.apple.com/account/resources/authkeys/list)، اذهب إلى **Certificates, Identifiers & Profiles → Keys**.
+2. أنشئ مفتاحاً جديداً مع تفعيل **Apple Push Notifications service (APNs)**.
+3. نزّل مفتاح المصادقة `.p8` ولاحظ **Key ID**. يمكنك تنزيل المفتاح مرة واحدة فقط.
+4. ارفع ملف `.p8` إلى لوحة تحكم Atelerix، ضمن **الإشعارات ← الإعدادات**.
+5. في **Certificates, Identifiers & Profiles → Identifiers**، تأكّد من تفعيل خاصية **Push Notifications** على App ID الخاص بتطبيقك. هذا منفصل عن مفتاح `.p8` أعلاه ومطلوب رغم أن مصادقة Atelerix المعتمدة على الرمز (token-based) لا تحتاج شهادة لكل تطبيق — إذ ترفض APNs الإشعارات الموجّهة لـ App ID لا تملك سجلّاً له.
+
+لمعرفة خطوات الإعداد الكاملة، راجع [دليل Apple لتسجيل تطبيقك لدى APNs](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
+
+## فعّل الخاصية في Xcode
+
+أضف **Push Notifications** و**Background Modes → Remote notifications** ضمن تبويب **Signing & Capabilities** لهدف تطبيقك (app target).
+
+## إعداد AppDelegate
+
+```swift AppDelegate.swift
+import UIKit
+import Lerix
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        Lerix.notifications.setDeviceToken(deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("Failed to register for remote notifications: \(error)")
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        Lerix.notifications.handleRemoteNotification(userInfo: userInfo)
+        completionHandler(.newData)
+    }
+}
+```
+
+## اطلب الإذن وراقِب الإشعارات
+
+```swift
+Task {
+    let granted = await Lerix.notifications.requestPermissions()
+}
+
+Lerix.notifications.setOnNotificationReceived { payload in
+    // يُستدعى أثناء فتح التطبيق (foreground) — اعرض إشعاراً داخل التطبيق مثلاً.
+    print("Notification received: \(payload.title ?? "") — \(payload.body ?? "")")
+}
+
+Lerix.notifications.setOnNotificationTapped { payload in
+    // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح التطبيق
+    // من حالة إغلاق كامل (راجع الملاحظة أدناه).
+    print("Notification tapped: \(payload.metadata)")
+}
+
+let status = await Lerix.notifications.checkPermissionStatus()
+// .authorized، .denied، .notDetermined، .provisional
+```
+
+سجّل `setOnNotificationTapped` في مكان لديه وصول إلى مكدّس التنقّل (navigation) لديك، لأن الضغط على إشعار يعني غالباً الانتقال إلى شاشة محددة بناءً على `payload.metadata`، وليس مجرد تسجيله في السجلّات.
+
+<Note>
+  يصل الضغط (tap) بشكل موثوق حتى لو كان هو ما فتح التطبيق من حالة إغلاق كامل —
+  سجّل `setOnNotificationTapped` فور ظهور الشاشة الرئيسية لتطبيقك، وأي ضغط حدث
+  قبل انتهاء تشغيل التطبيق يُعاد تشغيله تلقائياً بمجرد تسجيل الدالة.
+</Note>
+
+## البيانات (Payload) المُستلَمة مع الإشعار
+
+يستقبل كل من `setOnNotificationReceived` و`setOnNotificationTapped` كائناً من نوع `LerixNotificationPayload`:
+
+```swift
+public struct LerixNotificationPayload {
+    public let notificationId: String? // معرّف هذا الإشعار في Atelerix
+    public let title: String?
+    public let body: String?
+    public let imageUrl: String? // أي قيمة مررتها كـ imageUrl عند الإرسال، إن وُجدت
+    public let metadata: [String: Any] // أي بيانات مررتها كـ metadata عند الإرسال
+}
+```
+
+```swift
+Lerix.notifications.setOnNotificationTapped { payload in
+    let screen = payload.metadata["screen"] as? String
+    let orderId = payload.metadata["orderId"] as? String
+    // انتقل بناءً على payload.metadata، إلخ.
+}
+```
+
+## معرّفات الجهاز
+
+توجد ثلاث دوال مختلفة ترجع ثلاث قيم مختلفة — استخدم المناسبة حسب ما تفعله:
+
+| الدالة | ترجع | استخدمها من أجل |
+|---|---|---|
+| `getRegisteredTokenId()` | معرّف Atelerix الخاص بهذا الجهاز المُسجَّل، يُخصَّص بمجرد نجاح `requestPermissions()` وتسجيل الرمز لدى الباك إند | القيمة التي تضعها في **رموز الأجهزة** عند إرسال إشعار لهذا الجهاز تحديداً — من تبويب **إرسال إشعار** في لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
+| `getDeviceToken()` | رمز جهاز APNs الأصلي (مُرمَّز بصيغة hex) | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs بنفسك خارج Atelerix |
+| `getDeviceId()` | معرّف `UIDevice.identifierForVendor` الخاص بالجهاز — معرّف نظام iOS محلي، لا علاقة له بالباك إند الخاص بـ Atelerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
+
+```swift
+let tokenId = Lerix.notifications.getRegisteredTokenId()
+print("Send test notifications to: \(tokenId ?? "not registered yet")")
+```
+
+<Warning>
+  تعادل `getRegisteredTokenId()` هنا دالة `getDeviceId()` في Flutter SDK — التسمية
+  تختلف بين الحزمتين، لكن كلتاهما ترجعان نفس نوع القيمة: المعرّف الذي تتوقّعه
+  لوحة التحكم وREST API في حقل استهداف الجهاز. لصق `getDeviceId()` من هذه
+  الحزمة (معرّف vendor المحلي) في عملية الإرسال بلوحة التحكم سيفشل برسالة
+  "غير موجود" — لأنه لم يُسجَّل لدى الباك إند إطلاقاً.
+</Warning>
+
+جميع الدوال الثلاث ترجع `nil` حتى يُمنَح إذن الإشعارات ويكتمل التسجيل.
+
+## إرسال صوت مخصّص
+
+اضبط `sound` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`sound`](/ar/api-reference/push-notifications) في REST API — لتشغيل ملف صوت مُرفق بدلاً من صوت الجهاز الافتراضي.
+
+- يجب أن يكون الملف موجوداً بالفعل داخل حزمة تطبيقك — يمرّر Atelerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
+- مرّر اسم الملف مع امتداده، مثل `sound.mp3` (مدعوم أيضاً `.wav`/`.caf`).
+
+لا حاجة لأي كود في الـ SDK لتشغيل الصوت — يعمل تلقائياً كجزء من الإشعار في النظام.
+
+## إرسال بيانات وصفية (Metadata)
+
+أرفق بيانات مخصّصة عبر `metadata` (كائن JSON) عند الإرسال — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`metadata`](/ar/api-reference/push-notifications) في REST API. تصل هذه البيانات إلى الجهاز داخل `payload.metadata`:
+
+```json
+{
+  "title": "New message from John",
+  "body": "Hey, are you free later?",
+  "metadata": { "chatId": "456", "screen": "chat" }
+}
+```
+
+```swift
+Lerix.notifications.setOnNotificationTapped { payload in
+    let chatId = payload.metadata["chatId"] as? String
+    // انتقل إلى شاشة المحادثة، إلخ.
+}
+```
+
+## إرسال صورة
+
+اضبط `imageUrl` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`imageUrl`](/ar/api-reference/push-notifications) في REST API — لعرض صورة غنية في الإشعار. لا تملك APNs حقل "صورة" أصلياً، لذا يتطلّب هذا خطوة إعداد لمرة واحدة:
+
+1. في Xcode: **File → New → Target… → Notification Service Extension**. سمِّه (مثلاً `NotificationServiceExtension`).
+2. انسخ ملف `NotificationServiceExtension/NotificationService.swift` من الحزمة إلى الامتداد الجديد، مستبدلاً الملف المُولَّد تلقائياً.
+3. ابنِ التطبيق وشغّله — لا حاجة لأي إعداد آخر. يضبط الباك إند تلقائياً علم `mutable-content` الخاص بـ APNs كلما حمل الإشعار قيمة `imageUrl`، وهذا ما يُشغّل الامتداد.
+
+<Note>
+  إذا لم يكن الامتداد مُعدّاً، يُتجاهَل `imageUrl` بصمت — يظهر الإشعار بشكل طبيعي
+  بدون صورة، ولا يفشل الإرسال.
+</Note>
+
+الصورة متاحة أيضاً في Swift كـ `payload.imageUrl` (في `setOnNotificationReceived`/`setOnNotificationTapped`) إن أردت عرضها في شريط إشعار مخصّص داخل التطبيق، إضافة إلى عرضها الأصلي من النظام.
+
+## المواضيع (Topics)
+
+بدلاً من استهداف رموز أجهزة محددة، يمكن للجهاز الاشتراك في موضوع (topic) باسم معيّن — أرسِل إشعاراً واحداً إلى الموضوع ليصل لكل مشترك فيه. لا حاجة لإنشاء الموضوع مسبقاً؛ يُنشأ تلقائياً أول مرة يشترك فيها أي جهاز. يمكنك أيضاً عرض المواضيع وإنشاءها وحذفها من تبويب **الإشعارات ← المواضيع** في لوحة التحكم.
+
+```swift
+try await Lerix.notifications.subscribeToTopic("promotions")
+
+try await Lerix.notifications.unsubscribeFromTopic("promotions")
+```
+
+للإرسال إلى موضوع، استخدم تبويب **إرسال إشعار** في لوحة التحكم (اختر "Topic" كجمهور مستهدف)، أو استدعِ [REST API](/ar/api-reference/push-notifications) مع `sendByTopic: true`.
