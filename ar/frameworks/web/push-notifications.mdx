@@ -1,0 +1,169 @@
+---
+title: "الويب — الإشعارات"
+description: "إشعارات المتصفح لـ Atelerix — Web Push القياسي (VAPID)، بدون Firebase، بدون OneSignal."
+---
+
+## مقدمة
+
+يُرسِل Atelerix إشعارات الويب باستخدام **بروتوكول Web Push القياسي (VAPID)** —
+نفس المعيار المفتوح الذي تطبّقه Chrome وFirefox وEdge وSafari الحديث أصلياً.
+بدون مشروع Firebase، بدون حساب OneSignal — يُنشئ Atelerix زوج المفاتيح
+ويديره نيابةً عنك.
+
+<Note>
+  هذه حزمة منفصلة عن SDK الخاص بـ Flutter — `lerix_web_notification` مكتبة
+  JS/TS صغيرة ومستقلة عن أي إطار عمل، مخصّصة لتطبيقات الويب **غير المبنية
+  بـ Flutter** (React، Vue، HTML عادي، إلخ). إذا كان تطبيقك مبنياً بـ
+  Flutter — بما في ذلك Flutter Web — لا تستخدم هذه الحزمة؛ حزمة `atelerix`
+  الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة وبـ API
+  واحد. راجع [Flutter — الإشعارات](/ar/frameworks/flutter/push-notifications)
+  بدلاً من ذلك.
+</Note>
+
+## 1. التثبيت
+
+```bash
+npm install lerix_web_notification
+```
+
+أو أضف السكربت الجاهز مباشرة إلى الصفحة بدون خطوة بناء (build):
+
+```html
+<script src="https://unpkg.com/lerix_web_notification/dist/atelerix.global.js"></script>
+```
+
+## 2. انسخ عامل الخدمة (service worker)
+
+يتطلّب Web Push ملف عامل خدمة (service worker) يُقدَّم من نفس أصل موقعك —
+لا يمكن لاستيراد `<script>` عادي تسجيل واحد نيابةً عنك. انسخ
+`node_modules/lerix_web_notification/sw/atelerix-sw.js` إلى جذر موقعك
+العام بحيث يكون متاحاً على `https://yoursite.com/atelerix-sw.js` (أي مسار
+آخر يعمل أيضاً، طالما مرّرته إلى `subscribe()` إن لم يكن في هذا المسار
+الافتراضي).
+
+## 3. أنشئ مفتاح Web Push
+
+من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**.
+هذه خطوة بنقرة واحدة — يُنشئ Atelerix زوج مفاتيح VAPID ويخزّنه للمشروع؛
+لا حاجة لنسخ أي شيء في كودك.
+
+## 4. استخدمها
+
+```ts
+import { Atelerix } from "lerix_web_notification";
+
+Atelerix.init({
+  apiKey: "your-api-key",
+  projectId: "your-project-slug",
+});
+
+await Atelerix.notifications.init();
+
+Atelerix.notifications.setOnNotificationReceived((payload) => {
+  // يُستدعى أثناء فتح إحدى تبويبات الصفحة.
+  console.log(payload.title, payload.body);
+});
+
+Atelerix.notifications.setOnNotificationTapped((payload) => {
+  // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح الصفحة
+  // من تبويب مغلق تماماً.
+  const screen = payload.metadata.screen;
+});
+
+// يطلب الإذن ويشترك هذا المتصفح.
+const deviceId = await Atelerix.notifications.subscribe();
+// `deviceId` هو ما تمرره في `deviceTokens` عند إرسال إشعار لهذا المتصفح
+// تحديداً، من لوحة التحكم أو REST API.
+```
+
+## API
+
+| الدالة | الوصف |
+|---|---|
+| `Atelerix.init(config)` | يهيّئ الـ SDK. استدعِها مرة واحدة. |
+| `Atelerix.notifications.init()` | يسجّل هذا التطبيق/المستخدم لدى الباك إند. استدعِها قبل أي دالة أخرى على `notifications`. |
+| `requestPermission()` | يطلب إذن الإشعارات. يرجع `true` إذا سُمح به. |
+| `checkPermissionStatus()` | ‎`"granted"`‎، ‎`"denied"`‎، ‎`"default"`‎، أو ‎`"unsupported"`‎. |
+| `subscribe(swPath?)` | يسجّل عامل الخدمة ويشترك في Push. يرجع معرّف الجهاز. |
+| `getDeviceId()` | معرّف الجهاز من آخر استدعاء لـ `subscribe()`، إن وُجد. |
+| `setOnNotificationReceived(cb)` | يُستدعى أثناء فتح إحدى التبويبات. |
+| `setOnNotificationTapped(cb)` | يُستدعى عند الضغط — يصل بشكل موثوق حتى من ضغط على تبويب مغلق، عبر نفس نمط استرجاع البدء البارد (cold-start) الذي يستخدمه SDK الجوال. |
+
+## البيانات (Payload) المُستلَمة مع الإشعار
+
+يستقبل كلا الاستدعائين كائناً من نوع `AtelerixNotificationPayload` — بنفس
+الشكل الذي يستخدمه نموذج SDK الخاص بـ Flutter:
+
+```ts
+interface AtelerixNotificationPayload {
+  notificationId: string | null;
+  title: string | null;
+  body: string | null;
+  metadata: Record<string, unknown>;
+  imageUrl: string | null;
+}
+```
+
+## إرسال صورة
+
+اضبط `imageUrl` عند الإرسال — من تبويب **إرسال إشعار** في لوحة التحكم، أو
+معامل [`imageUrl`](/ar/api-reference/push-notifications) في REST API.
+بخلاف iOS، يعمل هذا تلقائياً على الويب بدون أي إعداد إضافي: يعرضها عامل
+الخدمة مباشرة كأيقونة/صورة الإشعار.
+
+## إرسال بيانات وصفية (Metadata)
+
+اضبط `metadata` عند الإرسال — تصل إلى الصفحة داخل `payload.metadata`،
+لتوجيه الضغط على الإشعار إلى عرض معيّن داخل التطبيق مثلاً. راجع
+[إرسال بيانات وصفية](/ar/frameworks/flutter/push-notifications#إرسال-بيانات-وصفية-metadata)
+لتفاصيل المعامل الكاملة (متطابقة عبر كل المنصات).
+
+<Note>
+  **الصوت المخصّص غير مدعوم لإشعارات الويب.** لا توفّر واجهة Web
+  Notifications طريقة موحّدة عبر المتصفحات لتحديد صوت إشعار مخصّص، لذا
+  يُتجاهَل معامل `sound` في لوحة التحكم/الـ API بالنسبة لمستلمي الويب — يُطبَّق
+  فقط على iOS وAndroid.
+</Note>
+
+## دعم المتصفحات
+
+تدعم Chrome وFirefox وEdge بروتوكول Web Push بشكل كامل. يتطلّب Safari
+إصدار macOS 13+‎ أو iOS 16.4+‎ — الإصدارات الأقدم من Safari لا تدعم
+البروتوكول القياسي إطلاقاً.
+
+## Flutter Web
+
+لا تستخدم JS SDK هذا لتطبيق Flutter، حتى لو كان بناء Flutter Web — حزمة
+`atelerix` الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة،
+وتتواصل مباشرةً مع Push API الخاصة بالمتصفح بدون أي اعتماد JS منفصل إطلاقاً.
+نفس استدعاءات `Atelerix.notifications.*`، ونفس شكل `AtelerixNotificationPayload`،
+على كل منصة:
+
+```dart
+import 'package:atelerix/atelerix.dart';
+
+void main() {
+  Atelerix.init(
+    url: 'https://api.atelerix.dev',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-slug',
+    builder: () => runApp(const MyApp()),
+  );
+}
+
+// لاحقاً:
+await Atelerix.notifications.init();
+
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  final screen = payload.metadata['screen'];
+});
+
+final granted = await Atelerix.notifications.requestPermissions();
+if (granted) {
+  final deviceId = await Atelerix.notifications.getDeviceId();
+}
+```
+
+راجع [Flutter — الإشعارات](/ar/frameworks/flutter/push-notifications#إعداد-الويب)
+لخطوات إعداد Flutter Web (خطوتان فقط) والفروقات البسيطة بين المنصات التي
+يجدر معرفتها.

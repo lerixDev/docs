@@ -6,20 +6,24 @@ icon: "bell"
 
 ## What it does
 
-Push Notifications lets you reach your users on iOS and Android without
-running your own APNs/FCM infrastructure — configure your platform
+Push Notifications lets you reach your users on iOS, Android, and the web
+without running your own APNs/FCM infrastructure — configure your platform
 credentials once from the dashboard, then send from the dashboard or the
 REST API.
 
 - **Native delivery.** Apple Push Notification service (APNs) directly on
-  iOS — no Firebase required — and Firebase Cloud Messaging (FCM) on
-  Android.
+  iOS — no Firebase required — Firebase Cloud Messaging (FCM) on Android,
+  and standard Web Push (VAPID) in the browser — no Firebase or OneSignal
+  account needed there either.
 - **Target specific devices, or a whole topic.** Send to one or more
   registered device tokens, or to every device subscribed to a topic (a
   topic is created automatically the first time a device subscribes to it —
   no dashboard setup required to start using one).
 - **Custom sound.** Set a custom notification sound per send, so long as the
   sound file is already bundled inside your app.
+- **Rich images.** Attach an `imageUrl` to show a rich image in the
+  notification — works out of the box on Android; iOS needs a one-time
+  Notification Service Extension setup step.
 - **Custom metadata.** Attach arbitrary JSON data to a notification — the SDK
   delivers it back to the device as `payload.metadata`, for routing taps to a
   specific screen, for example.
@@ -36,13 +40,16 @@ Each project's **Notifications** section in the dashboard has:
 | **History** | Every notification ever sent, searchable and filterable by status |
 | **Send notification** | Compose and send to specific devices or a topic |
 | **Topics** | Create, view subscriber counts for, and delete topics |
-| **Settings** | Upload your Apple `.p8` key and Android `google-services.json` — a platform shows a **Configured** badge once it has credentials, and you can review or replace them any time |
+| **Settings** | Upload your Apple `.p8` key and Android `google-services.json`, or generate a Web Push key pair — a platform shows a **Configured** badge once it has credentials, and you can review or replace them any time |
 
 ## Get started
 
-<CardGroup cols={2}>
+<CardGroup cols={3}>
   <Card title="Flutter" icon="flutter" href="/frameworks/flutter/push-notifications">
-    Configure notifications and topics in a Flutter app.
+    Configure notifications and topics — iOS, Android, and Web, one package.
+  </Card>
+  <Card title="Web" icon="js" href="/frameworks/web/push-notifications">
+    Browser push notifications with the JS SDK, for non-Flutter web apps.
   </Card>
   <Card title="REST API" icon="code" href="/api-reference/push-notifications">
     Send notifications directly from your backend.

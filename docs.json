@@ -52,6 +52,13 @@
                   "frameworks/flutter/push-notifications",
                   "frameworks/flutter/error-tracking"
                 ]
+              },
+              {
+                "group": "Web SDK",
+                "icon": "js",
+                "pages": [
+                  "frameworks/web/push-notifications"
+                ]
               }
             ]
           },
@@ -123,6 +130,13 @@
                   "ar/frameworks/flutter/installation",
                   "ar/frameworks/flutter/push-notifications",
                   "ar/frameworks/flutter/error-tracking"
+                ]
+              },
+              {
+                "group": "Web SDK",
+                "icon": "js",
+                "pages": [
+                  "ar/frameworks/web/push-notifications"
                 ]
               }
             ]

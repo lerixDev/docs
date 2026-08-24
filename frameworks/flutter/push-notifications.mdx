@@ -1,11 +1,11 @@
 ---
 title: "Flutter — Push Notifications"
-description: "Configure push notifications for Android, iOS, and Huawei on Flutter."
+description: "Configure push notifications for Android, iOS, Web, and Huawei on Flutter — one package, one API, for every platform."
 ---
 
 ## Introduction
 
-Atelerix delivers push notifications using each platform's native service — Firebase Cloud Messaging (FCM) on Android, and Apple Push Notification service (APNs) directly on iOS, no Firebase required. After you complete the [Flutter installation](/frameworks/flutter/installation), follow the platform steps below to enable push delivery in your app.
+Atelerix delivers push notifications using each platform's native service — Firebase Cloud Messaging (FCM) on Android, Apple Push Notification service (APNs) directly on iOS (no Firebase required), and standard Web Push (VAPID) on Flutter Web (no Firebase or OneSignal required there either). One package, one `Atelerix.notifications.*` API, for all three. After you complete the [Flutter installation](/frameworks/flutter/installation), follow the platform steps below to enable push delivery in your app.
 
 <Note>
   Make sure you have initialized the SDK with `Atelerix.init()` before configuring push notifications.
@@ -56,6 +56,17 @@ override func application(
 }
 ```
 
+## Web configuration
+
+Flutter Web is supported by the same `atelerix` package — no separate JS SDK, no Firebase project. Two steps instead of Xcode's:
+
+1. **Copy the service worker.** A Flutter package can't add a file to your app's `web/` folder for you — copy the `atelerix` package's `web_sw/atelerix-sw.js` into your app's `web/atelerix-sw.js`, so it's served at your site's root (e.g. `https://yoursite.com/atelerix-sw.js`).
+2. **Generate a Web Push key** from the dashboard: **Notifications → Settings → Web Push → Generate keys**. One click — Atelerix generates and stores the VAPID key pair for you; there's nothing to copy into your code.
+
+<Note>
+  On web, `requestPermissions()` does more than it does on mobile — see [Platform differences](#platform-differences-on-web) below.
+</Note>
+
 ## Huawei configuration
 
 <Badge>Coming Soon</Badge>
@@ -64,7 +75,7 @@ Huawei push notification support is not available yet. Check back soon for setup
 
 ## Dashboard settings
 
-Once you've uploaded your `google-services.json` (Android) and/or `.p8` key (iOS) from the project's **Notifications → Settings** tab in the dashboard, that platform card shows a **Configured** badge and the credentials it holds — click it again any time to review them or upload a replacement.
+Once you've uploaded your `google-services.json` (Android) and/or `.p8` key (iOS), or generated a Web Push key pair, from the project's **Notifications → Settings** tab in the dashboard, that platform card shows a **Configured** badge and the credentials it holds — click it again any time to review them or replace them.
 
 ## Flutter code
 
@@ -103,6 +114,7 @@ class AtelerixNotificationPayload {
   String? title;
   String? body;
   Map<String, dynamic> metadata; // whatever you passed as `metadata` when sending
+  String? imageUrl; // whatever you passed as `imageUrl` when sending, if any
 }
 ```
 
@@ -129,7 +141,7 @@ These look similar but answer different questions — use the right one for what
 | Method | Returns | Use it for |
 |---|---|---|
 | `getDeviceId()` | Atelerix's own id for this device, assigned the first time `init()` registers it with the backend | The value to put in `deviceTokens` when sending a notification to this specific device — from the dashboard, or the [REST API](/api-reference/push-notifications) |
-| `getDeviceToken()` | The raw platform push token — the APNs device token on iOS, the FCM registration token on Android | Rarely needed directly; useful for diagnostics or if you're calling APNs/FCM yourself outside of Atelerix |
+| `getDeviceToken()` | The raw platform push token — the APNs device token on iOS, the FCM registration token on Android. Always `null` on web (the equivalent there is a full `PushSubscription` object, not a meaningful single "token" to expose) | Rarely needed directly; useful for diagnostics or if you're calling APNs/FCM yourself outside of Atelerix |
 
 ```dart
 final deviceId = await Atelerix.notifications.getDeviceId();
@@ -148,6 +160,7 @@ Set `sound` when sending a notification — from the dashboard's **Send notifica
 - The file must already ship inside your app project — Atelerix only passes the filename through, it never hosts or uploads sound files.
 - **iOS**: pass the filename with its extension, e.g. `sound.mp3` (`.wav`/`.caf` also supported).
 - **Android**: pass the filename **without** an extension, matching a file under `res/raw/` (e.g. `sound` for `res/raw/sound.mp3`). Supported formats: `.wav`, `.mp3`, `.ogg`.
+- **Web**: not supported — the Web Notifications API has no cross-browser way to set a custom sound, so this parameter is ignored for web recipients.
 
 <Note>
   On Android, a sound is locked in the first time it's used on a given
@@ -177,6 +190,34 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
   // Navigate to the chat screen, etc.
 });
 ```
+
+## Sending an image
+
+Set `imageUrl` when sending a notification — from the dashboard's **Send notification** tab, or the REST API's [`imageUrl` parameter](/api-reference/push-notifications) — to show a rich image in the notification. Unlike `sound`, this is a normal `https://` URL, not a bundled file — Atelerix downloads it on your behalf.
+
+- **Android**: works automatically, no extra setup. The image renders as a `BigPictureStyle` notification.
+- **Web**: works automatically, no extra setup — the service worker renders it as the notification's icon/image directly.
+- **iOS**: requires your app to have a **Notification Service Extension** — APNs has no native "image" field, so the OS needs a small extension to download and attach the image before displaying the notification. This is a one-time setup step per app:
+  1. In Xcode: **File → New → Target… → Notification Service Extension**. Name it (e.g. `NotificationServiceExtension`).
+  2. Replace the generated `NotificationService.swift` with the one from the `atelerix` package at `ios/NotificationServiceExtension/NotificationService.swift`.
+  3. Build and run — no other configuration needed. The backend automatically sets APNs' `mutable-content` flag whenever a notification carries an `imageUrl`, which is what triggers your extension to run.
+
+<Note>
+  If iOS's extension isn't set up, an `imageUrl` is silently ignored on iOS —
+  the notification still shows normally with no image, it doesn't fail to send. Android is unaffected either way.
+</Note>
+
+The image is also available in Dart as `payload.imageUrl` (in `setOnNotificationReceived`/`setOnNotificationTapped`) if you want to show it in a custom in-app banner, in addition to the OS rendering it natively.
+
+## Platform differences on web
+
+Flutter Web uses the same `Atelerix.notifications.*` calls as mobile, with a few real differences worth knowing about rather than being surprised by:
+
+- **`requestPermissions()` does more on web.** On mobile, push registration happens automatically inside `init()`, and `requestPermissions()` only concerns the visible-notification permission. A browser can't subscribe to push before permission is granted, so on web, `requestPermissions()` *also* registers the service worker's push subscription with the backend once the user allows it — the same method call, just doing double duty.
+- **`getSenderId()` returns `null` on web** — it's an Android/FCM-only concept (Web Push uses VAPID, not Firebase).
+- **`getDeviceToken()` also returns `null` on web** — the browser's `PushSubscription` isn't a single opaque token the way APNs/FCM's are, so there's nothing meaningful to return. Use `getDeviceId()` on every platform instead.
+- **Custom sound isn't supported** — see [Sending a custom sound](#sending-a-custom-sound) above.
+- **Browser support**: Chrome, Firefox, and Edge fully; Safari requires macOS 13+ or iOS 16.4+ — older Safari doesn't support standard Web Push at all.
 
 ## Topics
 

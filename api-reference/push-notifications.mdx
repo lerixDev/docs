@@ -67,6 +67,30 @@ device subscribed to a topic.
     fixes a notification channel's sound at creation and never lets it
     change afterward, so switching to a different `sound` value later
     creates a new channel rather than updating the old one.
+
+  **Web**: not supported — the Web Notifications API has no cross-browser
+  way to set a custom sound, so this parameter is ignored for web
+  recipients.
+</ParamField>
+
+<ParamField body="imageUrl" type="string" placeholder="https://example.com/image.jpg">
+  URL of an image to show as a rich image in the notification. Atelerix
+  downloads it — this is a normal `https://` URL, not a file you need to
+  bundle in your app (unlike `sound`).
+
+  **Android**: works automatically, rendered as a `BigPictureStyle`
+  notification.
+
+  **iOS**: requires the app to have a Notification Service Extension
+  configured (a one-time setup step — see the
+  [Flutter push notifications guide](/frameworks/flutter/push-notifications#sending-an-image)).
+  Without it, `imageUrl` is silently ignored on iOS; the notification still
+  sends and displays normally, just without the image. Sending this field
+  automatically sets APNs' `mutable-content` flag, which is what triggers the
+  extension to run.
+
+  **Web**: works automatically, no extra setup — the service worker renders
+  it as the notification's icon/image directly.
 </ParamField>
 
 <ParamField body="metadata" type="object" placeholder='{"orderId": "123"}'>

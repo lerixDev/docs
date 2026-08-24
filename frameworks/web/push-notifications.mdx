@@ -1,0 +1,167 @@
+---
+title: "Web — Push Notifications"
+description: "Browser push notifications for Atelerix — standard Web Push (VAPID), no Firebase, no OneSignal."
+---
+
+## Introduction
+
+Atelerix delivers web push using the standard **Web Push protocol (VAPID)** —
+the same open standard Chrome, Firefox, Edge, and modern Safari all
+implement natively. No Firebase project, no OneSignal account — Atelerix
+generates and manages the key pair for you.
+
+<Note>
+  This is a separate package from the Flutter SDK — `lerix_web_notification`
+  is a small, framework-agnostic JS/TS library for **non-Flutter** web apps
+  (React, Vue, plain HTML, etc.). If your app is built with Flutter —
+  including Flutter Web — don't use this package; the `atelerix` Flutter
+  package supports iOS, Android, and Web natively from one package with one
+  API. See [Flutter — Push Notifications](/frameworks/flutter/push-notifications)
+  instead.
+</Note>
+
+## 1. Install
+
+```bash
+npm install lerix_web_notification
+```
+
+Or drop the pre-built script directly into a page with no build step:
+
+```html
+<script src="https://unpkg.com/lerix_web_notification/dist/atelerix.global.js"></script>
+```
+
+## 2. Copy the service worker
+
+Web Push requires a service worker file served from your site's own
+origin — a plain `<script>` import can't register one for you. Copy
+`node_modules/lerix_web_notification/sw/atelerix-sw.js` to your site's public
+root so it's reachable at `https://yoursite.com/atelerix-sw.js` (any path
+works, as long as you pass it to `subscribe()` if it's not at that default).
+
+## 3. Generate a Web Push key
+
+From the dashboard: **Notifications → Settings → Web Push → Generate keys**.
+This is a one-click step — Atelerix generates and stores the VAPID key pair
+for the project; there's nothing to copy into your code.
+
+## 4. Use it
+
+```ts
+import { Atelerix } from "lerix_web_notification";
+
+Atelerix.init({
+  apiKey: "your-api-key",
+  projectId: "your-project-slug",
+});
+
+await Atelerix.notifications.init();
+
+Atelerix.notifications.setOnNotificationReceived((payload) => {
+  // Fired while a tab is open.
+  console.log(payload.title, payload.body);
+});
+
+Atelerix.notifications.setOnNotificationTapped((payload) => {
+  // Fired when the user clicks the notification — including one that
+  // opened the page from a fully closed tab.
+  const screen = payload.metadata.screen;
+});
+
+// Prompts for permission and subscribes this browser.
+const deviceId = await Atelerix.notifications.subscribe();
+// `deviceId` is what you pass in `deviceTokens` when sending a notification
+// to this browser specifically, from the dashboard or the REST API.
+```
+
+## API
+
+| Method | Description |
+|---|---|
+| `Atelerix.init(config)` | Configures the SDK. Call once. |
+| `Atelerix.notifications.init()` | Registers this app/user with the backend. Call before anything else on `notifications`. |
+| `requestPermission()` | Prompts for notification permission. Returns `true` if granted. |
+| `checkPermissionStatus()` | `"granted"`, `"denied"`, `"default"`, or `"unsupported"`. |
+| `subscribe(swPath?)` | Registers the service worker and subscribes to push. Returns the device id. |
+| `getDeviceId()` | The device id from the last `subscribe()` call, if any. |
+| `setOnNotificationReceived(cb)` | Fired while a tab is open. |
+| `setOnNotificationTapped(cb)` | Fired on click — delivered reliably even from a closed-tab tap, via the same cold-start recovery pattern the mobile SDK uses. |
+
+## The notification payload
+
+Both callbacks receive an `AtelerixNotificationPayload` — the same shape the
+Flutter SDK's model uses:
+
+```ts
+interface AtelerixNotificationPayload {
+  notificationId: string | null;
+  title: string | null;
+  body: string | null;
+  metadata: Record<string, unknown>;
+  imageUrl: string | null;
+}
+```
+
+## Sending an image
+
+Set `imageUrl` when sending — from the dashboard's **Send notification**
+tab, or the REST API's [`imageUrl` parameter](/api-reference/push-notifications).
+Unlike iOS, this works automatically on the web with no extra setup: the
+service worker renders it directly as the notification's icon/image.
+
+## Sending metadata
+
+Set `metadata` when sending — delivered back to the page inside
+`payload.metadata`, for routing a tap to a specific in-app view, for example.
+See [Sending metadata](/frameworks/flutter/push-notifications#sending-metadata)
+for the full parameter details (identical across every platform).
+
+<Note>
+  **Custom sound is not supported for web push.** The Web Notifications API
+  doesn't expose a way to set a custom notification sound across browsers,
+  so the dashboard/API's `sound` parameter is ignored for web recipients —
+  it only applies to iOS and Android.
+</Note>
+
+## Browser support
+
+Chrome, Firefox, and Edge support Web Push fully. Safari requires macOS 13+
+or iOS 16.4+ — older Safari doesn't support the standard at all.
+
+## Flutter Web
+
+Don't use this JS SDK for a Flutter app, even a Flutter Web build — the
+`atelerix` Flutter package supports iOS, Android, and Web natively from a
+single package, calling the browser's Push API directly with no separate JS
+dependency at all. Same `Atelerix.notifications.*` calls, same
+`AtelerixNotificationPayload` shape, on every platform:
+
+```dart
+import 'package:atelerix/atelerix.dart';
+
+void main() {
+  Atelerix.init(
+    url: 'https://api.atelerix.dev',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-slug',
+    builder: () => runApp(const MyApp()),
+  );
+}
+
+// Later:
+await Atelerix.notifications.init();
+
+Atelerix.notifications.setOnNotificationTapped((payload) {
+  final screen = payload.metadata['screen'];
+});
+
+final granted = await Atelerix.notifications.requestPermissions();
+if (granted) {
+  final deviceId = await Atelerix.notifications.getDeviceId();
+}
+```
+
+See [Flutter — Push Notifications](/frameworks/flutter/push-notifications#web-configuration)
+for the (two-step) Flutter Web setup and the small platform differences
+worth knowing about.

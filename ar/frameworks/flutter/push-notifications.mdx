@@ -1,11 +1,11 @@
 ---
 title: "Flutter — الإشعارات"
-description: "أعِدّ الإشعارات لأنظمة Android وiOS وHuawei في Flutter."
+description: "أعِدّ الإشعارات لأنظمة Android وiOS والويب وHuawei في Flutter — حزمة واحدة، API واحد، لكل منصة."
 ---
 
 ## مقدمة
 
-يُرسِل Atelerix الإشعارات باستخدام الخدمة الأصلية لكل منصة — Firebase Cloud Messaging (FCM) على Android، وApple Push Notification service (APNs) مباشرةً على iOS، بدون الحاجة إلى Firebase. بعد إتمام [تثبيت Flutter](/ar/frameworks/flutter/installation)، اتّبع خطوات كل منصة أدناه لتفعيل تسليم الإشعارات في تطبيقك.
+يُرسِل Atelerix الإشعارات باستخدام الخدمة الأصلية لكل منصة — Firebase Cloud Messaging (FCM) على Android، وApple Push Notification service (APNs) مباشرةً على iOS (بدون الحاجة إلى Firebase)، وWeb Push القياسي (VAPID) على Flutter Web (بدون الحاجة إلى Firebase أو OneSignal هناك أيضاً). حزمة واحدة، وAPI واحد هو `Atelerix.notifications.*`، للمنصات الثلاث. بعد إتمام [تثبيت Flutter](/ar/frameworks/flutter/installation)، اتّبع خطوات كل منصة أدناه لتفعيل تسليم الإشعارات في تطبيقك.
 
 <Note>
   تأكّد من تهيئة الـ SDK عبر `Atelerix.init()` قبل إعداد الإشعارات.
@@ -56,6 +56,17 @@ override func application(
 }
 ```
 
+## إعداد الويب
+
+Flutter Web مدعوم من نفس حزمة `atelerix` — بدون JS SDK منفصل، وبدون مشروع Firebase. خطوتان فقط بدلاً من إعداد Xcode:
+
+1. **انسخ عامل الخدمة (service worker).** لا يمكن لحزمة Flutter إضافة ملف إلى مجلد `web/` في تطبيقك تلقائياً — انسخ ملف `web_sw/atelerix-sw.js` من حزمة `atelerix` إلى `web/atelerix-sw.js` في تطبيقك، بحيث يُقدَّم من جذر موقعك (مثال: `https://yoursite.com/atelerix-sw.js`).
+2. **أنشئ مفتاح Web Push** من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**. نقرة واحدة — ينشئ Atelerix زوج مفاتيح VAPID ويخزّنه لك؛ لا حاجة لنسخ أي شيء في كودك.
+
+<Note>
+  على الويب، تفعل `requestPermissions()` أكثر مما تفعله على الجوال — راجع [الفروقات بين المنصات على الويب](#الفروقات-بين-المنصات-على-الويب) أدناه.
+</Note>
+
 ## إعداد Huawei
 
 <Badge>قريباً</Badge>
@@ -64,7 +75,7 @@ override func application(
 
 ## إعدادات لوحة التحكم
 
-بعد رفع ملف `google-services.json` (لـ Android) و/أو مفتاح `.p8` (لـ iOS) من تبويب **الإشعارات ← الإعدادات** في لوحة تحكم مشروعك، تظهر شارة **تم الإعداد (Configured)** على بطاقة تلك المنصة مع بيانات الاعتماد التي تحملها — يمكنك الضغط عليها مجدداً في أي وقت لمراجعتها أو رفع بديل لها.
+بعد رفع ملف `google-services.json` (لـ Android) و/أو مفتاح `.p8` (لـ iOS)، أو إنشاء زوج مفاتيح Web Push، من تبويب **الإشعارات ← الإعدادات** في لوحة تحكم مشروعك، تظهر شارة **تم الإعداد (Configured)** على بطاقة تلك المنصة مع بيانات الاعتماد التي تحملها — يمكنك الضغط عليها مجدداً في أي وقت لمراجعتها أو استبدالها.
 
 ## كود Flutter
 
@@ -95,7 +106,7 @@ final status = await Atelerix.notifications.checkPermissionStatus();
 
 ## البيانات (Payload) المُستلَمة مع الإشعار
 
-يستقبل كل من `setOnNotificationReceived` و`setOnNotificationTapped` كائناً من نوع `AtelerixNotificationPayload` — بنفس الشكل على iOS وAndroid، بغضّ النظر عن اختلاف طريقة تسليم كل منصة للإشعار الأصلي:
+يستقبل كل من `setOnNotificationReceived` و`setOnNotificationTapped` كائناً من نوع `AtelerixNotificationPayload` — بنفس الشكل على iOS وAndroid والويب، بغضّ النظر عن اختلاف طريقة تسليم كل منصة للإشعار الأصلي:
 
 ```dart
 class AtelerixNotificationPayload {
@@ -103,6 +114,7 @@ class AtelerixNotificationPayload {
   String? title;
   String? body;
   Map<String, dynamic> metadata; // أي بيانات مررتها كـ metadata عند الإرسال
+  String? imageUrl; // أي قيمة مررتها كـ imageUrl عند الإرسال، إن وُجدت
 }
 ```
 
@@ -127,7 +139,7 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
 | الدالة | ترجع | استخدمها من أجل |
 |---|---|---|
 | `getDeviceId()` | معرّف Atelerix الخاص بهذا الجهاز، يُخصَّص أول مرة يسجّله `init()` لدى الباك إند | القيمة التي تضعها في `deviceTokens` عند إرسال إشعار لهذا الجهاز تحديداً — من لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
-| `getDeviceToken()` | رمز الدفع (push token) الأصلي للمنصة — رمز جهاز APNs على iOS، ورمز تسجيل FCM على Android | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs/FCM بنفسك خارج Atelerix |
+| `getDeviceToken()` | رمز الدفع (push token) الأصلي للمنصة — رمز جهاز APNs على iOS، ورمز تسجيل FCM على Android. تكون القيمة دائماً `null` على الويب (المكافئ هناك هو كائن `PushSubscription` كامل، وليس "رمزاً" واحداً يستحق العرض) | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs/FCM بنفسك خارج Atelerix |
 
 ```dart
 final deviceId = await Atelerix.notifications.getDeviceId();
@@ -146,6 +158,7 @@ print('Raw platform token: $token');
 - يجب أن يكون الملف موجوداً بالفعل داخل مشروع تطبيقك — يمرّر Atelerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
 - **iOS**: مرّر اسم الملف مع امتداده، مثل `sound.mp3` (مدعوم أيضاً `.wav`/`.caf`).
 - **Android**: مرّر اسم الملف **بدون** امتداد، بحيث يطابق ملفاً تحت `res/raw/` (مثال: `sound` لملف عند `res/raw/sound.mp3`). الصيغ المدعومة: `.wav`، `.mp3`، `.ogg`.
+- **الويب**: غير مدعوم — لا توفّر واجهة Web Notifications طريقة موحّدة عبر المتصفحات لتحديد صوت مخصّص، لذا يُتجاهَل هذا المعامل بالنسبة لمستلمي الويب.
 
 <Note>
   على Android، يُثبَّت الصوت أول مرة يُستخدم فيها على جهاز معيّن — يُثبّت النظام
@@ -174,6 +187,34 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
   // انتقل إلى شاشة المحادثة، إلخ.
 });
 ```
+
+## إرسال صورة
+
+اضبط `imageUrl` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`imageUrl`](/ar/api-reference/push-notifications) في REST API — لعرض صورة غنية في الإشعار. بخلاف `sound`، هذا رابط `https://` عادي وليس ملفاً مُرفقاً — يقوم Atelerix بتنزيله نيابةً عنك.
+
+- **Android**: يعمل تلقائياً، بدون إعداد إضافي. تُعرَض الصورة كإشعار من نوع `BigPictureStyle`.
+- **الويب**: يعمل تلقائياً أيضاً، بدون إعداد إضافي — يعرضها عامل الخدمة (service worker) مباشرة كأيقونة/صورة الإشعار.
+- **iOS**: يتطلّب أن يملك تطبيقك **Notification Service Extension** — لا تملك APNs حقل "صورة" أصلياً، لذا يحتاج النظام إلى امتداد صغير لتنزيل الصورة وإرفاقها قبل عرض الإشعار. هذه خطوة إعداد لمرة واحدة لكل تطبيق:
+  1. في Xcode: **File → New → Target… → Notification Service Extension**. سمِّه (مثلاً `NotificationServiceExtension`).
+  2. استبدل ملف `NotificationService.swift` المُولَّد بالملف الموجود في حزمة `atelerix` عند `ios/NotificationServiceExtension/NotificationService.swift`.
+  3. ابنِ التطبيق وشغّله — لا حاجة لأي إعداد آخر. يضبط الباك إند تلقائياً علم `mutable-content` الخاص بـ APNs كلما حمل الإشعار قيمة `imageUrl`، وهذا ما يُشغّل الامتداد.
+
+<Note>
+  إذا لم يكن امتداد iOS مُعدّاً، يُتجاهَل `imageUrl` بصمت على iOS — يظهر الإشعار
+  بشكل طبيعي بدون صورة، ولا يفشل الإرسال. Android غير متأثر في كلتا الحالتين.
+</Note>
+
+الصورة متاحة أيضاً في Dart كـ `payload.imageUrl` (في `setOnNotificationReceived`/`setOnNotificationTapped`) إن أردت عرضها في شريط إشعار مخصّص داخل التطبيق، إضافة إلى عرضها الأصلي من النظام.
+
+## الفروقات بين المنصات على الويب
+
+يستخدم Flutter Web نفس استدعاءات `Atelerix.notifications.*` المستخدمة على الجوال، مع بعض الفروقات الحقيقية التي يجدر معرفتها بدلاً من مفاجأتك بها:
+
+- **تفعل `requestPermissions()` أكثر على الويب.** على الجوال، يحدث تسجيل الدفع (push) تلقائياً داخل `init()`، وتُعنى `requestPermissions()` فقط بإذن الإشعارات المرئية. لا يمكن للمتصفح الاشتراك في Push قبل منح الإذن، لذا على الويب، تقوم `requestPermissions()` *أيضاً* بتسجيل اشتراك الدفع الخاص بعامل الخدمة لدى الباك إند بمجرد سماح المستخدم — نفس استدعاء الدالة، لكنه يؤدي مهمّتين.
+- **تُرجع `getSenderId()` القيمة `null` على الويب** — فهي مفهوم خاص بـ Android/FCM فقط (يستخدم Web Push بروتوكول VAPID، وليس Firebase).
+- **تُرجع `getDeviceToken()` أيضاً القيمة `null` على الويب** — فكائن `PushSubscription` الخاص بالمتصفح ليس رمزاً واحداً معتماً بنفس طريقة APNs/FCM، فلا يوجد ما يستحق إرجاعه. استخدم `getDeviceId()` على كل منصة بدلاً منه.
+- **الصوت المخصّص غير مدعوم** — راجع [إرسال صوت مخصّص](#إرسال-صوت-مخصّص) أعلاه.
+- **دعم المتصفحات**: Chrome وFirefox وEdge بشكل كامل؛ يتطلّب Safari إصدار macOS 13+‎ أو iOS 16.4+‎ — الإصدارات الأقدم من Safari لا تدعم Web Push القياسي إطلاقاً.
 
 ## المواضيع (Topics)
 
