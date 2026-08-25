@@ -12,15 +12,15 @@ description: "أضف Lerix إلى تطبيق Next.js الخاص بك في خطو
   هذه مكتبة Next.js مخصّصة — `LerixNextProvider` مُعلَّم مسبقاً بـ
   `'use client'`، بالإضافة إلى نفس `LerixErrorBoundary` والخطّافين (hooks)
   `useLerix()`/`useLerixNotifications()` المستخدَمين في
-  [حزمة React](/ar/frameworks/react/installation)، مبنية فوق `lerix-core`.
-  إذا كنت تستخدم React عادية (وليس Next.js)، استخدم `lerix-react` مباشرة
+  [حزمة React](/ar/frameworks/react/installation)، مبنية فوق `@lerix-dev/lerix-core`.
+  إذا كنت تستخدم React عادية (وليس Next.js)، استخدم `@lerix-dev/lerix-react` مباشرة
   بدلاً من ذلك.
 </Note>
 
 ## 1. أضف الاعتمادية (Dependency)
 
 ```bash
-npm install lerix-nextjs
+npm install @lerix-dev/lerix-nextjs
 ```
 
 ## 2. اضبط مفتاح API ومعرّف المشروع
@@ -45,7 +45,7 @@ NEXT_PUBLIC_LERIX_PROJECT_ID=your-project-id
 غلّف تخطيطك الجذري (root layout) بـ `LerixNextProvider` وَ `LerixErrorBoundary`:
 
 ```tsx app/layout.tsx
-import { LerixErrorBoundary, LerixNextProvider } from 'lerix-nextjs';
+import { LerixErrorBoundary, LerixNextProvider } from '@lerix-dev/lerix-nextjs';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -85,7 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ```tsx
 'use client';
-import { useLerix } from 'lerix-nextjs';
+import { useLerix } from '@lerix-dev/lerix-nextjs';
 
 export function MyComponent() {
   const lerix = useLerix();

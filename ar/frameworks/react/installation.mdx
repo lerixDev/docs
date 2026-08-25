@@ -10,16 +10,16 @@ description: "أضف Lerix إلى تطبيق React الخاص بك في خطوا
 <Note>
   هذه مكتبة React مخصّصة — مكوّن `LerixProvider`، ومكوّن `LerixErrorBoundary`،
   والخطّافان (hooks) `useLerix()`/`useLerixNotifications()` — مبنية فوق
-  `lerix-core`، المحرّك المستقل عن أي إطار عمل والمشترك بين كل حزم Lerix
+  `@lerix-dev/lerix-core`، المحرّك المستقل عن أي إطار عمل والمشترك بين كل حزم Lerix
   للويب. تبني تطبيق Angular بدلاً من ذلك؟ راجع
   [حزمة Angular](/ar/frameworks/angular/installation). إذا كنت لا تستخدم
-  React ولا Angular، تعمل `lerix-core` مباشرة أيضاً.
+  React ولا Angular، تعمل `@lerix-dev/lerix-core` مباشرة أيضاً.
 </Note>
 
 ## 1. أضف الاعتمادية (Dependency)
 
 ```bash
-npm install lerix-react
+npm install @lerix-dev/lerix-react
 ```
 
 ## 2. سجّل الـ SDK
@@ -28,7 +28,7 @@ npm install lerix-react
 
 ```tsx main.tsx
 import { createRoot } from 'react-dom/client';
-import { LerixErrorBoundary, LerixProvider } from 'lerix-react';
+import { LerixErrorBoundary, LerixProvider } from '@lerix-dev/lerix-react';
 import App from './App';
 
 createRoot(document.getElementById('root')!).render(
@@ -72,7 +72,7 @@ StrictMode أثناء التطوير، لأن التهيئة آمنة عند إ�
 استخدم `useLerix()` وأرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
 
 ```tsx
-import { useLerix } from 'lerix-react';
+import { useLerix } from '@lerix-dev/lerix-react';
 
 function MyComponent() {
   const lerix = useLerix();

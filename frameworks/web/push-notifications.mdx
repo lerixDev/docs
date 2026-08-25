@@ -11,10 +11,10 @@ implement natively. No Firebase project, no OneSignal account — Lerix
 generates and manages the key pair for you.
 
 <Note>
-  This is a separate package from the Flutter SDK — `lerix_web_notification`
+  This is a separate package from the Flutter SDK — `@lerix-dev/lerix-js`
   is a small, framework-agnostic JS/TS library for **non-Flutter** web apps
   (React, Vue, plain HTML, etc.). If your app is built with Flutter —
-  including Flutter Web — don't use this package; the `atelerix` Flutter
+  including Flutter Web — don't use this package; the `lerix` Flutter
   package supports iOS, Android, and Web natively from one package with one
   API. See [Flutter — Push Notifications](/frameworks/flutter/push-notifications)
   instead.
@@ -23,21 +23,21 @@ generates and manages the key pair for you.
 ## 1. Install
 
 ```bash
-npm install lerix_web_notification
+npm install @lerix-dev/lerix-js
 ```
 
 Or drop the pre-built script directly into a page with no build step:
 
 ```html
-<script src="https://unpkg.com/lerix_web_notification/dist/atelerix.global.js"></script>
+<script src="https://unpkg.com/@lerix-dev/lerix-js/dist/lerix.global.js"></script>
 ```
 
 ## 2. Copy the service worker
 
 Web Push requires a service worker file served from your site's own
 origin — a plain `<script>` import can't register one for you. Copy
-`node_modules/lerix_web_notification/sw/atelerix-sw.js` to your site's public
-root so it's reachable at `https://yoursite.com/atelerix-sw.js` (any path
+`node_modules/@lerix-dev/lerix-js/sw/lerix-sw.js` to your site's public
+root so it's reachable at `https://yoursite.com/lerix-sw.js` (any path
 works, as long as you pass it to `subscribe()` if it's not at that default).
 
 ## 3. Generate a Web Push key
@@ -49,7 +49,7 @@ for the project; there's nothing to copy into your code.
 ## 4. Use it
 
 ```ts
-import { Lerix } from "lerix_web_notification";
+import { Lerix } from "@lerix-dev/lerix-js";
 
 Lerix.init({
   apiKey: "your-api-key",
@@ -132,13 +132,13 @@ or iOS 16.4+ — older Safari doesn't support the standard at all.
 ## Flutter Web
 
 Don't use this JS SDK for a Flutter app, even a Flutter Web build — the
-`atelerix` Flutter package supports iOS, Android, and Web natively from a
+`lerix` Flutter package supports iOS, Android, and Web natively from a
 single package, calling the browser's Push API directly with no separate JS
 dependency at all. Same `Lerix.notifications.*` calls, same
 `LerixNotificationPayload` shape, on every platform:
 
 ```dart
-import 'package:atelerix/atelerix.dart';
+import 'package:lerix/lerix.dart';
 
 void main() {
   Lerix.init(

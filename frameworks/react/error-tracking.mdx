@@ -17,7 +17,7 @@ uncaught errors are captured automatically, with no extra code required.
 ## Report an error
 
 ```tsx
-import { useLerix, BugSeverity } from 'lerix-react';
+import { useLerix, BugSeverity } from '@lerix-dev/lerix-react';
 
 function MyComponent() {
   const lerix = useLerix();
@@ -85,7 +85,7 @@ terminate when one of these fires, so the report is sent immediately rather
 than persisted for the next launch.
 
 ```tsx
-import { LerixErrorBoundary } from 'lerix-react';
+import { LerixErrorBoundary } from '@lerix-dev/lerix-react';
 
 <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
   <App />

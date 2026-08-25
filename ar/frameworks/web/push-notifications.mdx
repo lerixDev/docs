@@ -11,10 +11,10 @@ description: "إشعارات المتصفح لـ Lerix — Web Push القياس
 ويديره نيابةً عنك.
 
 <Note>
-  هذه حزمة منفصلة عن SDK الخاص بـ Flutter — `lerix_web_notification` مكتبة
+  هذه حزمة منفصلة عن SDK الخاص بـ Flutter — `@lerix-dev/lerix-js` مكتبة
   JS/TS صغيرة ومستقلة عن أي إطار عمل، مخصّصة لتطبيقات الويب **غير المبنية
   بـ Flutter** (React، Vue، HTML عادي، إلخ). إذا كان تطبيقك مبنياً بـ
-  Flutter — بما في ذلك Flutter Web — لا تستخدم هذه الحزمة؛ حزمة `atelerix`
+  Flutter — بما في ذلك Flutter Web — لا تستخدم هذه الحزمة؛ حزمة `lerix`
   الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة وبـ API
   واحد. راجع [Flutter — الإشعارات](/ar/frameworks/flutter/push-notifications)
   بدلاً من ذلك.
@@ -23,21 +23,21 @@ description: "إشعارات المتصفح لـ Lerix — Web Push القياس
 ## 1. التثبيت
 
 ```bash
-npm install lerix_web_notification
+npm install @lerix-dev/lerix-js
 ```
 
 أو أضف السكربت الجاهز مباشرة إلى الصفحة بدون خطوة بناء (build):
 
 ```html
-<script src="https://unpkg.com/lerix_web_notification/dist/atelerix.global.js"></script>
+<script src="https://unpkg.com/@lerix-dev/lerix-js/dist/lerix.global.js"></script>
 ```
 
 ## 2. انسخ عامل الخدمة (service worker)
 
 يتطلّب Web Push ملف عامل خدمة (service worker) يُقدَّم من نفس أصل موقعك —
 لا يمكن لاستيراد `<script>` عادي تسجيل واحد نيابةً عنك. انسخ
-`node_modules/lerix_web_notification/sw/atelerix-sw.js` إلى جذر موقعك
-العام بحيث يكون متاحاً على `https://yoursite.com/atelerix-sw.js` (أي مسار
+`node_modules/@lerix-dev/lerix-js/sw/lerix-sw.js` إلى جذر موقعك
+العام بحيث يكون متاحاً على `https://yoursite.com/lerix-sw.js` (أي مسار
 آخر يعمل أيضاً، طالما مرّرته إلى `subscribe()` إن لم يكن في هذا المسار
 الافتراضي).
 
@@ -50,7 +50,7 @@ npm install lerix_web_notification
 ## 4. استخدمها
 
 ```ts
-import { Lerix } from "lerix_web_notification";
+import { Lerix } from "@lerix-dev/lerix-js";
 
 Lerix.init({
   apiKey: "your-api-key",
@@ -134,13 +134,13 @@ interface LerixNotificationPayload {
 ## Flutter Web
 
 لا تستخدم JS SDK هذا لتطبيق Flutter، حتى لو كان بناء Flutter Web — حزمة
-`atelerix` الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة،
+`lerix` الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة،
 وتتواصل مباشرةً مع Push API الخاصة بالمتصفح بدون أي اعتماد JS منفصل إطلاقاً.
 نفس استدعاءات `Lerix.notifications.*`، ونفس شكل `LerixNotificationPayload`،
 على كل منصة:
 
 ```dart
-import 'package:atelerix/atelerix.dart';
+import 'package:lerix/lerix.dart';
 
 void main() {
   Lerix.init(

@@ -23,7 +23,7 @@ a package can't add this file to your app automatically. Copy it into your
 `public` folder so it's reachable at your site's root:
 
 ```bash
-cp node_modules/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
+cp node_modules/@lerix-dev/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
 ```
 
 ## 2. Generate a Web Push key
@@ -36,7 +36,7 @@ for the project; there's nothing to copy into your code.
 
 ```ts
 import { Component, inject } from '@angular/core';
-import { LerixService } from 'lerix';
+import { LerixService } from '@lerix-dev/lerix-angular';
 
 @Component({ ... })
 export class MyComponent {

@@ -10,16 +10,16 @@ description: "Add Lerix to your React app in a few steps."
 <Note>
   This is a dedicated React library — a `LerixProvider` component, a
   `LerixErrorBoundary`, and `useLerix()`/`useLerixNotifications()` hooks —
-  built on top of `lerix-core`, the framework-agnostic engine shared by
+  built on top of `@lerix-dev/lerix-core`, the framework-agnostic engine shared by
   every Lerix web SDK. Building an Angular app instead? See the
   [Angular SDK](/frameworks/angular/installation). If you're using
-  neither React nor Angular, `lerix-core` also works directly.
+  neither React nor Angular, `@lerix-dev/lerix-core` also works directly.
 </Note>
 
 ## 1. Add the dependency
 
 ```bash
-npm install lerix-react
+npm install @lerix-dev/lerix-react
 ```
 
 ## 2. Register the SDK
@@ -28,7 +28,7 @@ Wrap your app in `LerixProvider`, and `LerixErrorBoundary` to catch render error
 
 ```tsx main.tsx
 import { createRoot } from 'react-dom/client';
-import { LerixErrorBoundary, LerixProvider } from 'lerix-react';
+import { LerixErrorBoundary, LerixProvider } from '@lerix-dev/lerix-react';
 import App from './App';
 
 createRoot(document.getElementById('root')!).render(
@@ -72,7 +72,7 @@ in development, since initialization is re-entrant-safe.
 Use `useLerix()` and throw a test error to confirm everything is working:
 
 ```tsx
-import { useLerix } from 'lerix-react';
+import { useLerix } from '@lerix-dev/lerix-react';
 
 function MyComponent() {
   const lerix = useLerix();

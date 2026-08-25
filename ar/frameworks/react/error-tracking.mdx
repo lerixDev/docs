@@ -17,7 +17,7 @@ description: "أبلغ عن الأخطاء والتقط الاستثناءات �
 ## الإبلاغ عن خطأ
 
 ```tsx
-import { useLerix, BugSeverity } from 'lerix-react';
+import { useLerix, BugSeverity } from '@lerix-dev/lerix-react';
 
 function MyComponent() {
   const lerix = useLerix();
@@ -89,7 +89,7 @@ function MyComponent() {
 لتشغيل لاحق.
 
 ```tsx
-import { LerixErrorBoundary } from 'lerix-react';
+import { LerixErrorBoundary } from '@lerix-dev/lerix-react';
 
 <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
   <App />

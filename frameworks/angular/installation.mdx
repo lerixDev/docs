@@ -10,16 +10,16 @@ description: "Add Lerix to your Angular app in a few steps."
 <Note>
   This is a dedicated Angular library — an injectable `LerixService`, a
   `provideLerix()` function for your `app.config.ts`, and an Angular
-  `ErrorHandler` integration — built on top of `lerix-core`, the
+  `ErrorHandler` integration — built on top of `@lerix-dev/lerix-core`, the
   framework-agnostic engine shared by every Lerix web SDK. Building a React
   app instead? See the [React SDK](/frameworks/react/installation). If
-  you're using neither Angular nor React, `lerix-core` also works directly.
+  you're using neither Angular nor React, `@lerix-dev/lerix-core` also works directly.
 </Note>
 
 ## 1. Add the dependency
 
 ```bash
-npm install lerix
+npm install @lerix-dev/lerix-angular
 ```
 
 ## 2. Register the SDK
@@ -28,7 +28,7 @@ Add `provideLerix()` to your `app.config.ts`:
 
 ```ts app.config.ts
 import { ApplicationConfig } from '@angular/core';
-import { provideLerix } from 'lerix';
+import { provideLerix } from '@lerix-dev/lerix-angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -66,7 +66,7 @@ Inject `LerixService` and throw a test error to confirm everything is working:
 
 ```ts
 import { Component, inject } from '@angular/core';
-import { LerixService } from 'lerix';
+import { LerixService } from '@lerix-dev/lerix-angular';
 
 @Component({ ... })
 export class MyComponent {

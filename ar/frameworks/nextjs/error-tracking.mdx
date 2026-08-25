@@ -18,7 +18,7 @@ description: "أبلغ عن الأخطاء والتقط الاستثناءات �
 
 ```tsx
 'use client';
-import { useLerix, BugSeverity } from 'lerix-nextjs';
+import { useLerix, BugSeverity } from '@lerix-dev/lerix-nextjs';
 
 export function MyComponent() {
   const lerix = useLerix();
@@ -97,7 +97,7 @@ export function MyComponent() {
 
 ```tsx app/error.tsx
 'use client';
-import { reportCaughtError } from 'lerix-nextjs';
+import { reportCaughtError } from '@lerix-dev/lerix-nextjs';
 import { useEffect } from 'react';
 
 export default function Error({ error }: { error: Error }) {

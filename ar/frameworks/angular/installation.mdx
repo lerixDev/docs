@@ -10,16 +10,16 @@ description: "أضف Lerix إلى تطبيق Angular الخاص بك في خطو
 <Note>
   هذه مكتبة Angular مخصّصة — خدمة `LerixService` قابلة للحقن (injectable)،
   ودالة `provideLerix()` لملف `app.config.ts` الخاص بك، وتكامل مع
-  `ErrorHandler` الخاص بـ Angular — مبنية فوق `lerix-core`، المحرّك المستقل
+  `ErrorHandler` الخاص بـ Angular — مبنية فوق `@lerix-dev/lerix-core`، المحرّك المستقل
   عن أي إطار عمل والمشترك بين كل حزم Lerix للويب. تبني تطبيق React بدلاً
   من ذلك؟ راجع [حزمة React](/ar/frameworks/react/installation). إذا كنت لا
-  تستخدم Angular ولا React، تعمل `lerix-core` مباشرة أيضاً.
+  تستخدم Angular ولا React، تعمل `@lerix-dev/lerix-core` مباشرة أيضاً.
 </Note>
 
 ## 1. أضف الاعتمادية (Dependency)
 
 ```bash
-npm install lerix
+npm install @lerix-dev/lerix-angular
 ```
 
 ## 2. سجّل الـ SDK
@@ -28,7 +28,7 @@ npm install lerix
 
 ```ts app.config.ts
 import { ApplicationConfig } from '@angular/core';
-import { provideLerix } from 'lerix';
+import { provideLerix } from '@lerix-dev/lerix-angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -66,7 +66,7 @@ export const appConfig: ApplicationConfig = {
 
 ```ts
 import { Component, inject } from '@angular/core';
-import { LerixService } from 'lerix';
+import { LerixService } from '@lerix-dev/lerix-angular';
 
 @Component({ ... })
 export class MyComponent {

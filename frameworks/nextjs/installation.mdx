@@ -12,14 +12,14 @@ description: "Add Lerix to your Next.js app in a few steps."
   This is a dedicated Next.js library — a `LerixNextProvider` pre-marked
   `'use client'`, plus the same `LerixErrorBoundary` and
   `useLerix()`/`useLerixNotifications()` hooks the [React SDK](/frameworks/react/installation)
-  uses, built on `lerix-core`. If you're using plain React (not Next.js),
-  use `lerix-react` directly instead.
+  uses, built on `@lerix-dev/lerix-core`. If you're using plain React (not Next.js),
+  use `@lerix-dev/lerix-react` directly instead.
 </Note>
 
 ## 1. Add the dependency
 
 ```bash
-npm install lerix-nextjs
+npm install @lerix-dev/lerix-nextjs
 ```
 
 ## 2. Configure your API key and project ID
@@ -44,7 +44,7 @@ registers/reports from the browser.
 Wrap your root layout in `LerixNextProvider` and `LerixErrorBoundary`:
 
 ```tsx app/layout.tsx
-import { LerixErrorBoundary, LerixNextProvider } from 'lerix-nextjs';
+import { LerixErrorBoundary, LerixNextProvider } from '@lerix-dev/lerix-nextjs';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -85,7 +85,7 @@ override them:
 
 ```tsx
 'use client';
-import { useLerix } from 'lerix-nextjs';
+import { useLerix } from '@lerix-dev/lerix-nextjs';
 
 export function MyComponent() {
   const lerix = useLerix();

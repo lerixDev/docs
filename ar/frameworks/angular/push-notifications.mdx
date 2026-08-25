@@ -23,7 +23,7 @@ Lerix زوج المفاتيح ويديره نيابةً عنك. بعد إتما�
 بحيث يكون متاحاً على جذر موقعك:
 
 ```bash
-cp node_modules/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
+cp node_modules/@lerix-dev/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
 ```
 
 ## 2. أنشئ مفتاح Web Push
@@ -36,7 +36,7 @@ cp node_modules/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
 
 ```ts
 import { Component, inject } from '@angular/core';
-import { LerixService } from 'lerix';
+import { LerixService } from '@lerix-dev/lerix-angular';
 
 @Component({ ... })
 export class MyComponent {
