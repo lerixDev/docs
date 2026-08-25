@@ -1,0 +1,101 @@
+---
+title: "Connect an AI agent (MCP)"
+description: "Let Claude Code, Replit, or any other MCP-capable AI coding tool act on your Lerix account — list orgs and projects, triage issues, and connect a new project — from inside your normal chat."
+---
+
+Lerix exposes a remote [MCP](https://modelcontextprotocol.io) server so an AI
+coding agent can work with your real Lerix data instead of you copying
+IDs and SDK keys back and forth by hand. The agent authenticates as *you*,
+through a normal browser login — it never sees or stores a password or API
+key, and it can only see and change what your own account already has
+permission to.
+
+<Note>
+  Every write action (creating a project, resolving an issue, and so on)
+  requires the agent to pass an explicit confirmation flag, which a
+  well-behaved agent will only do after asking you. Read actions (listing
+  orgs, projects, issues) don't require confirmation.
+</Note>
+
+## Connect Claude Code
+
+```bash
+claude mcp add --transport http lerix https://mcp.lerix.dev/mcp
+```
+
+Then, in a Claude Code session, run:
+
+```
+/mcp
+```
+
+Pick **lerix** — your browser opens to the Lerix consent screen, where you log
+in (or reuse an existing session) and approve the connection. Claude Code
+stores and refreshes the resulting token itself; you only do this once per
+machine.
+
+If you'd rather install it as a full plugin (bundles a skill that sequences
+the tools for common workflows, like connecting a project end-to-end):
+
+```
+/plugin marketplace add lerix-dev/lerix-mcp-plugin
+/plugin install lerix@lerix
+```
+
+## Connect Replit
+
+In Replit Agent: **Integrations → MCP Servers → + Add MCP server**, then
+paste:
+
+```
+https://mcp.lerix.dev/mcp
+```
+
+Replit discovers the OAuth configuration automatically and walks you through
+the same browser sign-in.
+
+## Other MCP clients
+
+Any client that supports a remote MCP server over HTTP with OAuth 2.1
+(dynamic client registration + PKCE) can connect the same way — point it at
+`https://mcp.lerix.dev/mcp` and complete the sign-in when prompted. There's
+no API key to generate or paste in.
+
+## What it can do
+
+**Read** (no confirmation needed):
+
+| Tool | What it does |
+|---|---|
+| `list_organizations` | Organizations you belong to |
+| `list_projects` | Projects in an organization |
+| `list_issues` | Deduplicated, filterable issue list for a project |
+| `get_issue_details` | Stack trace, occurrences, affected devices for one issue |
+| `search_events` | Raw occurrence counts grouped by type/severity/day |
+| `get_usage_stats` | Notification delivery and device/geo usage for a project |
+| `list_topics` | Push-notification topics configured for a project |
+
+**Create / connect** (requires confirmation):
+
+| Tool | What it does |
+|---|---|
+| `create_organization` | Create a brand-new organization, owned by you |
+| `link_project` | Find or create a project, and return a real SDK init snippet for the detected framework |
+| `create_topic` | Create a push-notification topic |
+
+**Write** (requires confirmation):
+
+| Tool | What it does |
+|---|---|
+| `resolve_issue` | Mark an issue resolved |
+| `assign_issue` | Assign an issue to a team member |
+
+## Security notes
+
+- All access is scoped by your existing organization/project permissions —
+  the agent can't see or change anything your account couldn't already.
+- Nothing the agent connects to can read your password. Sign-in happens on
+  `app.lerix.dev` itself, the same login you already use.
+- To disconnect a client, remove the server from it directly (e.g.
+  `claude mcp remove lerix`). If you believe a specific token was
+  compromised, contact [support@lerix.dev](mailto:support@lerix.dev).

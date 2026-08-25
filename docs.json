@@ -186,10 +186,17 @@
                 "pages": [
                   "developers/errors-responses"
                 ]
+              },
+              {
+                "group": "AI Agents",
+                "icon": "robot",
+                "pages": [
+                  "developers/mcp"
+                ]
               }
             ]
           }
-         
+
         ]
       },
       {
@@ -347,6 +354,13 @@
                 "icon": "hashtag",
                 "pages": [
                   "ar/developers/errors-responses"
+                ]
+              },
+              {
+                "group": "وكلاء الذكاء الاصطناعي",
+                "icon": "robot",
+                "pages": [
+                  "ar/developers/mcp"
                 ]
               }
             ]
