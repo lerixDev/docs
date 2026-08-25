@@ -63,6 +63,15 @@
                 ]
               },
               {
+                "group": "Android SDK",
+                "icon": "android",
+                "pages": [
+                  "frameworks/android/installation",
+                  "frameworks/android/push-notifications",
+                  "frameworks/android/error-tracking"
+                ]
+              },
+              {
                 "group": "Web SDK",
                 "icon": "js",
                 "pages": [
@@ -148,6 +157,15 @@
                   "ar/frameworks/ios/installation",
                   "ar/frameworks/ios/push-notifications",
                   "ar/frameworks/ios/error-tracking"
+                ]
+              },
+              {
+                "group": "Android SDK",
+                "icon": "android",
+                "pages": [
+                  "ar/frameworks/android/installation",
+                  "ar/frameworks/android/push-notifications",
+                  "ar/frameworks/android/error-tracking"
                 ]
               },
               {

@@ -1,0 +1,96 @@
+---
+title: "Android (Kotlin) — تتبع الأخطاء"
+description: "أبلغ عن الأخطاء والتقط الأعطال (crashes) تلقائياً من تطبيق Android الأصلي (native) إلى لوحة تحكم Atelerix."
+---
+
+## مقدمة
+
+يلتقط Atelerix الأخطاء والأعطال من تطبيق Android الأصلي (native) الخاص بك لتتمكّن من تصحيح المشاكل بشكل أسرع. بعد إتمام [تثبيت Android](/ar/frameworks/android/installation)، استخدم `Lerix.throwError` لإرسال أخطاء مخصّصة أو استثناءات ملتقطة إلى لوحة التحكم — أما الأعطال غير الملتقطة فتُلتقط تلقائياً، دون الحاجة لأي كود إضافي.
+
+<Note>
+  تأكّد من تهيئة الـ SDK عبر `Lerix.initialize()` قبل الإبلاغ عن الأخطاء.
+</Note>
+
+## الإبلاغ عن خطأ
+
+استخدم `Lerix.throwError` للإبلاغ عن خطأ يدوياً. هذا مفيد عندما تلتقط استثناءً بنفسك وتريد إرساله إلى Atelerix مع سياق إضافي.
+
+```kotlin
+import com.lerix.sdk.Lerix
+import com.lerix.sdk.models.BugSeverity
+import com.lerix.sdk.models.BugType
+
+try {
+    riskyOperation()
+} catch (e: Exception) {
+    Lerix.throwError(
+        issue = e.toString(),
+        stack = e.stackTrace.map { it.toString() },
+        type = BugType.RUNTIME_ERROR,
+        severity = BugSeverity.HIGH,
+        metadata = mapOf("userId" to "123", "action" to "payment", "amount" to 100),
+    )
+}
+```
+
+### المعاملات (Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `issue` | `String` | نعم | رسالة الخطأ أو وصفه |
+| `stack` | `List<String>` | لا | أطر تتبّع المكدس (Stack trace) — مرّر `e.stackTrace.map { it.toString() }` للحصول على أطر الاستثناء الملتقط |
+| `type` | `BugType` | لا | تصنيف نوع الخطأ (الافتراضي: `RUNTIME_ERROR`) |
+| `severity` | `BugSeverity` | لا | مستوى الخطورة (الافتراضي: `MEDIUM`) |
+| `metadata` | `Map<String, Any?>?` | لا | سياق إضافي يُرفق بالتقرير |
+
+### قيم `BugType`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `RUNTIME_ERROR` | استثناء غير معالَج يُرمى أثناء التشغيل |
+| `LOGIC_BUG` | سلوك غير صحيح لا يرمي استثناءً |
+| `UI_BUG` | خلل بصري أو في التخطيط (layout) |
+| `NETWORK_ERROR` | طلب شبكة فاشل أو مُشوَّه |
+| `PERFORMANCE` | بطء، تقطّع (jank)، أو استهلاك موارد مفرط |
+| `COMPATIBILITY` | خلل يظهر على جهاز أو إصدار نظام أو منصة محدّدة |
+| `VALIDATION_ERROR` | إدخال غير صالح تجاوز التحقق رغم أنه لا ينبغي |
+| `SECURITY` | خلل متعلّق بالأمان |
+| `CRASH` | توقّف التطبيق بشكل غير متوقّع |
+| `UNKNOWN` | لا شيء مما سبق |
+
+### قيم `BugSeverity`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `CRITICAL` | يعطّل وظيفة أساسية أو يؤثّر على جميع المستخدمين |
+| `HIGH` | تأثير كبير، لكن يوجد حل بديل (workaround) |
+| `MEDIUM` | ملحوظ لكن تأثيره محدود |
+| `LOW` | بسيط أو شكلي |
+| `UNKNOWN` | لم يتم تقييم الخطورة بعد |
+
+## الالتقاط التلقائي للأعطال
+
+يُثبّت `Lerix.initialize()` معالج أعطال (crash handler) تلقائياً، يلفّ الدالة العامة `Thread.setDefaultUncaughtExceptionHandler` في Java/Kotlin — أي استثناء غير ملتقط على أي خيط (thread) يُلتقط، بغضّ النظر عن الخيط الذي حدث فيه.
+
+لا يمكن للعطل إجراء استدعاء شبكة بشكل موثوق — فالعملية (process) تكون بصدد الإنهاء — لذا يُكتب التقرير إلى القرص بشكل متزامن (synchronous) لحظة العطل، ثم يُرسَل تلقائياً في *المرة التالية* لتشغيل تطبيقك، مصنَّفاً كـ `type: CRASH, severity: CRITICAL`. لا تحتاج لفعل أي شيء لاستلامه؛ سيظهر في لوحة التحكم عند التشغيل التالي.
+
+لتعطيل هذه الميزة (مثلاً إذا كان تطبيقك يملك بالفعل نظام تتبع أعطال خاصاً به وتريد فقط استدعاءات `throwError` اليدوية):
+
+```kotlin
+Lerix.initialize(
+    context = this,
+    apiKey = "your-api-key",
+    projectId = "your-project-id",
+    enableCrashReporting = false,
+)
+```
+
+### تحقّق من التكامل
+
+أرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
+
+```kotlin
+Lerix.throwError("Test error")
+```
+
+ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.

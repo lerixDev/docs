@@ -1,0 +1,94 @@
+---
+title: "Android (Kotlin) — التثبيت"
+description: "أضف Lerix إلى تطبيق Android الأصلي (native) الخاص بك في خطوات قليلة — دون الحاجة إلى Flutter."
+---
+
+## المتطلبات
+
+- Android 7.0+‎ (API 24)
+- Kotlin 1.9+‎، Android Gradle Plugin 8.5+‎
+
+<Note>
+  هذه هي المكتبة الأصلية (native) بلغة Kotlin للتطبيقات التي لا تستخدم Flutter إطلاقاً. إذا كان تطبيقك مبنياً بـ Flutter، استخدم [Flutter SDK](/ar/frameworks/flutter/installation) بدلاً من ذلك — فهو يغطّي iOS وAndroid وWeb من حزمة واحدة.
+</Note>
+
+## 1. أضف الاعتمادية (Dependency)
+
+يُوزَّع الـ SDK عبر [JitPack](https://jitpack.io/#lerix/lerix-android)، ويُبنى مباشرة من إصدارات GitHub. أضف مستودع JitPack في ملف `settings.gradle.kts`:
+
+```kotlin settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+ثم أضف الاعتمادية في ملف `build.gradle.kts` الخاص بتطبيقك:
+
+```kotlin build.gradle.kts
+dependencies {
+    implementation("com.github.lerix.lerix-android:lerix:1.0.0")
+}
+```
+
+استبدل `1.0.0` بالإصدار الذي تريد الاعتماد عليه — راجع [صفحة الإصدارات](https://github.com/lerix/lerix-android/releases) للاطّلاع على الإصدارات المتاحة.
+
+## 2. هيّئ الـ SDK
+
+استدعِ `Lerix.initialize()` في أقرب وقت ممكن — من دالة `Application.onCreate()` مخصّصة. هذا يسجّل تطبيقك/جهازك مع الخادم (backend) ويفعّل الإبلاغ التلقائي عن الأعطال (crash reporting).
+
+```kotlin LerixExampleApp.kt
+import android.app.Application
+import com.lerix.sdk.Lerix
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Lerix.initialize(
+            context = this,
+            apiKey = "your-api-key",
+            projectId = "your-project-id",
+            debugMode = true,
+        )
+    }
+}
+```
+
+سجّل الصنف (class) في ملف `AndroidManifest.xml` الخاص بك:
+
+```xml AndroidManifest.xml
+<application android:name=".MyApplication" ...>
+```
+
+<Note>
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+</Note>
+
+### المعاملات (Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `context` | `Context` | نعم | أي سياق تطبيق أو نشاط (Activity) |
+| `apiKey` | `String` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
+| `projectId` | `String` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
+| `url` | `String` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.atelerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `debugMode` | `Boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في Logcat (الافتراضي: `false`) |
+| `enableCrashReporting` | `Boolean` | لا | تثبيت معالج الأعطال التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/android/error-tracking) |
+| `onError` | `((Throwable) -> Unit)?` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
+
+## 3. تحقّق من التكامل
+
+أرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
+
+```kotlin
+Lerix.throwError("Test error")
+```
+
+ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<Check>
+  كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/android/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الإبلاغ التلقائي عن الأعطال، أو إلى [الإشعارات](/ar/frameworks/android/push-notifications) لتفعيل الإشعارات.
+</Check>

@@ -1,0 +1,164 @@
+---
+title: "Android (Kotlin) — الإشعارات"
+description: "أعِدّ تسليم الإشعارات عبر Firebase Cloud Messaging (FCM) لتطبيق Android الأصلي (native) الخاص بك — دون أي إعداد لـ Firebase من جانبك."
+---
+
+## مقدمة
+
+يُرسِل Atelerix الإشعارات على Android باستخدام Firebase Cloud Messaging (FCM) — لكن خلافاً لتكامل FCM المعتاد، **لن تحتاج لإضافة ملف `google-services.json` أو إضافة Google Services Gradle plugin إلى تطبيقك**. يسجّل الـ SDK جهازك داخلياً ضمن مشروع Firebase الخاص بـ Atelerix، باستخدام معرّف Sender ID الخاص بمشروعك في Atelerix (يُجلَب تلقائياً من الباك إند). بعد إتمام [تثبيت Android](/ar/frameworks/android/installation)، اتّبع الخطوات أدناه لتفعيل تسليم الإشعارات.
+
+<Note>
+  تأكّد من تهيئة الـ SDK عبر `Lerix.initialize()` قبل إعداد الإشعارات.
+</Note>
+
+## إعداد لوحة التحكم
+
+لكي يتمكّن الباك إند من الإرسال فعلياً إلى أجهزتك، يحتاج إلى المصادقة كمشروع Firebase الخاص بك. هذه هي الخطوة الوحيدة المتعلّقة بـ Firebase:
+
+1. أنشئ أو افتح تطبيقك في [Firebase Console](https://console.firebase.google.com/).
+2. اذهب إلى **Project Settings → Service Accounts → Generate new private key**.
+3. ارفع ملف JSON الذي تم تنزيله إلى لوحة تحكم Atelerix، ضمن **الإشعارات ← الإعدادات**.
+
+بمجرد الرفع، تُظهر بطاقة **Android** في **الإشعارات ← الإعدادات** شارة **مُهيَّأ (Configured)** — اضغط عليها مجدداً في أي وقت لمراجعة البيانات أو استبدالها.
+
+## أذونات ومكوّنات الـ Manifest
+
+لا حاجة لإضافة أي شيء هنا — يُصرِّح الـ Manifest الخاص بالـ SDK بالفعل عن أذونات `INTERNET` و`POST_NOTIFICATIONS`، وخدمة Firebase Messaging الخاصة به، ومستقبِل (receiver) الضغط على الإشعار. يدمج نظام دمج الـ Manifest في Android كل ذلك تلقائياً في تطبيقك؛ لا توجد خدمة أو مستقبِل أو إذن عليك التصريح عنه بنفسك.
+
+## اطلب الإذن وسجّل الجهاز
+
+```kotlin
+import com.lerix.sdk.Lerix
+import com.lerix.sdk.notifications.LerixPermissionStatus
+
+lifecycleScope.launch {
+    val granted = Lerix.notifications.requestPermissions()
+}
+
+Lerix.notifications.setOnNotificationReceived { payload ->
+    // يُستدعى أثناء فتح التطبيق (foreground) — اعرض إشعاراً داخل التطبيق مثلاً.
+    Log.d("MyApp", "Notification received: ${payload.title} — ${payload.body}")
+}
+
+Lerix.notifications.setOnNotificationTapped { payload ->
+    // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح التطبيق
+    // من حالة إغلاق كامل (راجع الملاحظة أدناه).
+    Log.d("MyApp", "Notification tapped: ${payload.metadata}")
+}
+
+val status = Lerix.notifications.checkPermissionStatus()
+// LerixPermissionStatus.AUTHORIZED، .DENIED، .NOT_DETERMINED
+```
+
+الدالة `requestPermissions()` هي suspend function — استدعِها من نطاق coroutine (مثلاً `lifecycleScope.launch`). على Android 13+‎ تطلب إذن `POST_NOTIFICATIONS` وقت التشغيل، وبمجرد منحه تجلب رمز FCM وتسجّله؛ أما على إصدارات Android الأقدم فلا يوجد إذن وقت تشغيل لطلبه، فتسجّل الجهاز فوراً.
+
+سجّل `setOnNotificationTapped` في مكان لديه وصول إلى التنقّل (navigation) في تطبيقك، لأن الضغط على إشعار يعني غالباً الانتقال إلى شاشة محددة بناءً على `payload.metadata`، وليس مجرد تسجيله في السجلّات.
+
+<Note>
+  يصل الضغط (tap) بشكل موثوق حتى لو كان هو ما فتح التطبيق من حالة إغلاق كامل —
+  سجّل `setOnNotificationTapped` فور بدء تشغيل نشاط (Activity) الإطلاق لديك،
+  وأي ضغط حدث قبل انتهاء تشغيل التطبيق يُعاد تشغيله تلقائياً بمجرد تسجيل
+  الدالة. استخدم `Lerix.notifications.getInitialNotificationTap()` إذا أردت
+  التحقّق منه بشكل متزامن بدلاً من ذلك.
+</Note>
+
+## البيانات (Payload) المُستلَمة مع الإشعار
+
+يستقبل كل من `setOnNotificationReceived` و`setOnNotificationTapped` كائناً من نوع `LerixNotificationPayload`:
+
+```kotlin
+data class LerixNotificationPayload(
+    val notificationId: String?, // معرّف هذا الإشعار في Atelerix
+    val title: String?,
+    val body: String?,
+    val imageUrl: String?, // أي قيمة مررتها كـ imageUrl عند الإرسال، إن وُجدت
+    val metadata: Map<String, String>, // أي بيانات مررتها كـ metadata عند الإرسال
+)
+```
+
+```kotlin
+Lerix.notifications.setOnNotificationTapped { payload ->
+    val screen = payload.metadata["screen"]
+    val orderId = payload.metadata["orderId"]
+    // انتقل بناءً على payload.metadata، إلخ.
+}
+```
+
+## معرّفات الجهاز
+
+توجد ثلاث دوال مختلفة ترجع ثلاث قيم مختلفة — استخدم المناسبة حسب ما تفعله:
+
+| الدالة | ترجع | استخدمها من أجل |
+|---|---|---|
+| `getRegisteredTokenId()` | معرّف Atelerix الخاص بهذا الجهاز المُسجَّل، يُخصَّص بمجرد نجاح `requestPermissions()` وتسجيل الرمز لدى الباك إند | القيمة التي تضعها في **رموز الأجهزة** عند إرسال إشعار لهذا الجهاز تحديداً — من تبويب **إرسال إشعار** في لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
+| `getDeviceToken()` | رمز تسجيل FCM الأصلي | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي FCM بنفسك خارج Atelerix |
+| `getDeviceId()` | معرّف `Settings.Secure.ANDROID_ID` — معرّف نظام Android محلي، لا علاقة له بالباك إند الخاص بـ Atelerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
+
+```kotlin
+val tokenId = Lerix.notifications.getRegisteredTokenId()
+Log.d("MyApp", "Send test notifications to: $tokenId")
+```
+
+<Warning>
+  تعادل `getRegisteredTokenId()` هنا دالة `getDeviceId()` في Flutter SDK — التسمية
+  تختلف بين الحزمتين، لكن كلتاهما ترجعان نفس نوع القيمة: المعرّف الذي تتوقّعه
+  لوحة التحكم وREST API في حقل استهداف الجهاز. لصق `getDeviceId()` من هذه
+  الحزمة (قيمة `ANDROID_ID`) في عملية الإرسال بلوحة التحكم سيفشل برسالة
+  "غير موجود" — لأنه لم يُسجَّل لدى الباك إند إطلاقاً.
+</Warning>
+
+جميع الدوال الثلاث ترجع `null` حتى يُمنَح إذن الإشعارات ويكتمل التسجيل.
+
+## إرسال صوت مخصّص
+
+اضبط `sound` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`sound`](/ar/api-reference/push-notifications) في REST API — لتشغيل ملف صوت مُرفق بدلاً من صوت الجهاز الافتراضي.
+
+- يجب أن يكون الملف موجوداً بالفعل داخل تطبيقك تحت `res/raw/` — يمرّر Atelerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
+- مرّر اسم الملف **دون** امتداده، مثل `notif` لملف `res/raw/notif.mp3`. الصيغ المدعومة: `.wav`، `.mp3`، `.ogg`.
+
+<Note>
+  يُثبَّت الصوت أول مرة يُستخدم فيها على جهاز معيّن — يُحدِّد Android صوت قناة
+  الإشعار (notification channel) عند إنشائها ولا يسمح بتغييره لاحقاً أبداً.
+  إرسال قيمة `sound` مختلفة لاحقاً يُنشئ قناة جديدة بدلاً من تحديث القناة
+  القديمة؛ هذا سلوك متوقّع في Android، وليس خللاً.
+</Note>
+
+لا حاجة لأي كود في الـ SDK لتشغيل الصوت — يعمل تلقائياً كجزء من الإشعار في النظام.
+
+## إرسال بيانات وصفية (Metadata)
+
+أرفق بيانات مخصّصة عبر `metadata` (كائن JSON) عند الإرسال — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`metadata`](/ar/api-reference/push-notifications) في REST API. تصل هذه البيانات إلى الجهاز داخل `payload.metadata`:
+
+```json
+{
+  "title": "New message from John",
+  "body": "Hey, are you free later?",
+  "metadata": { "chatId": "456", "screen": "chat" }
+}
+```
+
+```kotlin
+Lerix.notifications.setOnNotificationTapped { payload ->
+    val chatId = payload.metadata["chatId"]
+    // انتقل إلى شاشة المحادثة، إلخ.
+}
+```
+
+## إرسال صورة
+
+اضبط `imageUrl` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`imageUrl`](/ar/api-reference/push-notifications) في REST API — لعرض صورة غنية في الإشعار. يعمل هذا تلقائياً على Android، دون أي إعداد إضافي: تُنزِّل خدمة المراسلة المُرفقة في الـ SDK الصورة وتعرضها كإشعار من نوع `BigPictureStyle`.
+
+الصورة متاحة أيضاً في Kotlin كـ `payload.imageUrl` (في `setOnNotificationReceived`/`setOnNotificationTapped`) إن أردت عرضها في شريط إشعار مخصّص داخل التطبيق، إضافة إلى عرضها الأصلي من النظام.
+
+## المواضيع (Topics)
+
+بدلاً من استهداف رموز أجهزة محددة، يمكن للجهاز الاشتراك في موضوع (topic) باسم معيّن — أرسِل إشعاراً واحداً إلى الموضوع ليصل لكل مشترك فيه. لا حاجة لإنشاء الموضوع مسبقاً؛ يُنشأ تلقائياً أول مرة يشترك فيها أي جهاز. يمكنك أيضاً عرض المواضيع وإنشاءها وحذفها من تبويب **الإشعارات ← المواضيع** في لوحة التحكم.
+
+```kotlin
+lifecycleScope.launch {
+    Lerix.notifications.subscribeToTopic("promotions")
+    Lerix.notifications.unsubscribeFromTopic("promotions")
+}
+```
+
+للإرسال إلى موضوع، استخدم تبويب **إرسال إشعار** في لوحة التحكم (اختر "Topic" كجمهور مستهدف)، أو استدعِ [REST API](/ar/api-reference/push-notifications) مع `sendByTopic: true`.

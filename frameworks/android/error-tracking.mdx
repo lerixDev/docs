@@ -1,0 +1,96 @@
+---
+title: "Android (Kotlin) — Error Tracking"
+description: "Report errors and automatically capture crashes from your native Android app to the Atelerix dashboard."
+---
+
+## Introduction
+
+Atelerix captures errors and crashes from your native Android app so you can debug issues faster. After you complete the [Android installation](/frameworks/android/installation), use `Lerix.throwError` to send custom errors or caught exceptions to your dashboard — uncaught crashes are captured automatically, with no extra code required.
+
+<Note>
+  Make sure you have initialized the SDK with `Lerix.initialize()` before reporting errors.
+</Note>
+
+## Report an error
+
+Use `Lerix.throwError` to manually report an error. This is useful when you catch an exception yourself and want to send it to Atelerix with extra context.
+
+```kotlin
+import com.lerix.sdk.Lerix
+import com.lerix.sdk.models.BugSeverity
+import com.lerix.sdk.models.BugType
+
+try {
+    riskyOperation()
+} catch (e: Exception) {
+    Lerix.throwError(
+        issue = e.toString(),
+        stack = e.stackTrace.map { it.toString() },
+        type = BugType.RUNTIME_ERROR,
+        severity = BugSeverity.HIGH,
+        metadata = mapOf("userId" to "123", "action" to "payment", "amount" to 100),
+    )
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `issue` | `String` | Yes | Error message or description |
+| `stack` | `List<String>` | No | Stack trace frames — pass `e.stackTrace.map { it.toString() }` for a caught exception's frames |
+| `type` | `BugType` | No | Bug classification (default: `RUNTIME_ERROR`) |
+| `severity` | `BugSeverity` | No | Severity level (default: `MEDIUM`) |
+| `metadata` | `Map<String, Any?>?` | No | Additional context to attach to the report |
+
+### `BugType` values
+
+| Value | Description |
+|-------|-------------|
+| `RUNTIME_ERROR` | An unhandled exception thrown at runtime |
+| `LOGIC_BUG` | Incorrect behavior that doesn't throw |
+| `UI_BUG` | A visual or layout defect |
+| `NETWORK_ERROR` | A failed or malformed network request |
+| `PERFORMANCE` | Slowness, jank, or excessive resource use |
+| `COMPATIBILITY` | Breaks on a specific device, OS version, or platform |
+| `VALIDATION_ERROR` | Invalid input passed validation it shouldn't have |
+| `SECURITY` | A security-relevant defect |
+| `CRASH` | The app terminated unexpectedly |
+| `UNKNOWN` | None of the above |
+
+### `BugSeverity` values
+
+| Value | Description |
+|-------|-------------|
+| `CRITICAL` | Blocks core functionality or affects all users |
+| `HIGH` | Serious impact, but a workaround exists |
+| `MEDIUM` | Noticeable but limited impact |
+| `LOW` | Minor or cosmetic |
+| `UNKNOWN` | Severity not yet assessed |
+
+## Automatic crash capture
+
+`Lerix.initialize()` installs a crash handler by default, wrapping Java/Kotlin's global `Thread.setDefaultUncaughtExceptionHandler` — any uncaught exception on any thread is captured, regardless of which thread it occurs on.
+
+A crash can't reliably make a network call — the process is already terminating — so the report is written to disk synchronously at crash time, then sent automatically the *next* time your app launches, tagged `type: CRASH, severity: CRITICAL`. You don't need to do anything to receive it; it shows up in the dashboard on the following launch.
+
+To disable it (e.g. if your app already has its own crash reporter and you only want manual `throwError` calls):
+
+```kotlin
+Lerix.initialize(
+    context = this,
+    apiKey = "your-api-key",
+    projectId = "your-project-id",
+    enableCrashReporting = false,
+)
+```
+
+### Verify the integration
+
+Throw a test error to confirm everything is working:
+
+```kotlin
+Lerix.throwError("Test error")
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.

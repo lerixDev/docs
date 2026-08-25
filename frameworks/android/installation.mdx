@@ -1,0 +1,94 @@
+---
+title: "Android (Kotlin) — Installation"
+description: "Add Lerix to your native Android app in a few steps — no Flutter required."
+---
+
+## Requirements
+
+- Android 7.0+ (API 24)
+- Kotlin 1.9+, Android Gradle Plugin 8.5+
+
+<Note>
+  This is the native Kotlin library for apps with no Flutter involved. If your app is built with Flutter, use the [Flutter SDK](/frameworks/flutter/installation) instead — it already covers iOS, Android, and Web from one package.
+</Note>
+
+## 1. Add the dependency
+
+The SDK is distributed via [JitPack](https://jitpack.io/#lerix/lerix-android), built directly from GitHub releases. Add the JitPack repository in `settings.gradle.kts`:
+
+```kotlin settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+Then add the dependency in your app's `build.gradle.kts`:
+
+```kotlin build.gradle.kts
+dependencies {
+    implementation("com.github.lerix.lerix-android:lerix:1.0.0")
+}
+```
+
+Replace `1.0.0` with the version you want to pin to — see the [releases page](https://github.com/lerix/lerix-android/releases) for available versions.
+
+## 2. Initialize the SDK
+
+Call `Lerix.initialize()` as early as possible — from a custom `Application.onCreate()`. This registers your app/device with the backend and installs automatic crash reporting.
+
+```kotlin LerixExampleApp.kt
+import android.app.Application
+import com.lerix.sdk.Lerix
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Lerix.initialize(
+            context = this,
+            apiKey = "your-api-key",
+            projectId = "your-project-id",
+            debugMode = true,
+        )
+    }
+}
+```
+
+Register the class in your `AndroidManifest.xml`:
+
+```xml AndroidManifest.xml
+<application android:name=".MyApplication" ...>
+```
+
+<Note>
+  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+</Note>
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `context` | `Context` | Yes | Any application/activity context |
+| `apiKey` | `String` | Yes | Your project API key from the dashboard |
+| `projectId` | `String` | Yes | Your project ID (slug) from the dashboard |
+| `url` | `String` | No | Backend base URL. Defaults to `https://api.atelerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
+| `debugMode` | `Boolean` | No | Print SDK request/response logs to Logcat (default: `false`) |
+| `enableCrashReporting` | `Boolean` | No | Install the automatic crash handler (default: `true`) — see [Error Tracking](/frameworks/android/error-tracking) |
+| `onError` | `((Throwable) -> Unit)?` | No | Called if initialization itself fails (e.g. network unreachable) |
+
+## 3. Verify the integration
+
+Throw a test error to confirm everything is working:
+
+```kotlin
+Lerix.throwError("Test error")
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+
+<Check>
+  You're all set! Continue to [Error Tracking](/frameworks/android/error-tracking) to report custom errors and enable automatic crash capture, or [Push Notifications](/frameworks/android/push-notifications) to enable push delivery.
+</Check>
