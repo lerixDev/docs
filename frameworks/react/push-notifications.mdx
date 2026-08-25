@@ -1,19 +1,19 @@
 ---
-title: "Angular — Push Notifications"
-description: "Configure standard Web Push (VAPID) delivery for your Angular app — no Firebase, no OneSignal required."
+title: "React — Push Notifications"
+description: "Configure standard Web Push (VAPID) delivery for your React app — no Firebase, no OneSignal required."
 ---
 
 ## Introduction
 
-Atelerix delivers push notifications to Angular apps using the standard
+Atelerix delivers push notifications to React apps using the standard
 **Web Push protocol (VAPID)** — the same open standard Chrome, Firefox,
 Edge, and modern Safari all implement natively. No Firebase project, no
 OneSignal account — Atelerix generates and manages the key pair for you.
-After you complete the [Angular installation](/frameworks/angular/installation),
+After you complete the [React installation](/frameworks/react/installation),
 follow the steps below to enable push delivery.
 
 <Note>
-  Make sure you have registered the SDK with `provideLerix()` before configuring push notifications.
+  Make sure your app is wrapped in `LerixProvider` before configuring push notifications.
 </Note>
 
 ## 1. Copy the service worker
@@ -34,30 +34,31 @@ for the project; there's nothing to copy into your code.
 
 ## 3. Subscribe
 
-```ts
-import { Component, inject } from '@angular/core';
-import { LerixService } from 'lerix';
+```tsx
+import { useEffect } from 'react';
+import { useLerixNotifications } from 'lerix-react';
 
-@Component({ ... })
-export class MyComponent {
-  private readonly lerix = inject(LerixService);
+function MyComponent() {
+  const notifications = useLerixNotifications();
 
-  constructor() {
-    this.lerix.notifications.setOnNotificationReceived((payload) => {
+  useEffect(() => {
+    notifications.setOnNotificationReceived((payload) => {
       // Fired while a tab is open.
       console.log(payload.title, payload.body);
     });
 
-    this.lerix.notifications.setOnNotificationTapped((payload) => {
+    notifications.setOnNotificationTapped((payload) => {
       // Fired when the user clicks the notification — including one that
       // opened the page from a fully closed tab.
       const screen = payload.metadata['screen'];
     });
-  }
+  }, []);
 
-  async enablePush() {
-    const subscribed = await this.lerix.notifications.subscribe();
-  }
+  const enablePush = async () => {
+    const subscribed = await notifications.subscribe();
+  };
+
+  return <button onClick={enablePush}>Enable notifications</button>;
 }
 ```
 
@@ -87,8 +88,8 @@ interface LerixNotificationPayload {
 | `getDeviceToken()` | The raw `PushSubscription`, stringified | Rarely needed directly; diagnostics only |
 | `getDeviceId()` | A locally generated identifier, unrelated to Atelerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
 
-```ts
-const tokenId = this.lerix.notifications.getRegisteredTokenId();
+```tsx
+const tokenId = notifications.getRegisteredTokenId();
 ```
 
 All three return `null` until `subscribe()` has completed at least once.
@@ -108,8 +109,8 @@ back to the page inside `payload.metadata`:
 }
 ```
 
-```ts
-this.lerix.notifications.setOnNotificationTapped((payload) => {
+```tsx
+notifications.setOnNotificationTapped((payload) => {
   const chatId = payload.metadata['chatId'];
 });
 ```
@@ -137,9 +138,9 @@ automatically the first time any device subscribes to it. You can also
 view, create, and delete topics from the **Notifications → Topics** tab in
 the dashboard.
 
-```ts
-await this.lerix.notifications.subscribeToTopic('promotions');
-await this.lerix.notifications.unsubscribeFromTopic('promotions');
+```tsx
+await notifications.subscribeToTopic('promotions');
+await notifications.unsubscribeFromTopic('promotions');
 ```
 
 To send to a topic, use the dashboard's **Send notification** tab (select "Topic" as the audience), or call the [REST API](/api-reference/push-notifications) with `sendByTopic: true`.

@@ -1,0 +1,88 @@
+---
+title: "React — التثبيت"
+description: "أضف Lerix إلى تطبيق React الخاص بك في خطوات قليلة."
+---
+
+## المتطلبات
+
+- React 18+‎
+
+<Note>
+  هذه مكتبة React مخصّصة — مكوّن `LerixProvider`، ومكوّن `LerixErrorBoundary`،
+  والخطّافان (hooks) `useLerix()`/`useLerixNotifications()` — مبنية فوق
+  `lerix-core`، المحرّك المستقل عن أي إطار عمل والمشترك بين كل حزم Lerix
+  للويب. تبني تطبيق Angular بدلاً من ذلك؟ راجع
+  [حزمة Angular](/ar/frameworks/angular/installation). إذا كنت لا تستخدم
+  React ولا Angular، تعمل `lerix-core` مباشرة أيضاً.
+</Note>
+
+## 1. أضف الاعتمادية (Dependency)
+
+```bash
+npm install lerix-react
+```
+
+## 2. سجّل الـ SDK
+
+غلّف تطبيقك بـ `LerixProvider`، وبـ `LerixErrorBoundary` لالتقاط أخطاء العرض (render):
+
+```tsx main.tsx
+import { createRoot } from 'react-dom/client';
+import { LerixErrorBoundary, LerixProvider } from 'lerix-react';
+import App from './App';
+
+createRoot(document.getElementById('root')!).render(
+  <LerixProvider
+    options={{
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      debugMode: true,
+    }}
+  >
+    <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
+      <App />
+    </LerixErrorBoundary>
+  </LerixProvider>,
+);
+```
+
+<Note>
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+</Note>
+
+يعمل التسجيل مع الخادم (backend)، ومعالج الأعطال التلقائي، مرة واحدة عند
+التركيب (mount) — آمن حتى تحت الاستدعاء المزدوج للـ effects في React 18
+StrictMode أثناء التطوير، لأن التهيئة آمنة عند إعادة الدخول (re-entrant-safe).
+
+### المعاملات (Parameters)
+
+خاصية `options` في `LerixProvider`:
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `apiKey` | `string` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
+| `projectId` | `string` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
+| `url` | `string` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.atelerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `debugMode` | `boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
+| `enableCrashReporting` | `boolean` | لا | تثبيت معالج الأعطال التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/react/error-tracking) |
+| `onError` | `(error: unknown) => void` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
+
+## 3. تحقّق من التكامل
+
+استخدم `useLerix()` وأرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
+
+```tsx
+import { useLerix } from 'lerix-react';
+
+function MyComponent() {
+  const lerix = useLerix();
+
+  return <button onClick={() => lerix.throwError('Test error')}>Test</button>;
+}
+```
+
+ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<Check>
+  كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/react/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الالتقاط التلقائي، أو إلى [الإشعارات](/ar/frameworks/react/push-notifications) لتفعيل الإشعارات.
+</Check>

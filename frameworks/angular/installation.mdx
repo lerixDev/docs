@@ -10,10 +10,10 @@ description: "Add Lerix to your Angular app in a few steps."
 <Note>
   This is a dedicated Angular library — an injectable `LerixService`, a
   `provideLerix()` function for your `app.config.ts`, and an Angular
-  `ErrorHandler` integration. If you don't need Angular-specific integration,
-  the framework-agnostic [`lerix_web_notification`](/frameworks/web/push-notifications)
-  package also works, but without the automatic Angular error capture this
-  package provides.
+  `ErrorHandler` integration — built on top of `lerix-core`, the
+  framework-agnostic engine shared by every Lerix web SDK. Building a React
+  app instead? See the [React SDK](/frameworks/react/installation). If
+  you're using neither Angular nor React, `lerix-core` also works directly.
 </Note>
 
 ## 1. Add the dependency

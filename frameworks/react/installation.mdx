@@ -1,0 +1,88 @@
+---
+title: "React — Installation"
+description: "Add Lerix to your React app in a few steps."
+---
+
+## Requirements
+
+- React 18+
+
+<Note>
+  This is a dedicated React library — a `LerixProvider` component, a
+  `LerixErrorBoundary`, and `useLerix()`/`useLerixNotifications()` hooks —
+  built on top of `lerix-core`, the framework-agnostic engine shared by
+  every Lerix web SDK. Building an Angular app instead? See the
+  [Angular SDK](/frameworks/angular/installation). If you're using
+  neither React nor Angular, `lerix-core` also works directly.
+</Note>
+
+## 1. Add the dependency
+
+```bash
+npm install lerix-react
+```
+
+## 2. Register the SDK
+
+Wrap your app in `LerixProvider`, and `LerixErrorBoundary` to catch render errors:
+
+```tsx main.tsx
+import { createRoot } from 'react-dom/client';
+import { LerixErrorBoundary, LerixProvider } from 'lerix-react';
+import App from './App';
+
+createRoot(document.getElementById('root')!).render(
+  <LerixProvider
+    options={{
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      debugMode: true,
+    }}
+  >
+    <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
+      <App />
+    </LerixErrorBoundary>
+  </LerixProvider>,
+);
+```
+
+<Note>
+  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+</Note>
+
+Registration with the backend, and the automatic crash handler, run once
+at mount — safe even under React 18 StrictMode's double-effect-invocation
+in development, since initialization is re-entrant-safe.
+
+### Parameters
+
+`LerixProvider`'s `options` prop:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `apiKey` | `string` | Yes | Your project API key from the dashboard |
+| `projectId` | `string` | Yes | Your project ID (slug) from the dashboard |
+| `url` | `string` | No | Backend base URL. Defaults to `https://api.atelerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
+| `debugMode` | `boolean` | No | Print SDK request/response logs to the console (default: `false`) |
+| `enableCrashReporting` | `boolean` | No | Install the automatic crash handler (default: `true`) — see [Error Tracking](/frameworks/react/error-tracking) |
+| `onError` | `(error: unknown) => void` | No | Called if initialization itself fails (e.g. network unreachable) |
+
+## 3. Verify the integration
+
+Use `useLerix()` and throw a test error to confirm everything is working:
+
+```tsx
+import { useLerix } from 'lerix-react';
+
+function MyComponent() {
+  const lerix = useLerix();
+
+  return <button onClick={() => lerix.throwError('Test error')}>Test</button>;
+}
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+
+<Check>
+  You're all set! Continue to [Error Tracking](/frameworks/react/error-tracking) to report custom errors and enable automatic capture, or [Push Notifications](/frameworks/react/push-notifications) to enable push delivery.
+</Check>

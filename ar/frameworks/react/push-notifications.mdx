@@ -1,19 +1,19 @@
 ---
-title: "Angular — الإشعارات"
-description: "أعِدّ تسليم الإشعارات عبر Web Push القياسي (VAPID) لتطبيق Angular الخاص بك — بدون Firebase، بدون OneSignal."
+title: "React — الإشعارات"
+description: "أعِدّ تسليم الإشعارات عبر Web Push القياسي (VAPID) لتطبيق React الخاص بك — بدون Firebase، بدون OneSignal."
 ---
 
 ## مقدمة
 
-يُرسِل Atelerix الإشعارات إلى تطبيقات Angular باستخدام **بروتوكول Web Push
+يُرسِل Atelerix الإشعارات إلى تطبيقات React باستخدام **بروتوكول Web Push
 القياسي (VAPID)** — نفس المعيار المفتوح الذي تطبّقه Chrome وFirefox وEdge
 وSafari الحديث أصلياً. بدون مشروع Firebase، بدون حساب OneSignal — يُنشئ
 Atelerix زوج المفاتيح ويديره نيابةً عنك. بعد إتمام
-[تثبيت Angular](/ar/frameworks/angular/installation)، اتّبع الخطوات أدناه
+[تثبيت React](/ar/frameworks/react/installation)، اتّبع الخطوات أدناه
 لتفعيل تسليم الإشعارات.
 
 <Note>
-  تأكّد من تسجيل الـ SDK عبر `provideLerix()` قبل إعداد الإشعارات.
+  تأكّد من أن تطبيقك مغلّف بـ `LerixProvider` قبل إعداد الإشعارات.
 </Note>
 
 ## 1. انسخ عامل الخدمة (service worker)
@@ -34,30 +34,31 @@ cp node_modules/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
 
 ## 3. اشترك
 
-```ts
-import { Component, inject } from '@angular/core';
-import { LerixService } from 'lerix';
+```tsx
+import { useEffect } from 'react';
+import { useLerixNotifications } from 'lerix-react';
 
-@Component({ ... })
-export class MyComponent {
-  private readonly lerix = inject(LerixService);
+function MyComponent() {
+  const notifications = useLerixNotifications();
 
-  constructor() {
-    this.lerix.notifications.setOnNotificationReceived((payload) => {
+  useEffect(() => {
+    notifications.setOnNotificationReceived((payload) => {
       // يُستدعى أثناء فتح التبويب.
       console.log(payload.title, payload.body);
     });
 
-    this.lerix.notifications.setOnNotificationTapped((payload) => {
+    notifications.setOnNotificationTapped((payload) => {
       // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح
       // الصفحة من تبويب مُغلَق تماماً.
       const screen = payload.metadata['screen'];
     });
-  }
+  }, []);
 
-  async enablePush() {
-    const subscribed = await this.lerix.notifications.subscribe();
-  }
+  const enablePush = async () => {
+    const subscribed = await notifications.subscribe();
+  };
+
+  return <button onClick={enablePush}>Enable notifications</button>;
 }
 ```
 
@@ -67,7 +68,7 @@ export class MyComponent {
 
 ## البيانات (Payload) المُستلَمة مع الإشعار
 
-يستقبل كل من الدالتين كائناً من نوع `LerixNotificationPayload`:
+يستقبل كلتا الدالتين كائناً من نوع `LerixNotificationPayload`:
 
 ```ts
 interface LerixNotificationPayload {
@@ -87,8 +88,8 @@ interface LerixNotificationPayload {
 | `getDeviceToken()` | كائن `PushSubscription` الأصلي، مُحوَّل إلى نص | نادراً ما تحتاجه مباشرة؛ للتشخيص فقط |
 | `getDeviceId()` | معرّف مُولَّد محلياً، لا علاقة له بالباك إند الخاص بـ Atelerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
 
-```ts
-const tokenId = this.lerix.notifications.getRegisteredTokenId();
+```tsx
+const tokenId = notifications.getRegisteredTokenId();
 ```
 
 ترجع الدوال الثلاث جميعها `null` حتى تكتمل `subscribe()` مرة واحدة على الأقل.
@@ -108,8 +109,8 @@ const tokenId = this.lerix.notifications.getRegisteredTokenId();
 }
 ```
 
-```ts
-this.lerix.notifications.setOnNotificationTapped((payload) => {
+```tsx
+notifications.setOnNotificationTapped((payload) => {
   const chatId = payload.metadata['chatId'];
 });
 ```
@@ -136,9 +137,9 @@ this.lerix.notifications.setOnNotificationTapped((payload) => {
 أيضاً عرض المواضيع وإنشاءها وحذفها من تبويب **الإشعارات ← المواضيع** في
 لوحة التحكم.
 
-```ts
-await this.lerix.notifications.subscribeToTopic('promotions');
-await this.lerix.notifications.unsubscribeFromTopic('promotions');
+```tsx
+await notifications.subscribeToTopic('promotions');
+await notifications.unsubscribeFromTopic('promotions');
 ```
 
 للإرسال إلى موضوع، استخدم تبويب **إرسال إشعار** في لوحة التحكم (اختر

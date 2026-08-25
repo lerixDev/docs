@@ -10,10 +10,10 @@ description: "أضف Lerix إلى تطبيق Angular الخاص بك في خطو
 <Note>
   هذه مكتبة Angular مخصّصة — خدمة `LerixService` قابلة للحقن (injectable)،
   ودالة `provideLerix()` لملف `app.config.ts` الخاص بك، وتكامل مع
-  `ErrorHandler` الخاص بـ Angular. إذا لم تكن بحاجة لتكامل خاص بـ Angular،
-  تعمل أيضاً الحزمة المستقلة عن أي إطار عمل
-  [`lerix_web_notification`](/ar/frameworks/web/push-notifications)، لكن
-  بدون الالتقاط التلقائي لأخطاء Angular الذي توفّره هذه الحزمة.
+  `ErrorHandler` الخاص بـ Angular — مبنية فوق `lerix-core`، المحرّك المستقل
+  عن أي إطار عمل والمشترك بين كل حزم Lerix للويب. تبني تطبيق React بدلاً
+  من ذلك؟ راجع [حزمة React](/ar/frameworks/react/installation). إذا كنت لا
+  تستخدم Angular ولا React، تعمل `lerix-core` مباشرة أيضاً.
 </Note>
 
 ## 1. أضف الاعتمادية (Dependency)

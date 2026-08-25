@@ -81,6 +81,15 @@
                 ]
               },
               {
+                "group": "React SDK",
+                "icon": "react",
+                "pages": [
+                  "frameworks/react/installation",
+                  "frameworks/react/push-notifications",
+                  "frameworks/react/error-tracking"
+                ]
+              },
+              {
                 "group": "Web SDK",
                 "icon": "js",
                 "pages": [
@@ -184,6 +193,15 @@
                   "ar/frameworks/angular/installation",
                   "ar/frameworks/angular/push-notifications",
                   "ar/frameworks/angular/error-tracking"
+                ]
+              },
+              {
+                "group": "React SDK",
+                "icon": "react",
+                "pages": [
+                  "ar/frameworks/react/installation",
+                  "ar/frameworks/react/push-notifications",
+                  "ar/frameworks/react/error-tracking"
                 ]
               },
               {
