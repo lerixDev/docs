@@ -45,55 +45,103 @@
             "icon": "code",
             "pages": [
               {
-                "group": "Flutter SDK",
-                "icon": "flutter",
+                "group": "Mobile",
+                "icon": "mobile",
                 "pages": [
-                  "frameworks/flutter/installation",
-                  "frameworks/flutter/push-notifications",
-                  "frameworks/flutter/error-tracking"
+                  {
+                    "group": "Swift (iOS)",
+                    "icon": "swift",
+                    "pages": [
+                      "frameworks/ios/installation",
+                      "frameworks/ios/push-notifications",
+                      "frameworks/ios/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Kotlin (Android)",
+                    "icon": "android",
+                    "pages": [
+                      "frameworks/android/installation",
+                      "frameworks/android/push-notifications",
+                      "frameworks/android/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Flutter",
+                    "icon": "flutter",
+                    "pages": [
+                      "frameworks/flutter/installation",
+                      "frameworks/flutter/push-notifications",
+                      "frameworks/flutter/error-tracking"
+                    ]
+                  }
                 ]
               },
               {
-                "group": "iOS SDK",
-                "icon": "swift",
+                "group": "Web",
+                "icon": "globe",
                 "pages": [
-                  "frameworks/ios/installation",
-                  "frameworks/ios/push-notifications",
-                  "frameworks/ios/error-tracking"
+                  {
+                    "group": "React",
+                    "icon": "react",
+                    "pages": [
+                      "frameworks/react/installation",
+                      "frameworks/react/push-notifications",
+                      "frameworks/react/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Next.js",
+                    "icon": "n",
+                    "pages": [
+                      "frameworks/nextjs/installation",
+                      "frameworks/nextjs/push-notifications",
+                      "frameworks/nextjs/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Angular",
+                    "icon": "angular",
+                    "pages": [
+                      "frameworks/angular/installation",
+                      "frameworks/angular/push-notifications",
+                      "frameworks/angular/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Web (JS)",
+                    "icon": "js",
+                    "pages": [
+                      "frameworks/web/push-notifications"
+                    ]
+                  }
                 ]
               },
               {
-                "group": "Android SDK",
-                "icon": "android",
+                "group": "Backend",
+                "icon": "server",
                 "pages": [
-                  "frameworks/android/installation",
-                  "frameworks/android/push-notifications",
-                  "frameworks/android/error-tracking"
-                ]
-              },
-              {
-                "group": "Angular SDK",
-                "icon": "angular",
-                "pages": [
-                  "frameworks/angular/installation",
-                  "frameworks/angular/push-notifications",
-                  "frameworks/angular/error-tracking"
-                ]
-              },
-              {
-                "group": "React SDK",
-                "icon": "react",
-                "pages": [
-                  "frameworks/react/installation",
-                  "frameworks/react/push-notifications",
-                  "frameworks/react/error-tracking"
-                ]
-              },
-              {
-                "group": "Web SDK",
-                "icon": "js",
-                "pages": [
-                  "frameworks/web/push-notifications"
+                  {
+                    "group": "NestJS",
+                    "icon": "n",
+                    "pages": [
+                      "frameworks/nestjs/installation"
+                    ]
+                  },
+                  {
+                    "group": "ASP.NET",
+                    "icon": "microsoft",
+                    "pages": [
+                      "frameworks/aspnet/installation"
+                    ]
+                  },
+                  {
+                    "group": "Laravel",
+                    "icon": "laravel",
+                    "pages": [
+                      "frameworks/laravel/installation"
+                    ]
+                  }
                 ]
               }
             ]
@@ -160,55 +208,103 @@
             "icon": "code",
             "pages": [
               {
-                "group": "Flutter SDK",
-                "icon": "flutter",
+                "group": "الجوال",
+                "icon": "mobile",
                 "pages": [
-                  "ar/frameworks/flutter/installation",
-                  "ar/frameworks/flutter/push-notifications",
-                  "ar/frameworks/flutter/error-tracking"
+                  {
+                    "group": "Swift (iOS)",
+                    "icon": "swift",
+                    "pages": [
+                      "ar/frameworks/ios/installation",
+                      "ar/frameworks/ios/push-notifications",
+                      "ar/frameworks/ios/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Kotlin (Android)",
+                    "icon": "android",
+                    "pages": [
+                      "ar/frameworks/android/installation",
+                      "ar/frameworks/android/push-notifications",
+                      "ar/frameworks/android/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Flutter",
+                    "icon": "flutter",
+                    "pages": [
+                      "ar/frameworks/flutter/installation",
+                      "ar/frameworks/flutter/push-notifications",
+                      "ar/frameworks/flutter/error-tracking"
+                    ]
+                  }
                 ]
               },
               {
-                "group": "iOS SDK",
-                "icon": "swift",
+                "group": "الويب",
+                "icon": "globe",
                 "pages": [
-                  "ar/frameworks/ios/installation",
-                  "ar/frameworks/ios/push-notifications",
-                  "ar/frameworks/ios/error-tracking"
+                  {
+                    "group": "React",
+                    "icon": "react",
+                    "pages": [
+                      "ar/frameworks/react/installation",
+                      "ar/frameworks/react/push-notifications",
+                      "ar/frameworks/react/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Next.js",
+                    "icon": "n",
+                    "pages": [
+                      "ar/frameworks/nextjs/installation",
+                      "ar/frameworks/nextjs/push-notifications",
+                      "ar/frameworks/nextjs/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Angular",
+                    "icon": "angular",
+                    "pages": [
+                      "ar/frameworks/angular/installation",
+                      "ar/frameworks/angular/push-notifications",
+                      "ar/frameworks/angular/error-tracking"
+                    ]
+                  },
+                  {
+                    "group": "Web (JS)",
+                    "icon": "js",
+                    "pages": [
+                      "ar/frameworks/web/push-notifications"
+                    ]
+                  }
                 ]
               },
               {
-                "group": "Android SDK",
-                "icon": "android",
+                "group": "الخادم",
+                "icon": "server",
                 "pages": [
-                  "ar/frameworks/android/installation",
-                  "ar/frameworks/android/push-notifications",
-                  "ar/frameworks/android/error-tracking"
-                ]
-              },
-              {
-                "group": "Angular SDK",
-                "icon": "angular",
-                "pages": [
-                  "ar/frameworks/angular/installation",
-                  "ar/frameworks/angular/push-notifications",
-                  "ar/frameworks/angular/error-tracking"
-                ]
-              },
-              {
-                "group": "React SDK",
-                "icon": "react",
-                "pages": [
-                  "ar/frameworks/react/installation",
-                  "ar/frameworks/react/push-notifications",
-                  "ar/frameworks/react/error-tracking"
-                ]
-              },
-              {
-                "group": "Web SDK",
-                "icon": "js",
-                "pages": [
-                  "ar/frameworks/web/push-notifications"
+                  {
+                    "group": "NestJS",
+                    "icon": "n",
+                    "pages": [
+                      "ar/frameworks/nestjs/installation"
+                    ]
+                  },
+                  {
+                    "group": "ASP.NET",
+                    "icon": "microsoft",
+                    "pages": [
+                      "ar/frameworks/aspnet/installation"
+                    ]
+                  },
+                  {
+                    "group": "Laravel",
+                    "icon": "laravel",
+                    "pages": [
+                      "ar/frameworks/laravel/installation"
+                    ]
+                  }
                 ]
               }
             ]

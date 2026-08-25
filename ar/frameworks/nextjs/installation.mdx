@@ -1,0 +1,100 @@
+---
+title: "Next.js — التثبيت"
+description: "أضف Lerix إلى تطبيق Next.js الخاص بك في خطوات قليلة."
+---
+
+## المتطلبات
+
+- Next.js 13+‎ (App Router أو Pages Router)
+- React 18+‎
+
+<Note>
+  هذه مكتبة Next.js مخصّصة — `LerixNextProvider` مُعلَّم مسبقاً بـ
+  `'use client'`، بالإضافة إلى نفس `LerixErrorBoundary` والخطّافين (hooks)
+  `useLerix()`/`useLerixNotifications()` المستخدَمين في
+  [حزمة React](/ar/frameworks/react/installation)، مبنية فوق `lerix-core`.
+  إذا كنت تستخدم React عادية (وليس Next.js)، استخدم `lerix-react` مباشرة
+  بدلاً من ذلك.
+</Note>
+
+## 1. أضف الاعتمادية (Dependency)
+
+```bash
+npm install lerix-nextjs
+```
+
+## 2. اضبط مفتاح API ومعرّف المشروع
+
+أضف إلى `.env.local`:
+
+```bash .env.local
+NEXT_PUBLIC_LERIX_API_KEY=your-api-key
+NEXT_PUBLIC_LERIX_PROJECT_ID=your-project-id
+```
+
+يجب أن تبدأ هذه المتغيّرات بـ `NEXT_PUBLIC_` — هذا هو تقليد Next.js
+الخاص بمتغيّرات البيئة المكشوفة لكود الجانب العميل (client)، وهو مطلوب
+هنا لأن الـ SDK يسجّل ويُبلّغ من المتصفح.
+
+<Note>
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Lerix](https://app.lerix.dev) ضمن **إعدادات المشروع (Project Settings)**.
+</Note>
+
+## 3. سجّل الـ SDK
+
+غلّف تخطيطك الجذري (root layout) بـ `LerixNextProvider` وَ `LerixErrorBoundary`:
+
+```tsx app/layout.tsx
+import { LerixErrorBoundary, LerixNextProvider } from 'lerix-nextjs';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <LerixNextProvider>
+          <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
+            {children}
+          </LerixErrorBoundary>
+        </LerixNextProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+بالنسبة لـ **Pages Router**، افعل الشيء نفسه في `pages/_app.tsx` بدلاً من ذلك.
+
+يبقى `layout.tsx` نفسه مكوّن خادم (Server Component) — `LerixNextProvider`
+وَ `LerixErrorBoundary` مُعلَّمان داخلياً بـ `'use client'` مسبقاً، لذا فإن
+تغليفهما حول `children` لا يجبر شجرتك بأكملها على أن تصبح جانب عميل فقط.
+
+يقرأ `LerixNextProvider` قيمتي `NEXT_PUBLIC_LERIX_API_KEY`/`NEXT_PUBLIC_LERIX_PROJECT_ID`
+تلقائياً — مرّر خاصية `options` صراحةً فقط إذا أردت تجاوزهما:
+
+### المعاملات (Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `options.apiKey` | `string` | لا | يتجاوز `NEXT_PUBLIC_LERIX_API_KEY` |
+| `options.projectId` | `string` | لا | يتجاوز `NEXT_PUBLIC_LERIX_PROJECT_ID` |
+| `options.url` | `string` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.lerix.dev/v1` |
+| `options.debugMode` | `boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
+| `options.enableCrashReporting` | `boolean` | لا | تثبيت معالج الأخطاء التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/nextjs/error-tracking) |
+
+## 4. تحقّق من التكامل
+
+```tsx
+'use client';
+import { useLerix } from 'lerix-nextjs';
+
+export function MyComponent() {
+  const lerix = useLerix();
+  return <button onClick={() => lerix.throwError('Test error')}>Test</button>;
+}
+```
+
+ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<Check>
+  كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/nextjs/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الالتقاط التلقائي، أو إلى [الإشعارات](/ar/frameworks/nextjs/push-notifications) لتفعيل الإشعارات.
+</Check>

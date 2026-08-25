@@ -1,0 +1,152 @@
+---
+title: "Next.js — Push Notifications"
+description: "Configure standard Web Push (VAPID) delivery for your Next.js app — no Firebase, no OneSignal required."
+---
+
+## Introduction
+
+Lerix delivers push notifications to Next.js apps using the standard
+**Web Push protocol (VAPID)** — the same open standard Chrome, Firefox,
+Edge, and modern Safari all implement natively. No Firebase project, no
+OneSignal account — Lerix generates and manages the key pair for you.
+After you complete the [Next.js installation](/frameworks/nextjs/installation),
+follow the steps below to enable push delivery.
+
+<Note>
+  Make sure your app is wrapped in `LerixNextProvider` before configuring push notifications.
+</Note>
+
+## 1. Copy the service worker
+
+Web Push requires a service worker file served from your app's own origin —
+a package can't add this file to your app automatically. Copy it into your
+`public` folder so it's reachable at your site's root:
+
+```bash
+cp node_modules/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
+```
+
+## 2. Generate a Web Push key
+
+From the dashboard: **Notifications → Settings → Web Push → Generate keys**.
+This is a one-click step — Lerix generates and stores the VAPID key pair
+for the project; there's nothing to copy into your code.
+
+## 3. Subscribe
+
+```tsx
+'use client';
+import { useEffect } from 'react';
+import { useLerixNotifications } from 'lerix-nextjs';
+
+export function MyComponent() {
+  const notifications = useLerixNotifications();
+
+  useEffect(() => {
+    notifications.setOnNotificationReceived((payload) => {
+      // Fired while a tab is open.
+      console.log(payload.title, payload.body);
+    });
+
+    notifications.setOnNotificationTapped((payload) => {
+      // Fired when the user clicks the notification — including one that
+      // opened the page from a fully closed tab.
+      const screen = payload.metadata['screen'];
+    });
+  }, []);
+
+  const enablePush = async () => {
+    const subscribed = await notifications.subscribe();
+  };
+
+  return <button onClick={enablePush}>Enable notifications</button>;
+}
+```
+
+`subscribe()` prompts for notification permission, registers the service
+worker, subscribes this browser to push, and registers the subscription
+with the backend — one call for the whole flow.
+
+## The notification payload
+
+Both callbacks receive a `LerixNotificationPayload`:
+
+```ts
+interface LerixNotificationPayload {
+  notificationId: string | null;
+  title: string | null;
+  body: string | null;
+  metadata: Record<string, unknown>;
+  imageUrl: string | null;
+}
+```
+
+## Device identifiers
+
+| Method | Returns | Use it for |
+|---|---|---|
+| `getRegisteredTokenId()` | Lerix's own id for this registered device | The value for the dashboard's/REST API's device-targeting field |
+| `getDeviceToken()` | The raw `PushSubscription`, stringified | Rarely needed directly; diagnostics only |
+| `getDeviceId()` | A locally generated identifier, unrelated to Lerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
+
+```tsx
+const tokenId = notifications.getRegisteredTokenId();
+```
+
+All three return `null` until `subscribe()` has completed at least once.
+
+## Sending metadata
+
+Attach arbitrary custom data with `metadata` (a JSON object) when sending —
+from the dashboard's **Send notification** tab, or the REST API's
+[`metadata` parameter](/api-reference/push-notifications). It's delivered
+back to the page inside `payload.metadata`:
+
+```json
+{
+  "title": "New message from John",
+  "body": "Hey, are you free later?",
+  "metadata": { "chatId": "456", "screen": "chat" }
+}
+```
+
+```tsx
+notifications.setOnNotificationTapped((payload) => {
+  const chatId = payload.metadata['chatId'];
+});
+```
+
+## Sending an image
+
+Set `imageUrl` when sending — from the dashboard's **Send notification**
+tab, or the REST API's [`imageUrl` parameter](/api-reference/push-notifications).
+This works automatically with no extra setup: the service worker renders
+it directly as the notification's icon/image.
+
+<Note>
+  **Custom sound is not supported for web push.** The Web Notifications API
+  doesn't expose a way to set a custom notification sound across browsers,
+  so the dashboard/API's `sound` parameter is ignored for browser
+  recipients — it only applies to iOS and Android.
+</Note>
+
+## Topics
+
+Instead of targeting specific device tokens, a device can subscribe to a
+named topic — send one notification to the topic and every subscriber
+receives it. A topic doesn't need to be created ahead of time; it's created
+automatically the first time any device subscribes to it. You can also
+view, create, and delete topics from the **Notifications → Topics** tab in
+the dashboard.
+
+```tsx
+await notifications.subscribeToTopic('promotions');
+await notifications.unsubscribeFromTopic('promotions');
+```
+
+To send to a topic, use the dashboard's **Send notification** tab (select "Topic" as the audience), or call the [REST API](/api-reference/push-notifications) with `sendByTopic: true`.
+
+## Browser support
+
+Chrome, Firefox, and Edge support Web Push fully. Safari requires macOS 13+
+or iOS 16.4+ — older Safari doesn't support the standard at all.

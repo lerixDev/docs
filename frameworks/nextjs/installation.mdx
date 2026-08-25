@@ -1,0 +1,100 @@
+---
+title: "Next.js — Installation"
+description: "Add Lerix to your Next.js app in a few steps."
+---
+
+## Requirements
+
+- Next.js 13+ (App Router or Pages Router)
+- React 18+
+
+<Note>
+  This is a dedicated Next.js library — a `LerixNextProvider` pre-marked
+  `'use client'`, plus the same `LerixErrorBoundary` and
+  `useLerix()`/`useLerixNotifications()` hooks the [React SDK](/frameworks/react/installation)
+  uses, built on `lerix-core`. If you're using plain React (not Next.js),
+  use `lerix-react` directly instead.
+</Note>
+
+## 1. Add the dependency
+
+```bash
+npm install lerix-nextjs
+```
+
+## 2. Configure your API key and project ID
+
+Add to `.env.local`:
+
+```bash .env.local
+NEXT_PUBLIC_LERIX_API_KEY=your-api-key
+NEXT_PUBLIC_LERIX_PROJECT_ID=your-project-id
+```
+
+These must be prefixed `NEXT_PUBLIC_` — that's Next.js's own convention for
+env vars exposed to client-side code, required here since the SDK
+registers/reports from the browser.
+
+<Note>
+  Find your API key and project ID in the [Lerix Dashboard](https://app.lerix.dev) under **Project Settings**.
+</Note>
+
+## 3. Register the SDK
+
+Wrap your root layout in `LerixNextProvider` and `LerixErrorBoundary`:
+
+```tsx app/layout.tsx
+import { LerixErrorBoundary, LerixNextProvider } from 'lerix-nextjs';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <LerixNextProvider>
+          <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
+            {children}
+          </LerixErrorBoundary>
+        </LerixNextProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+For the **Pages Router**, do the same in `pages/_app.tsx` instead.
+
+`layout.tsx` itself stays a Server Component — `LerixNextProvider` and
+`LerixErrorBoundary` are pre-marked `'use client'` internally, so wrapping
+them around `children` doesn't force your whole tree to become client-only.
+
+`LerixNextProvider` reads `NEXT_PUBLIC_LERIX_API_KEY`/`NEXT_PUBLIC_LERIX_PROJECT_ID`
+automatically — pass an `options` prop explicitly only if you want to
+override them:
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `options.apiKey` | `string` | No | Overrides `NEXT_PUBLIC_LERIX_API_KEY` |
+| `options.projectId` | `string` | No | Overrides `NEXT_PUBLIC_LERIX_PROJECT_ID` |
+| `options.url` | `string` | No | Backend base URL. Defaults to `https://api.lerix.dev/v1` |
+| `options.debugMode` | `boolean` | No | Print SDK request/response logs to the console (default: `false`) |
+| `options.enableCrashReporting` | `boolean` | No | Install the automatic error handler (default: `true`) — see [Error Tracking](/frameworks/nextjs/error-tracking) |
+
+## 4. Verify the integration
+
+```tsx
+'use client';
+import { useLerix } from 'lerix-nextjs';
+
+export function MyComponent() {
+  const lerix = useLerix();
+  return <button onClick={() => lerix.throwError('Test error')}>Test</button>;
+}
+```
+
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
+
+<Check>
+  You're all set! Continue to [Error Tracking](/frameworks/nextjs/error-tracking) to report custom errors and enable automatic capture, or [Push Notifications](/frameworks/nextjs/push-notifications) to enable push delivery.
+</Check>

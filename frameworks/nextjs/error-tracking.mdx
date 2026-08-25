@@ -1,0 +1,137 @@
+---
+title: "Next.js — Error Tracking"
+description: "Report errors and automatically capture uncaught exceptions from your Next.js app to the Lerix dashboard."
+---
+
+## Introduction
+
+Lerix captures errors from your Next.js app so you can debug issues
+faster. After you complete the [Next.js installation](/frameworks/nextjs/installation),
+use `useLerix().throwError()` to send custom errors to your dashboard —
+uncaught errors are captured automatically, with no extra code required.
+
+<Note>
+  Make sure your app is wrapped in `LerixNextProvider` before reporting errors.
+</Note>
+
+## Report an error
+
+```tsx
+'use client';
+import { useLerix, BugSeverity } from 'lerix-nextjs';
+
+export function MyComponent() {
+  const lerix = useLerix();
+
+  const onSomethingFailed = async () => {
+    try {
+      await riskyOperation();
+    } catch (error) {
+      lerix.throwError(
+        String(error),
+        undefined,
+        undefined,
+        BugSeverity.HIGH,
+        { userId: '123', action: 'payment', amount: 100 },
+      );
+    }
+  };
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `issue` | `string` | Yes | Error message or description |
+| `stack` | `string[]` | No | Stack trace frames. If omitted, one is captured automatically from the call site — see [Automatic stack capture](#automatic-stack-capture) below |
+| `type` | `BugType` | No | Bug classification (default: `RUNTIME_ERROR`) |
+| `severity` | `BugSeverity` | No | Severity level (default: `MEDIUM`) |
+| `metadata` | `Record<string, unknown>` | No | Additional context to attach to the report |
+
+### `BugType` values
+
+| Value | Description |
+|-------|-------------|
+| `RUNTIME_ERROR` | An unhandled exception thrown at runtime |
+| `LOGIC_BUG` | Incorrect behavior that doesn't throw |
+| `UI_BUG` | A visual or layout defect |
+| `NETWORK_ERROR` | A failed or malformed network request |
+| `PERFORMANCE` | Slowness, jank, or excessive resource use |
+| `COMPATIBILITY` | Breaks on a specific browser or device |
+| `VALIDATION_ERROR` | Invalid input passed validation it shouldn't have |
+| `SECURITY` | A security-relevant defect |
+| `CRASH` | The app terminated unexpectedly |
+| `UNKNOWN` | None of the above |
+
+### `BugSeverity` values
+
+| Value | Description |
+|-------|-------------|
+| `CRITICAL` | Blocks core functionality or affects all users |
+| `HIGH` | Serious impact, but a workaround exists |
+| `MEDIUM` | Noticeable but limited impact |
+| `LOW` | Minor or cosmetic |
+| `UNKNOWN` | Severity not yet assessed |
+
+## Automatic error capture
+
+`LerixNextProvider` installs error capture two ways, so nothing needs wrapping in a `try`/`catch` for baseline coverage:
+
+- `LerixErrorBoundary` catches errors thrown during rendering — React's error boundary contract only covers the render phase, not event handlers or async code.
+- Global `window.onerror` and `unhandledrejection` listeners catch everything else.
+
+To disable the global listeners (`LerixErrorBoundary` still catches render errors regardless):
+
+```tsx
+<LerixNextProvider options={{ enableCrashReporting: false }}>
+```
+
+### Next.js's own error boundaries
+
+`LerixErrorBoundary` only catches errors below where you place it. For
+errors above that point — most notably in the root layout itself — Next.js
+requires its own file-based error boundaries (`error.tsx`, `global-error.tsx`).
+Call `reportCaughtError` directly inside those instead:
+
+```tsx app/error.tsx
+'use client';
+import { reportCaughtError } from 'lerix-nextjs';
+import { useEffect } from 'react';
+
+export default function Error({ error }: { error: Error }) {
+  useEffect(() => {
+    reportCaughtError(error);
+  }, [error]);
+
+  return <p>Something went wrong.</p>;
+}
+```
+
+## Automatic stack capture
+
+When you call `throwError()` without a `stack` argument, one is captured
+automatically from the call site — you only need to pass one explicitly
+when reporting a caught `Error`'s own stack instead (e.g.
+`error.stack?.split('\n')`).
+
+Either way, every stack frame is resolved from its compiled/bundled
+position back to the original source file and line, using the build's own
+source map — including Turbopack's sectioned source map format. This
+happens automatically; there's nothing to configure.
+
+<Note>
+  Resolution requires a source map to be reachable at the frame's URL —
+  always true in development, and true in production only if your build
+  serves its `.map` files publicly. If your production build keeps source
+  maps private (a common choice), frames fall back to their compiled
+  position rather than failing to report.
+</Note>
+
+### Verify the integration
+
+```tsx
+lerix.throwError('Test error');
+```
+
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds, with a resolved stack trace pointing at this exact line.
