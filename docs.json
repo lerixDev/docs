@@ -72,6 +72,15 @@
                 ]
               },
               {
+                "group": "Angular SDK",
+                "icon": "angular",
+                "pages": [
+                  "frameworks/angular/installation",
+                  "frameworks/angular/push-notifications",
+                  "frameworks/angular/error-tracking"
+                ]
+              },
+              {
                 "group": "Web SDK",
                 "icon": "js",
                 "pages": [
@@ -166,6 +175,15 @@
                   "ar/frameworks/android/installation",
                   "ar/frameworks/android/push-notifications",
                   "ar/frameworks/android/error-tracking"
+                ]
+              },
+              {
+                "group": "Angular SDK",
+                "icon": "angular",
+                "pages": [
+                  "ar/frameworks/angular/installation",
+                  "ar/frameworks/angular/push-notifications",
+                  "ar/frameworks/angular/error-tracking"
                 ]
               },
               {

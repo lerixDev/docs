@@ -1,0 +1,127 @@
+---
+title: "Angular — Error Tracking"
+description: "Report errors and automatically capture uncaught exceptions from your Angular app to the Atelerix dashboard."
+---
+
+## Introduction
+
+Atelerix captures errors from your Angular app so you can debug issues
+faster. After you complete the [Angular installation](/frameworks/angular/installation),
+use `LerixService.throwError()` to send custom errors to your dashboard —
+uncaught errors are captured automatically, with no extra code required.
+
+<Note>
+  Make sure you have registered the SDK with `provideLerix()` before reporting errors.
+</Note>
+
+## Report an error
+
+```ts
+import { Component, inject } from '@angular/core';
+import { LerixService, BugSeverity } from 'lerix';
+
+@Component({ ... })
+export class MyComponent {
+  private readonly lerix = inject(LerixService);
+
+  async onSomethingFailed() {
+    try {
+      await this.riskyOperation();
+    } catch (error) {
+      this.lerix.throwError(
+        String(error),
+        undefined,
+        undefined,
+        BugSeverity.HIGH,
+        { userId: '123', action: 'payment', amount: 100 },
+      );
+    }
+  }
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `issue` | `string` | Yes | Error message or description |
+| `stack` | `string[]` | No | Stack trace frames. If omitted, one is captured automatically from the call site — see [Automatic stack capture](#automatic-stack-capture) below |
+| `type` | `BugType` | No | Bug classification (default: `RUNTIME_ERROR`) |
+| `severity` | `BugSeverity` | No | Severity level (default: `MEDIUM`) |
+| `metadata` | `Record<string, unknown>` | No | Additional context to attach to the report |
+
+### `BugType` values
+
+| Value | Description |
+|-------|-------------|
+| `RUNTIME_ERROR` | An unhandled exception thrown at runtime |
+| `LOGIC_BUG` | Incorrect behavior that doesn't throw |
+| `UI_BUG` | A visual or layout defect |
+| `NETWORK_ERROR` | A failed or malformed network request |
+| `PERFORMANCE` | Slowness, jank, or excessive resource use |
+| `COMPATIBILITY` | Breaks on a specific browser or device |
+| `VALIDATION_ERROR` | Invalid input passed validation it shouldn't have |
+| `SECURITY` | A security-relevant defect |
+| `CRASH` | The app terminated unexpectedly |
+| `UNKNOWN` | None of the above |
+
+### `BugSeverity` values
+
+| Value | Description |
+|-------|-------------|
+| `CRITICAL` | Blocks core functionality or affects all users |
+| `HIGH` | Serious impact, but a workaround exists |
+| `MEDIUM` | Noticeable but limited impact |
+| `LOW` | Minor or cosmetic |
+| `UNKNOWN` | Severity not yet assessed |
+
+## Automatic error capture
+
+`provideLerix()` installs error capture two ways, so nothing needs wrapping in a `try`/`catch` for baseline coverage:
+
+- A custom Angular `ErrorHandler` catches anything thrown inside Angular's zone — template bindings, component lifecycle hooks, RxJS subscriptions.
+- Global `window.onerror` and `unhandledrejection` listeners catch everything else.
+
+Unlike a native mobile crash handler, a browser tab isn't about to
+terminate when one of these fires, so the report is sent immediately rather
+than persisted for the next launch.
+
+To disable both (e.g. if your app already has its own error reporting and you only want manual `throwError` calls):
+
+```ts
+provideLerix({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  enableCrashReporting: false,
+})
+```
+
+## Automatic stack capture
+
+When you call `throwError()` without a `stack` argument, one is captured
+automatically from the call site — you only need to pass one explicitly
+when reporting a caught `Error`'s own stack instead (e.g.
+`error.stack?.split('\n')`).
+
+Either way, every stack frame is resolved from its compiled/bundled
+position (e.g. `main.js:577:15`) back to the original source file and line,
+using the build's own source map — the same mechanism browser DevTools use
+to show you readable stack traces instead of minified bundle positions.
+This happens automatically; there's nothing to configure.
+
+<Note>
+  Resolution requires a source map to be reachable at the frame's URL —
+  always true in development, and true in production only if your build
+  serves its `.map` files publicly. If your production build keeps source
+  maps private (a common choice), frames fall back to their compiled
+  position rather than failing to report — resolution is best-effort and
+  never blocks or delays the report itself.
+</Note>
+
+### Verify the integration
+
+```ts
+this.lerix.throwError('Test error');
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds, with a resolved stack trace pointing at this exact line.

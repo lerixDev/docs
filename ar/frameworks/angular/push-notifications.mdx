@@ -1,0 +1,151 @@
+---
+title: "Angular — الإشعارات"
+description: "أعِدّ تسليم الإشعارات عبر Web Push القياسي (VAPID) لتطبيق Angular الخاص بك — بدون Firebase، بدون OneSignal."
+---
+
+## مقدمة
+
+يُرسِل Atelerix الإشعارات إلى تطبيقات Angular باستخدام **بروتوكول Web Push
+القياسي (VAPID)** — نفس المعيار المفتوح الذي تطبّقه Chrome وFirefox وEdge
+وSafari الحديث أصلياً. بدون مشروع Firebase، بدون حساب OneSignal — يُنشئ
+Atelerix زوج المفاتيح ويديره نيابةً عنك. بعد إتمام
+[تثبيت Angular](/ar/frameworks/angular/installation)، اتّبع الخطوات أدناه
+لتفعيل تسليم الإشعارات.
+
+<Note>
+  تأكّد من تسجيل الـ SDK عبر `provideLerix()` قبل إعداد الإشعارات.
+</Note>
+
+## 1. انسخ عامل الخدمة (service worker)
+
+يتطلّب Web Push ملف عامل خدمة يُقدَّم من نفس أصل تطبيقك — لا يمكن لحزمة
+إضافة هذا الملف إلى تطبيقك تلقائياً. انسخه إلى مجلد `public` الخاص بك
+بحيث يكون متاحاً على جذر موقعك:
+
+```bash
+cp node_modules/lerix/sw/lerix-sw.js your-app/public/lerix-sw.js
+```
+
+## 2. أنشئ مفتاح Web Push
+
+من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**.
+هذه خطوة بنقرة واحدة — يُنشئ Atelerix زوج مفاتيح VAPID ويخزّنه للمشروع؛
+لا حاجة لنسخ أي شيء في كودك.
+
+## 3. اشترك
+
+```ts
+import { Component, inject } from '@angular/core';
+import { LerixService } from 'lerix';
+
+@Component({ ... })
+export class MyComponent {
+  private readonly lerix = inject(LerixService);
+
+  constructor() {
+    this.lerix.notifications.setOnNotificationReceived((payload) => {
+      // يُستدعى أثناء فتح التبويب.
+      console.log(payload.title, payload.body);
+    });
+
+    this.lerix.notifications.setOnNotificationTapped((payload) => {
+      // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح
+      // الصفحة من تبويب مُغلَق تماماً.
+      const screen = payload.metadata['screen'];
+    });
+  }
+
+  async enablePush() {
+    const subscribed = await this.lerix.notifications.subscribe();
+  }
+}
+```
+
+تطلب `subscribe()` إذن الإشعارات، وتسجّل عامل الخدمة، وتشترك في هذا
+المتصفح للإشعارات، وتسجّل الاشتراك لدى الخادم (backend) — استدعاء واحد
+للتدفّق (flow) بأكمله.
+
+## البيانات (Payload) المُستلَمة مع الإشعار
+
+يستقبل كل من الدالتين كائناً من نوع `LerixNotificationPayload`:
+
+```ts
+interface LerixNotificationPayload {
+  notificationId: string | null;
+  title: string | null;
+  body: string | null;
+  metadata: Record<string, unknown>;
+  imageUrl: string | null;
+}
+```
+
+## معرّفات الجهاز
+
+| الدالة | ترجع | استخدمها من أجل |
+|---|---|---|
+| `getRegisteredTokenId()` | معرّف Atelerix الخاص بهذا الجهاز المُسجَّل | القيمة التي تضعها في حقل استهداف الجهاز في لوحة التحكم/REST API |
+| `getDeviceToken()` | كائن `PushSubscription` الأصلي، مُحوَّل إلى نص | نادراً ما تحتاجه مباشرة؛ للتشخيص فقط |
+| `getDeviceId()` | معرّف مُولَّد محلياً، لا علاقة له بالباك إند الخاص بـ Atelerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
+
+```ts
+const tokenId = this.lerix.notifications.getRegisteredTokenId();
+```
+
+ترجع الدوال الثلاث جميعها `null` حتى تكتمل `subscribe()` مرة واحدة على الأقل.
+
+## إرسال بيانات وصفية (Metadata)
+
+أرفق بيانات مخصّصة عبر `metadata` (كائن JSON) عند الإرسال — من تبويب
+**إرسال إشعار** في لوحة التحكم، أو معامل
+[`metadata`](/ar/api-reference/push-notifications) في REST API. تصل هذه
+البيانات إلى الصفحة داخل `payload.metadata`:
+
+```json
+{
+  "title": "New message from John",
+  "body": "Hey, are you free later?",
+  "metadata": { "chatId": "456", "screen": "chat" }
+}
+```
+
+```ts
+this.lerix.notifications.setOnNotificationTapped((payload) => {
+  const chatId = payload.metadata['chatId'];
+});
+```
+
+## إرسال صورة
+
+اضبط `imageUrl` عند الإرسال — من تبويب **إرسال إشعار** في لوحة التحكم، أو
+معامل [`imageUrl`](/ar/api-reference/push-notifications) في REST API. يعمل
+هذا تلقائياً دون أي إعداد إضافي: يعرض عامل الخدمة الصورة مباشرة كأيقونة/صورة
+الإشعار.
+
+<Note>
+  **الصوت المخصّص غير مدعوم في إشعارات الويب.** لا تتيح واجهة Web
+  Notifications API طريقة لضبط صوت إشعار مخصّص عبر المتصفحات، لذا يُتجاهَل
+  معامل `sound` في لوحة التحكم/API بالنسبة للمستقبِلين عبر المتصفح — ينطبق
+  فقط على iOS وAndroid.
+</Note>
+
+## المواضيع (Topics)
+
+بدلاً من استهداف رموز أجهزة محددة، يمكن للجهاز الاشتراك في موضوع (topic)
+باسم معيّن — أرسِل إشعاراً واحداً إلى الموضوع ليصل لكل مشترك فيه. لا حاجة
+لإنشاء الموضوع مسبقاً؛ يُنشأ تلقائياً أول مرة يشترك فيها أي جهاز. يمكنك
+أيضاً عرض المواضيع وإنشاءها وحذفها من تبويب **الإشعارات ← المواضيع** في
+لوحة التحكم.
+
+```ts
+await this.lerix.notifications.subscribeToTopic('promotions');
+await this.lerix.notifications.unsubscribeFromTopic('promotions');
+```
+
+للإرسال إلى موضوع، استخدم تبويب **إرسال إشعار** في لوحة التحكم (اختر
+"Topic" كجمهور مستهدف)، أو استدعِ
+[REST API](/ar/api-reference/push-notifications) مع `sendByTopic: true`.
+
+## دعم المتصفحات
+
+تدعم Chrome وFirefox وEdge خدمة Web Push بشكل كامل. يتطلّب Safari macOS
+13+‎ أو iOS 16.4+‎ — إصدارات Safari الأقدم لا تدعم المعيار إطلاقاً.

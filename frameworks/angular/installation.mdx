@@ -1,0 +1,85 @@
+---
+title: "Angular — Installation"
+description: "Add Lerix to your Angular app in a few steps."
+---
+
+## Requirements
+
+- Angular 19+
+
+<Note>
+  This is a dedicated Angular library — an injectable `LerixService`, a
+  `provideLerix()` function for your `app.config.ts`, and an Angular
+  `ErrorHandler` integration. If you don't need Angular-specific integration,
+  the framework-agnostic [`lerix_web_notification`](/frameworks/web/push-notifications)
+  package also works, but without the automatic Angular error capture this
+  package provides.
+</Note>
+
+## 1. Add the dependency
+
+```bash
+npm install lerix
+```
+
+## 2. Register the SDK
+
+Add `provideLerix()` to your `app.config.ts`:
+
+```ts app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideLerix } from 'lerix';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideLerix({
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      debugMode: true,
+    }),
+  ],
+};
+```
+
+<Note>
+  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+</Note>
+
+Registration with the backend, and the automatic crash handler, run at
+bootstrap — before your app becomes interactive. There's no separate
+`init()` call to make.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `apiKey` | `string` | Yes | Your project API key from the dashboard |
+| `projectId` | `string` | Yes | Your project ID (slug) from the dashboard |
+| `url` | `string` | No | Backend base URL. Defaults to `https://api.atelerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
+| `debugMode` | `boolean` | No | Print SDK request/response logs to the console (default: `false`) |
+| `enableCrashReporting` | `boolean` | No | Install the automatic error handler (default: `true`) — see [Error Tracking](/frameworks/angular/error-tracking) |
+| `onError` | `(error: unknown) => void` | No | Called if initialization itself fails (e.g. network unreachable) |
+
+## 3. Verify the integration
+
+Inject `LerixService` and throw a test error to confirm everything is working:
+
+```ts
+import { Component, inject } from '@angular/core';
+import { LerixService } from 'lerix';
+
+@Component({ ... })
+export class MyComponent {
+  private readonly lerix = inject(LerixService);
+
+  test() {
+    this.lerix.throwError('Test error');
+  }
+}
+```
+
+Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+
+<Check>
+  You're all set! Continue to [Error Tracking](/frameworks/angular/error-tracking) to report custom errors and enable automatic capture, or [Push Notifications](/frameworks/angular/push-notifications) to enable push delivery.
+</Check>

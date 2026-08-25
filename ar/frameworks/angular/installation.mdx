@@ -1,0 +1,85 @@
+---
+title: "Angular — التثبيت"
+description: "أضف Lerix إلى تطبيق Angular الخاص بك في خطوات قليلة."
+---
+
+## المتطلبات
+
+- Angular 19+‎
+
+<Note>
+  هذه مكتبة Angular مخصّصة — خدمة `LerixService` قابلة للحقن (injectable)،
+  ودالة `provideLerix()` لملف `app.config.ts` الخاص بك، وتكامل مع
+  `ErrorHandler` الخاص بـ Angular. إذا لم تكن بحاجة لتكامل خاص بـ Angular،
+  تعمل أيضاً الحزمة المستقلة عن أي إطار عمل
+  [`lerix_web_notification`](/ar/frameworks/web/push-notifications)، لكن
+  بدون الالتقاط التلقائي لأخطاء Angular الذي توفّره هذه الحزمة.
+</Note>
+
+## 1. أضف الاعتمادية (Dependency)
+
+```bash
+npm install lerix
+```
+
+## 2. سجّل الـ SDK
+
+أضف `provideLerix()` إلى ملف `app.config.ts` الخاص بك:
+
+```ts app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideLerix } from 'lerix';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideLerix({
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      debugMode: true,
+    }),
+  ],
+};
+```
+
+<Note>
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+</Note>
+
+يعمل التسجيل مع الخادم (backend)، ومعالج الأعطال التلقائي، عند الإقلاع
+(bootstrap) — قبل أن يصبح تطبيقك تفاعلياً. لا حاجة لاستدعاء `init()`
+منفصل.
+
+### المعاملات (Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `apiKey` | `string` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
+| `projectId` | `string` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
+| `url` | `string` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.atelerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `debugMode` | `boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
+| `enableCrashReporting` | `boolean` | لا | تثبيت معالج الأخطاء التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/angular/error-tracking) |
+| `onError` | `(error: unknown) => void` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
+
+## 3. تحقّق من التكامل
+
+احقن `LerixService` وأرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
+
+```ts
+import { Component, inject } from '@angular/core';
+import { LerixService } from 'lerix';
+
+@Component({ ... })
+export class MyComponent {
+  private readonly lerix = inject(LerixService);
+
+  test() {
+    this.lerix.throwError('Test error');
+  }
+}
+```
+
+ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<Check>
+  كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/angular/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الالتقاط التلقائي، أو إلى [الإشعارات](/ar/frameworks/angular/push-notifications) لتفعيل الإشعارات.
+</Check>
