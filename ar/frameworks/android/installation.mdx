@@ -64,7 +64,7 @@ class MyApplication : Application() {
 ```
 
 <Note>
-  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Lerix](https://app.lerix.dev) ضمن **إعدادات المشروع (Project Settings)**.
 </Note>
 
 ### المعاملات (Parameters)
@@ -74,7 +74,7 @@ class MyApplication : Application() {
 | `context` | `Context` | نعم | أي سياق تطبيق أو نشاط (Activity) |
 | `apiKey` | `String` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
 | `projectId` | `String` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
-| `url` | `String` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.atelerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `url` | `String` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.lerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
 | `debugMode` | `Boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في Logcat (الافتراضي: `false`) |
 | `enableCrashReporting` | `Boolean` | لا | تثبيت معالج الأعطال التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/android/error-tracking) |
 | `onError` | `((Throwable) -> Unit)?` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
@@ -87,7 +87,7 @@ class MyApplication : Application() {
 Lerix.throwError("Test error")
 ```
 
-ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
 
 <Check>
   كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/android/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الإبلاغ التلقائي عن الأعطال، أو إلى [الإشعارات](/ar/frameworks/android/push-notifications) لتفعيل الإشعارات.

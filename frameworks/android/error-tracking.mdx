@@ -1,11 +1,11 @@
 ---
 title: "Android (Kotlin) — Error Tracking"
-description: "Report errors and automatically capture crashes from your native Android app to the Atelerix dashboard."
+description: "Report errors and automatically capture crashes from your native Android app to the Lerix dashboard."
 ---
 
 ## Introduction
 
-Atelerix captures errors and crashes from your native Android app so you can debug issues faster. After you complete the [Android installation](/frameworks/android/installation), use `Lerix.throwError` to send custom errors or caught exceptions to your dashboard — uncaught crashes are captured automatically, with no extra code required.
+Lerix captures errors and crashes from your native Android app so you can debug issues faster. After you complete the [Android installation](/frameworks/android/installation), use `Lerix.throwError` to send custom errors or caught exceptions to your dashboard — uncaught crashes are captured automatically, with no extra code required.
 
 <Note>
   Make sure you have initialized the SDK with `Lerix.initialize()` before reporting errors.
@@ -13,7 +13,7 @@ Atelerix captures errors and crashes from your native Android app so you can deb
 
 ## Report an error
 
-Use `Lerix.throwError` to manually report an error. This is useful when you catch an exception yourself and want to send it to Atelerix with extra context.
+Use `Lerix.throwError` to manually report an error. This is useful when you catch an exception yourself and want to send it to Lerix with extra context.
 
 ```kotlin
 import com.lerix.sdk.Lerix
@@ -93,4 +93,4 @@ Throw a test error to confirm everything is working:
 Lerix.throwError("Test error")
 ```
 
-Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.

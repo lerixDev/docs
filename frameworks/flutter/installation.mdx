@@ -1,6 +1,6 @@
 ---
 title: "Flutter — Installation"
-description: "Add Atelerix to your Flutter app in a few steps."
+description: "Add Lerix to your Flutter app in a few steps."
 ---
 
 ## Requirements
@@ -34,14 +34,14 @@ flutter pub get
 
 ## 2. Initialize the SDK
 
-Call `Atelerix.init()` as early as possible — ideally at the top of `main()` in `main.dart`. Initialization sets up error monitoring and reporting. It does **not** initialize push notifications; call `Atelerix.notifications.init()` separately when you need that module.
+Call `Lerix.init()` as early as possible — ideally at the top of `main()` in `main.dart`. Initialization sets up error monitoring and reporting. It does **not** initialize push notifications; call `Lerix.notifications.init()` separately when you need that module.
 
 ```dart main.dart
 import 'package:atelerix/atelerix.dart';
 
 void main() {
-  Atelerix.init(
-    url: 'https://api.atelerix.dev',
+  Lerix.init(
+    url: 'https://api.lerix.dev',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () => runApp(const MyApp()),
@@ -50,14 +50,14 @@ void main() {
 ```
 
 <Note>
-  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+  Find your API key and project ID in the [Lerix Dashboard](https://app.lerix.dev) under **Project Settings**.
 </Note>
 
 ### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | `String` | Yes | Your project URL (e.g. `https://api.atelerix.dev`) |
+| `url` | `String` | Yes | Your project URL (e.g. `https://api.lerix.dev`) |
 | `apiKey` | `String` | Yes | Your project API key from the dashboard |
 | `projectId` | `String` | Yes | Your project ID from the dashboard |
 | `builder` | `Function` | Yes | Function that calls `runApp()` to start your app |
@@ -70,8 +70,8 @@ If your `builder` needs async setup before `runApp()`, call `WidgetsFlutterBindi
 
 ```dart main.dart
 void main() {
-  Atelerix.init(
-    url: 'https://api.atelerix.dev',
+  Lerix.init(
+    url: 'https://api.lerix.dev',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () async {
@@ -88,8 +88,8 @@ void main() {
 Set `debugMode: true` during development to print SDK logs to the console:
 
 ```dart main.dart
-Atelerix.init(
-  url: 'https://api.atelerix.dev',
+Lerix.init(
+  url: 'https://api.lerix.dev',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   debugMode: true,
@@ -102,8 +102,8 @@ Atelerix.init(
 Use `onError` to run your own logic when the SDK captures an error — for example, showing a fallback UI or logging to a secondary service:
 
 ```dart main.dart
-Atelerix.init(
-  url: 'https://api.atelerix.dev',
+Lerix.init(
+  url: 'https://api.lerix.dev',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   builder: () => runApp(const MyApp()),
@@ -118,13 +118,13 @@ Atelerix.init(
 Throw a test error to confirm everything is working:
 
 ```dart main.dart
-await Atelerix.throwError(
+await Lerix.throwError(
   Exception('Test error'),
   StackTrace.current,
 );
 ```
 
-Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
 
 <Check>
   You're all set! Continue to [Error Tracking](/frameworks/flutter/error-tracking) to report custom errors, or [Push Notifications](/frameworks/flutter/push-notifications) to enable push delivery.

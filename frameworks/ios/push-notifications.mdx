@@ -5,7 +5,7 @@ description: "Configure Apple Push Notification service (APNs) delivery for your
 
 ## Introduction
 
-Atelerix delivers push notifications on iOS using Apple Push Notification service (APNs) directly — no Firebase required. After you complete the [iOS installation](/frameworks/ios/installation), follow the steps below to enable push delivery in your app.
+Lerix delivers push notifications on iOS using Apple Push Notification service (APNs) directly — no Firebase required. After you complete the [iOS installation](/frameworks/ios/installation), follow the steps below to enable push delivery in your app.
 
 <Note>
   Make sure you have initialized the SDK with `Lerix.initialize()` before configuring push notifications.
@@ -18,8 +18,8 @@ You need an active [Apple Developer account](https://developer.apple.com/program
 1. In the [Apple Developer portal](https://developer.apple.com/account/resources/authkeys/list), go to **Certificates, Identifiers & Profiles → Keys**.
 2. Create a new key with **Apple Push Notifications service (APNs)** enabled.
 3. Download the `.p8` authentication key and note the **Key ID**. You can only download the key once.
-4. Upload the `.p8` file to the Atelerix dashboard, under **Notifications → Settings**.
-5. In **Certificates, Identifiers & Profiles → Identifiers**, make sure your app's own App ID has the **Push Notifications** capability enabled. This is separate from the `.p8` key above and is required even though Atelerix's token-based auth doesn't need a per-app certificate — APNs still rejects pushes to an App ID it has no record of.
+4. Upload the `.p8` file to the Lerix dashboard, under **Notifications → Settings**.
+5. In **Certificates, Identifiers & Profiles → Identifiers**, make sure your app's own App ID has the **Push Notifications** capability enabled. This is separate from the `.p8` key above and is required even though Lerix's token-based auth doesn't need a per-app certificate — APNs still rejects pushes to an App ID it has no record of.
 
 For the full setup steps, see [Apple's guide to registering your app with APNs](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
 
@@ -96,7 +96,7 @@ Register `setOnNotificationTapped` somewhere with access to your navigation stac
 
 ```swift
 public struct LerixNotificationPayload {
-    public let notificationId: String? // this notification's id in Atelerix
+    public let notificationId: String? // this notification's id in Lerix
     public let title: String?
     public let body: String?
     public let imageUrl: String? // whatever you passed as `imageUrl` when sending, if any
@@ -118,9 +118,9 @@ Three different methods return three different things — use the right one for 
 
 | Method | Returns | Use it for |
 |---|---|---|
-| `getRegisteredTokenId()` | Atelerix's own id for this registered device, assigned once `requestPermissions()` succeeds and the token is registered with the backend | The value to put in **device tokens** when sending a notification to this specific device — from the dashboard's **Send notification** tab, or the [REST API](/api-reference/push-notifications) |
-| `getDeviceToken()` | The raw APNs device token (hex-encoded) | Rarely needed directly; useful for diagnostics or if you're calling APNs yourself outside of Atelerix |
-| `getDeviceId()` | The device's `UIDevice.identifierForVendor` — a local iOS system identifier, unrelated to Atelerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
+| `getRegisteredTokenId()` | Lerix's own id for this registered device, assigned once `requestPermissions()` succeeds and the token is registered with the backend | The value to put in **device tokens** when sending a notification to this specific device — from the dashboard's **Send notification** tab, or the [REST API](/api-reference/push-notifications) |
+| `getDeviceToken()` | The raw APNs device token (hex-encoded) | Rarely needed directly; useful for diagnostics or if you're calling APNs yourself outside of Lerix |
+| `getDeviceId()` | The device's `UIDevice.identifierForVendor` — a local iOS system identifier, unrelated to Lerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
 
 ```swift
 let tokenId = Lerix.notifications.getRegisteredTokenId()
@@ -142,7 +142,7 @@ All three return `nil` until notification permission is granted and registration
 
 Set `sound` when sending a notification — from the dashboard's **Send notification** tab, or the REST API's [`sound` parameter](/api-reference/push-notifications) — to play a bundled sound file instead of the device default.
 
-- The file must already ship inside your app's bundle — Atelerix only passes the filename through, it never hosts or uploads sound files.
+- The file must already ship inside your app's bundle — Lerix only passes the filename through, it never hosts or uploads sound files.
 - Pass the filename with its extension, e.g. `sound.mp3` (`.wav`/`.caf` also supported).
 
 No SDK code is required to play the sound — it happens automatically as part of the system notification.

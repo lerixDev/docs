@@ -1,25 +1,25 @@
 ---
 title: "Flutter — Error Tracking"
-description: "Report errors and exceptions from your Flutter app to the Atelerix dashboard."
+description: "Report errors and exceptions from your Flutter app to the Lerix dashboard."
 ---
 
 ## Introduction
 
-Atelerix captures errors and exceptions from your Flutter app so you can debug issues faster. After you complete the [Flutter installation](/frameworks/flutter/installation), use `Atelerix.throwError` to send custom errors or caught exceptions to your dashboard.
+Lerix captures errors and exceptions from your Flutter app so you can debug issues faster. After you complete the [Flutter installation](/frameworks/flutter/installation), use `Lerix.throwError` to send custom errors or caught exceptions to your dashboard.
 
 <Note>
-  Make sure you have initialized the SDK with `Atelerix.init()` before reporting errors.
+  Make sure you have initialized the SDK with `Lerix.init()` before reporting errors.
 </Note>
 
 ## Report an error
 
-Use `Atelerix.throwError` to manually report an error. This is useful when you catch an exception in a `try/catch` block and want to send it to Atelerix with extra context.
+Use `Lerix.throwError` to manually report an error. This is useful when you catch an exception in a `try/catch` block and want to send it to Lerix with extra context.
 
 ```dart main.dart
 try {
   await riskyOperation();
 } catch (e, stack) {
-  await Atelerix.throwError(
+  await Lerix.throwError(
     e,
     stack,
     bugSeverity: BugSeverity.high,
@@ -69,17 +69,17 @@ try {
 
 ### Automatic error capture
 
-Once `Atelerix.init()` has run, uncaught Flutter framework errors (via `FlutterError.onError`) and uncaught Dart errors (via `PlatformDispatcher.instance.onError`) are captured and sent automatically — you don't need to wrap your whole app in a `try`/`catch` to get baseline coverage. `Atelerix.throwError` is for cases you catch yourself and want to add classification or metadata to.
+Once `Lerix.init()` has run, uncaught Flutter framework errors (via `FlutterError.onError`) and uncaught Dart errors (via `PlatformDispatcher.instance.onError`) are captured and sent automatically — you don't need to wrap your whole app in a `try`/`catch` to get baseline coverage. `Lerix.throwError` is for cases you catch yourself and want to add classification or metadata to.
 
 ### Verify the integration
 
 Throw a test error to confirm everything is working:
 
 ```dart main.dart
-await Atelerix.throwError(
+await Lerix.throwError(
   Exception('Test error'),
   StackTrace.current,
 );
 ```
 
-Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.

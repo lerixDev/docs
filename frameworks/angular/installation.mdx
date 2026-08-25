@@ -42,7 +42,7 @@ export const appConfig: ApplicationConfig = {
 ```
 
 <Note>
-  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+  Find your API key and project ID in the [Lerix Dashboard](https://app.lerix.dev) under **Project Settings**.
 </Note>
 
 Registration with the backend, and the automatic crash handler, run at
@@ -55,7 +55,7 @@ bootstrap — before your app becomes interactive. There's no separate
 |-----------|------|----------|-------------|
 | `apiKey` | `string` | Yes | Your project API key from the dashboard |
 | `projectId` | `string` | Yes | Your project ID (slug) from the dashboard |
-| `url` | `string` | No | Backend base URL. Defaults to `https://api.atelerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
+| `url` | `string` | No | Backend base URL. Defaults to `https://api.lerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
 | `debugMode` | `boolean` | No | Print SDK request/response logs to the console (default: `false`) |
 | `enableCrashReporting` | `boolean` | No | Install the automatic error handler (default: `true`) — see [Error Tracking](/frameworks/angular/error-tracking) |
 | `onError` | `(error: unknown) => void` | No | Called if initialization itself fails (e.g. network unreachable) |
@@ -78,7 +78,7 @@ export class MyComponent {
 }
 ```
 
-Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
 
 <Check>
   You're all set! Continue to [Error Tracking](/frameworks/angular/error-tracking) to report custom errors and enable automatic capture, or [Push Notifications](/frameworks/angular/push-notifications) to enable push delivery.

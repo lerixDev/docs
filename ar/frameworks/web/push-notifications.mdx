@@ -1,13 +1,13 @@
 ---
 title: "الويب — الإشعارات"
-description: "إشعارات المتصفح لـ Atelerix — Web Push القياسي (VAPID)، بدون Firebase، بدون OneSignal."
+description: "إشعارات المتصفح لـ Lerix — Web Push القياسي (VAPID)، بدون Firebase، بدون OneSignal."
 ---
 
 ## مقدمة
 
-يُرسِل Atelerix إشعارات الويب باستخدام **بروتوكول Web Push القياسي (VAPID)** —
+يُرسِل Lerix إشعارات الويب باستخدام **بروتوكول Web Push القياسي (VAPID)** —
 نفس المعيار المفتوح الذي تطبّقه Chrome وFirefox وEdge وSafari الحديث أصلياً.
-بدون مشروع Firebase، بدون حساب OneSignal — يُنشئ Atelerix زوج المفاتيح
+بدون مشروع Firebase، بدون حساب OneSignal — يُنشئ Lerix زوج المفاتيح
 ويديره نيابةً عنك.
 
 <Note>
@@ -44,34 +44,34 @@ npm install lerix_web_notification
 ## 3. أنشئ مفتاح Web Push
 
 من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**.
-هذه خطوة بنقرة واحدة — يُنشئ Atelerix زوج مفاتيح VAPID ويخزّنه للمشروع؛
+هذه خطوة بنقرة واحدة — يُنشئ Lerix زوج مفاتيح VAPID ويخزّنه للمشروع؛
 لا حاجة لنسخ أي شيء في كودك.
 
 ## 4. استخدمها
 
 ```ts
-import { Atelerix } from "lerix_web_notification";
+import { Lerix } from "lerix_web_notification";
 
-Atelerix.init({
+Lerix.init({
   apiKey: "your-api-key",
   projectId: "your-project-slug",
 });
 
-await Atelerix.notifications.init();
+await Lerix.notifications.init();
 
-Atelerix.notifications.setOnNotificationReceived((payload) => {
+Lerix.notifications.setOnNotificationReceived((payload) => {
   // يُستدعى أثناء فتح إحدى تبويبات الصفحة.
   console.log(payload.title, payload.body);
 });
 
-Atelerix.notifications.setOnNotificationTapped((payload) => {
+Lerix.notifications.setOnNotificationTapped((payload) => {
   // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح الصفحة
   // من تبويب مغلق تماماً.
   const screen = payload.metadata.screen;
 });
 
 // يطلب الإذن ويشترك هذا المتصفح.
-const deviceId = await Atelerix.notifications.subscribe();
+const deviceId = await Lerix.notifications.subscribe();
 // `deviceId` هو ما تمرره في `deviceTokens` عند إرسال إشعار لهذا المتصفح
 // تحديداً، من لوحة التحكم أو REST API.
 ```
@@ -80,8 +80,8 @@ const deviceId = await Atelerix.notifications.subscribe();
 
 | الدالة | الوصف |
 |---|---|
-| `Atelerix.init(config)` | يهيّئ الـ SDK. استدعِها مرة واحدة. |
-| `Atelerix.notifications.init()` | يسجّل هذا التطبيق/المستخدم لدى الباك إند. استدعِها قبل أي دالة أخرى على `notifications`. |
+| `Lerix.init(config)` | يهيّئ الـ SDK. استدعِها مرة واحدة. |
+| `Lerix.notifications.init()` | يسجّل هذا التطبيق/المستخدم لدى الباك إند. استدعِها قبل أي دالة أخرى على `notifications`. |
 | `requestPermission()` | يطلب إذن الإشعارات. يرجع `true` إذا سُمح به. |
 | `checkPermissionStatus()` | ‎`"granted"`‎، ‎`"denied"`‎، ‎`"default"`‎، أو ‎`"unsupported"`‎. |
 | `subscribe(swPath?)` | يسجّل عامل الخدمة ويشترك في Push. يرجع معرّف الجهاز. |
@@ -91,11 +91,11 @@ const deviceId = await Atelerix.notifications.subscribe();
 
 ## البيانات (Payload) المُستلَمة مع الإشعار
 
-يستقبل كلا الاستدعائين كائناً من نوع `AtelerixNotificationPayload` — بنفس
+يستقبل كلا الاستدعائين كائناً من نوع `LerixNotificationPayload` — بنفس
 الشكل الذي يستخدمه نموذج SDK الخاص بـ Flutter:
 
 ```ts
-interface AtelerixNotificationPayload {
+interface LerixNotificationPayload {
   notificationId: string | null;
   title: string | null;
   body: string | null;
@@ -136,15 +136,15 @@ interface AtelerixNotificationPayload {
 لا تستخدم JS SDK هذا لتطبيق Flutter، حتى لو كان بناء Flutter Web — حزمة
 `atelerix` الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة،
 وتتواصل مباشرةً مع Push API الخاصة بالمتصفح بدون أي اعتماد JS منفصل إطلاقاً.
-نفس استدعاءات `Atelerix.notifications.*`، ونفس شكل `AtelerixNotificationPayload`،
+نفس استدعاءات `Lerix.notifications.*`، ونفس شكل `LerixNotificationPayload`،
 على كل منصة:
 
 ```dart
 import 'package:atelerix/atelerix.dart';
 
 void main() {
-  Atelerix.init(
-    url: 'https://api.atelerix.dev',
+  Lerix.init(
+    url: 'https://api.lerix.dev',
     apiKey: 'your-api-key',
     projectId: 'your-project-slug',
     builder: () => runApp(const MyApp()),
@@ -152,15 +152,15 @@ void main() {
 }
 
 // لاحقاً:
-await Atelerix.notifications.init();
+await Lerix.notifications.init();
 
-Atelerix.notifications.setOnNotificationTapped((payload) {
+Lerix.notifications.setOnNotificationTapped((payload) {
   final screen = payload.metadata['screen'];
 });
 
-final granted = await Atelerix.notifications.requestPermissions();
+final granted = await Lerix.notifications.requestPermissions();
 if (granted) {
-  final deviceId = await Atelerix.notifications.getDeviceId();
+  final deviceId = await Lerix.notifications.getDeviceId();
 }
 ```
 

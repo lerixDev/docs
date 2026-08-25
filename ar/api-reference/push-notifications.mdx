@@ -1,7 +1,7 @@
 ---
 title: "الإشعارات"
-description: "أرسل إشعارات لجهاز واحد أو أكثر عبر REST API الخاص بـ Atelerix."
-api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/send"
+description: "أرسل إشعارات لجهاز واحد أو أكثر عبر REST API الخاص بـ Lerix."
+api: "POST https://api.lerix.dev/v1/{project-id}/notifications/send"
 authMethod: "key"
 playground: "interactive"
 ---
@@ -16,7 +16,7 @@ playground: "interactive"
 ## المعاملات (Parameters)
 
 <ParamField path="project-id" type="string" required placeholder="my-project-id">
-  معرّف مشروعك من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+  معرّف مشروعك من **إعدادات المشروع** في [لوحة التحكم](https://app.lerix.dev).
 </ParamField>
 
 <ParamField body="title" type="string" required placeholder="Hello">
@@ -47,7 +47,7 @@ playground: "interactive"
 
 <ParamField body="sound" type="string" placeholder="sound.mp3">
   اسم صوت إشعار مخصّص. يجب أن يكون الملف نفسه مُرفقاً بالفعل داخل مشروع
-  تطبيقك — يمرّر Atelerix اسم الملف فقط إلى APNs/FCM، ولا يستضيف أو يرفع
+  تطبيقك — يمرّر Lerix اسم الملف فقط إلى APNs/FCM، ولا يستضيف أو يرفع
   ملفات الصوت. اتركه فارغاً لاستخدام صوت الإشعار الافتراضي للجهاز.
 
   **iOS**: اسم ملف الصوت مع امتداده (مثال: `sound.mp3`؛ مدعوم أيضاً

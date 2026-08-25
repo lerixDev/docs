@@ -5,10 +5,10 @@ description: "أعِدّ الإشعارات لأنظمة Android وiOS والو�
 
 ## مقدمة
 
-يُرسِل Atelerix الإشعارات باستخدام الخدمة الأصلية لكل منصة — Firebase Cloud Messaging (FCM) على Android، وApple Push Notification service (APNs) مباشرةً على iOS (بدون الحاجة إلى Firebase)، وWeb Push القياسي (VAPID) على Flutter Web (بدون الحاجة إلى Firebase أو OneSignal هناك أيضاً). حزمة واحدة، وAPI واحد هو `Atelerix.notifications.*`، للمنصات الثلاث. بعد إتمام [تثبيت Flutter](/ar/frameworks/flutter/installation)، اتّبع خطوات كل منصة أدناه لتفعيل تسليم الإشعارات في تطبيقك.
+يُرسِل Lerix الإشعارات باستخدام الخدمة الأصلية لكل منصة — Firebase Cloud Messaging (FCM) على Android، وApple Push Notification service (APNs) مباشرةً على iOS (بدون الحاجة إلى Firebase)، وWeb Push القياسي (VAPID) على Flutter Web (بدون الحاجة إلى Firebase أو OneSignal هناك أيضاً). حزمة واحدة، وAPI واحد هو `Lerix.notifications.*`، للمنصات الثلاث. بعد إتمام [تثبيت Flutter](/ar/frameworks/flutter/installation)، اتّبع خطوات كل منصة أدناه لتفعيل تسليم الإشعارات في تطبيقك.
 
 <Note>
-  تأكّد من تهيئة الـ SDK عبر `Atelerix.init()` قبل إعداد الإشعارات.
+  تأكّد من تهيئة الـ SDK عبر `Lerix.init()` قبل إعداد الإشعارات.
 </Note>
 
 ## إعداد Android
@@ -17,7 +17,7 @@ description: "أعِدّ الإشعارات لأنظمة Android وiOS والو�
 
 1. أنشئ أو افتح تطبيقك في [Firebase Console](https://console.firebase.google.com/).
 2. نزّل ملف `google-services.json` لتطبيق Android الخاص بك.
-3. ارفع الملف إلى لوحة تحكم Atelerix.
+3. ارفع الملف إلى لوحة تحكم Lerix.
 
 لمعرفة خطوات الإعداد الكاملة، راجع [دليل Firebase لإعداد عميل Android](https://firebase.google.com/docs/cloud-messaging/android/client).
 
@@ -30,7 +30,7 @@ description: "أعِدّ الإشعارات لأنظمة Android وiOS والو�
 1. في [بوابة Apple Developer](https://developer.apple.com/account/resources/authkeys/list)، اذهب إلى **Certificates, Identifiers & Profiles → Keys**.
 2. أنشئ مفتاحاً جديداً مع تفعيل **Apple Push Notifications service (APNs)**.
 3. نزّل مفتاح المصادقة `.p8` ولاحظ **Key ID**. يمكنك تنزيل المفتاح مرة واحدة فقط.
-4. ارفع ملف `.p8` إلى لوحة تحكم Atelerix.
+4. ارفع ملف `.p8` إلى لوحة تحكم Lerix.
 
 لمعرفة خطوات الإعداد الكاملة، راجع [دليل Apple لتسجيل تطبيقك لدى APNs](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
 
@@ -61,7 +61,7 @@ override func application(
 Flutter Web مدعوم من نفس حزمة `atelerix` — بدون JS SDK منفصل، وبدون مشروع Firebase. خطوتان فقط بدلاً من إعداد Xcode:
 
 1. **انسخ عامل الخدمة (service worker).** لا يمكن لحزمة Flutter إضافة ملف إلى مجلد `web/` في تطبيقك تلقائياً — انسخ ملف `web_sw/atelerix-sw.js` من حزمة `atelerix` إلى `web/atelerix-sw.js` في تطبيقك، بحيث يُقدَّم من جذر موقعك (مثال: `https://yoursite.com/atelerix-sw.js`).
-2. **أنشئ مفتاح Web Push** من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**. نقرة واحدة — ينشئ Atelerix زوج مفاتيح VAPID ويخزّنه لك؛ لا حاجة لنسخ أي شيء في كودك.
+2. **أنشئ مفتاح Web Push** من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**. نقرة واحدة — ينشئ Lerix زوج مفاتيح VAPID ويخزّنه لك؛ لا حاجة لنسخ أي شيء في كودك.
 
 <Note>
   على الويب، تفعل `requestPermissions()` أكثر مما تفعله على الجوال — راجع [الفروقات بين المنصات على الويب](#الفروقات-بين-المنصات-على-الويب) أدناه.
@@ -79,26 +79,26 @@ Flutter Web مدعوم من نفس حزمة `atelerix` — بدون JS SDK من�
 
 ## كود Flutter
 
-جميع دوال الإشعارات موجودة على `Atelerix.notifications`، وتتطلّب أن يكون `await Atelerix.notifications.init()` قد اكتمل تنفيذه أولاً — يتم التسجيل مع APNs/FCM تلقائياً كجزء من `init()`، لذا لا حاجة لاستدعاء "تسجيل" منفصل في السير الطبيعي للعمل.
+جميع دوال الإشعارات موجودة على `Lerix.notifications`، وتتطلّب أن يكون `await Lerix.notifications.init()` قد اكتمل تنفيذه أولاً — يتم التسجيل مع APNs/FCM تلقائياً كجزء من `init()`، لذا لا حاجة لاستدعاء "تسجيل" منفصل في السير الطبيعي للعمل.
 
 ```dart main.dart
-await Atelerix.notifications.init();
+await Lerix.notifications.init();
 
-final granted = await Atelerix.notifications.requestPermissions();
+final granted = await Lerix.notifications.requestPermissions();
 
-Atelerix.notifications.setOnNotificationReceived((payload) {
+Lerix.notifications.setOnNotificationReceived((payload) {
   // يُستدعى أثناء فتح التطبيق (foreground) — اعرض إشعاراً داخل التطبيق مثلاً.
   debugPrint("Notification received: ${payload.title} — ${payload.body}");
 });
 
-Atelerix.notifications.setOnNotificationTapped((payload) {
+Lerix.notifications.setOnNotificationTapped((payload) {
   // يُستدعى عند ضغط المستخدم على الإشعار — بما في ذلك إشعار فتح التطبيق
   // من حالة إغلاق كامل (راجع الملاحظة أدناه).
   debugPrint("Notification tapped: ${payload.metadata}");
 });
 
-final deviceId = await Atelerix.notifications.getDeviceId();
-final status = await Atelerix.notifications.checkPermissionStatus();
+final deviceId = await Lerix.notifications.getDeviceId();
+final status = await Lerix.notifications.checkPermissionStatus();
 // "authorized", "denied", "notDetermined"
 ```
 
@@ -106,11 +106,11 @@ final status = await Atelerix.notifications.checkPermissionStatus();
 
 ## البيانات (Payload) المُستلَمة مع الإشعار
 
-يستقبل كل من `setOnNotificationReceived` و`setOnNotificationTapped` كائناً من نوع `AtelerixNotificationPayload` — بنفس الشكل على iOS وAndroid والويب، بغضّ النظر عن اختلاف طريقة تسليم كل منصة للإشعار الأصلي:
+يستقبل كل من `setOnNotificationReceived` و`setOnNotificationTapped` كائناً من نوع `LerixNotificationPayload` — بنفس الشكل على iOS وAndroid والويب، بغضّ النظر عن اختلاف طريقة تسليم كل منصة للإشعار الأصلي:
 
 ```dart
-class AtelerixNotificationPayload {
-  String? notificationId; // معرّف هذا الإشعار في Atelerix — نفس المعرّف المستخدم لحالة التسليم وإلغاء الإرسال
+class LerixNotificationPayload {
+  String? notificationId; // معرّف هذا الإشعار في Lerix — نفس المعرّف المستخدم لحالة التسليم وإلغاء الإرسال
   String? title;
   String? body;
   Map<String, dynamic> metadata; // أي بيانات مررتها كـ metadata عند الإرسال
@@ -119,7 +119,7 @@ class AtelerixNotificationPayload {
 ```
 
 ```dart
-Atelerix.notifications.setOnNotificationTapped((payload) {
+Lerix.notifications.setOnNotificationTapped((payload) {
   final screen = payload.metadata['screen'];
   final orderId = payload.metadata['orderId'];
   // انتقل بناءً على payload.metadata، إلخ.
@@ -128,7 +128,7 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
 
 <Note>
   يصل الضغط (tap) بشكل موثوق حتى لو كان هو ما فتح التطبيق من حالة إغلاق كامل —
-  سجّل `setOnNotificationTapped` مباشرة بعد `Atelerix.notifications.init()`،
+  سجّل `setOnNotificationTapped` مباشرة بعد `Lerix.notifications.init()`،
   وأي ضغط حدث قبل انتهاء تشغيل التطبيق يُعاد تشغيله تلقائياً بمجرد تسجيل الدالة.
 </Note>
 
@@ -138,24 +138,24 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
 
 | الدالة | ترجع | استخدمها من أجل |
 |---|---|---|
-| `getDeviceId()` | معرّف Atelerix الخاص بهذا الجهاز، يُخصَّص أول مرة يسجّله `init()` لدى الباك إند | القيمة التي تضعها في `deviceTokens` عند إرسال إشعار لهذا الجهاز تحديداً — من لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
-| `getDeviceToken()` | رمز الدفع (push token) الأصلي للمنصة — رمز جهاز APNs على iOS، ورمز تسجيل FCM على Android. تكون القيمة دائماً `null` على الويب (المكافئ هناك هو كائن `PushSubscription` كامل، وليس "رمزاً" واحداً يستحق العرض) | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs/FCM بنفسك خارج Atelerix |
+| `getDeviceId()` | معرّف Lerix الخاص بهذا الجهاز، يُخصَّص أول مرة يسجّله `init()` لدى الباك إند | القيمة التي تضعها في `deviceTokens` عند إرسال إشعار لهذا الجهاز تحديداً — من لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
+| `getDeviceToken()` | رمز الدفع (push token) الأصلي للمنصة — رمز جهاز APNs على iOS، ورمز تسجيل FCM على Android. تكون القيمة دائماً `null` على الويب (المكافئ هناك هو كائن `PushSubscription` كامل، وليس "رمزاً" واحداً يستحق العرض) | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs/FCM بنفسك خارج Lerix |
 
 ```dart
-final deviceId = await Atelerix.notifications.getDeviceId();
+final deviceId = await Lerix.notifications.getDeviceId();
 print('Send test notifications to: $deviceId');
 
-final token = await Atelerix.notifications.getDeviceToken();
+final token = await Lerix.notifications.getDeviceToken();
 print('Raw platform token: $token');
 ```
 
-كلاهما يرجعان `null` حتى يكتمل التسجيل، وهو ما يتولّاه `Atelerix.notifications.init()` تلقائياً — لا حاجة لاستدعاء منفصل.
+كلاهما يرجعان `null` حتى يكتمل التسجيل، وهو ما يتولّاه `Lerix.notifications.init()` تلقائياً — لا حاجة لاستدعاء منفصل.
 
 ## إرسال صوت مخصّص
 
 اضبط `sound` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`sound`](/ar/api-reference/push-notifications) في REST API — لتشغيل ملف صوت مُرفق بدلاً من صوت الجهاز الافتراضي:
 
-- يجب أن يكون الملف موجوداً بالفعل داخل مشروع تطبيقك — يمرّر Atelerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
+- يجب أن يكون الملف موجوداً بالفعل داخل مشروع تطبيقك — يمرّر Lerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
 - **iOS**: مرّر اسم الملف مع امتداده، مثل `sound.mp3` (مدعوم أيضاً `.wav`/`.caf`).
 - **Android**: مرّر اسم الملف **بدون** امتداد، بحيث يطابق ملفاً تحت `res/raw/` (مثال: `sound` لملف عند `res/raw/sound.mp3`). الصيغ المدعومة: `.wav`، `.mp3`، `.ogg`.
 - **الويب**: غير مدعوم — لا توفّر واجهة Web Notifications طريقة موحّدة عبر المتصفحات لتحديد صوت مخصّص، لذا يُتجاهَل هذا المعامل بالنسبة لمستلمي الويب.
@@ -182,7 +182,7 @@ print('Raw platform token: $token');
 ```
 
 ```dart
-Atelerix.notifications.setOnNotificationTapped((payload) {
+Lerix.notifications.setOnNotificationTapped((payload) {
   final chatId = payload.metadata['chatId'];
   // انتقل إلى شاشة المحادثة، إلخ.
 });
@@ -190,7 +190,7 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
 
 ## إرسال صورة
 
-اضبط `imageUrl` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`imageUrl`](/ar/api-reference/push-notifications) في REST API — لعرض صورة غنية في الإشعار. بخلاف `sound`، هذا رابط `https://` عادي وليس ملفاً مُرفقاً — يقوم Atelerix بتنزيله نيابةً عنك.
+اضبط `imageUrl` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`imageUrl`](/ar/api-reference/push-notifications) في REST API — لعرض صورة غنية في الإشعار. بخلاف `sound`، هذا رابط `https://` عادي وليس ملفاً مُرفقاً — يقوم Lerix بتنزيله نيابةً عنك.
 
 - **Android**: يعمل تلقائياً، بدون إعداد إضافي. تُعرَض الصورة كإشعار من نوع `BigPictureStyle`.
 - **الويب**: يعمل تلقائياً أيضاً، بدون إعداد إضافي — يعرضها عامل الخدمة (service worker) مباشرة كأيقونة/صورة الإشعار.
@@ -208,7 +208,7 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
 
 ## الفروقات بين المنصات على الويب
 
-يستخدم Flutter Web نفس استدعاءات `Atelerix.notifications.*` المستخدمة على الجوال، مع بعض الفروقات الحقيقية التي يجدر معرفتها بدلاً من مفاجأتك بها:
+يستخدم Flutter Web نفس استدعاءات `Lerix.notifications.*` المستخدمة على الجوال، مع بعض الفروقات الحقيقية التي يجدر معرفتها بدلاً من مفاجأتك بها:
 
 - **تفعل `requestPermissions()` أكثر على الويب.** على الجوال، يحدث تسجيل الدفع (push) تلقائياً داخل `init()`، وتُعنى `requestPermissions()` فقط بإذن الإشعارات المرئية. لا يمكن للمتصفح الاشتراك في Push قبل منح الإذن، لذا على الويب، تقوم `requestPermissions()` *أيضاً* بتسجيل اشتراك الدفع الخاص بعامل الخدمة لدى الباك إند بمجرد سماح المستخدم — نفس استدعاء الدالة، لكنه يؤدي مهمّتين.
 - **تُرجع `getSenderId()` القيمة `null` على الويب** — فهي مفهوم خاص بـ Android/FCM فقط (يستخدم Web Push بروتوكول VAPID، وليس Firebase).
@@ -221,9 +221,9 @@ Atelerix.notifications.setOnNotificationTapped((payload) {
 بدلاً من استهداف رموز أجهزة محددة، يمكن للجهاز الاشتراك في موضوع (topic) باسم معيّن — أرسِل إشعاراً واحداً إلى الموضوع ليصل لكل مشترك فيه. لا حاجة لإنشاء الموضوع مسبقاً؛ يُنشأ تلقائياً أول مرة يشترك فيها أي جهاز. يمكنك أيضاً عرض المواضيع وإنشاءها وحذفها من تبويب **الإشعارات ← المواضيع** في لوحة التحكم.
 
 ```dart
-final subscribed = await Atelerix.notifications.subscribeToTopic('promotions');
+final subscribed = await Lerix.notifications.subscribeToTopic('promotions');
 
-await Atelerix.notifications.unsubscribeFromTopic('promotions');
+await Lerix.notifications.unsubscribeFromTopic('promotions');
 ```
 
 للإرسال إلى موضوع، استخدم تبويب **إرسال إشعار** في لوحة التحكم (اختر "Topic" كجمهور مستهدف)، أو استدعِ [REST API](/ar/api-reference/push-notifications) مع `sendByTopic: true`.

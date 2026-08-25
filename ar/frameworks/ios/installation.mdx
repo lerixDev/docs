@@ -49,7 +49,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 ```
 
 <Note>
-  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Lerix](https://app.lerix.dev) ضمن **إعدادات المشروع (Project Settings)**.
 </Note>
 
 إذا كان تطبيقك يستخدم دورة حياة SwiftUI الخاصة بـ `App` بدلاً من `AppDelegate` التقليدي، أرفق واحداً باستخدام `@UIApplicationDelegateAdaptor`:
@@ -71,7 +71,7 @@ struct MyApp: App {
 |-----------|------|----------|-------------|
 | `apiKey` | `String` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
 | `projectId` | `String` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
-| `url` | `String` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.atelerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `url` | `String` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.lerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
 | `debugMode` | `Bool` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
 | `enableCrashReporting` | `Bool` | لا | تثبيت معالج الأعطال التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/ios/error-tracking) |
 | `onError` | `((Error) -> Void)?` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
@@ -84,7 +84,7 @@ struct MyApp: App {
 Lerix.throwError("Test error", stack: Thread.callStackSymbols)
 ```
 
-ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
 
 <Check>
   كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/ios/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الإبلاغ التلقائي عن الأعطال، أو إلى [الإشعارات](/ar/frameworks/ios/push-notifications) لتفعيل الإشعارات.

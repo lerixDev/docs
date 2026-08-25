@@ -5,7 +5,7 @@ description: "أعِدّ تسليم الإشعارات عبر Firebase Cloud Mes
 
 ## مقدمة
 
-يُرسِل Atelerix الإشعارات على Android باستخدام Firebase Cloud Messaging (FCM) — لكن خلافاً لتكامل FCM المعتاد، **لن تحتاج لإضافة ملف `google-services.json` أو إضافة Google Services Gradle plugin إلى تطبيقك**. يسجّل الـ SDK جهازك داخلياً ضمن مشروع Firebase الخاص بـ Atelerix، باستخدام معرّف Sender ID الخاص بمشروعك في Atelerix (يُجلَب تلقائياً من الباك إند). بعد إتمام [تثبيت Android](/ar/frameworks/android/installation)، اتّبع الخطوات أدناه لتفعيل تسليم الإشعارات.
+يُرسِل Lerix الإشعارات على Android باستخدام Firebase Cloud Messaging (FCM) — لكن خلافاً لتكامل FCM المعتاد، **لن تحتاج لإضافة ملف `google-services.json` أو إضافة Google Services Gradle plugin إلى تطبيقك**. يسجّل الـ SDK جهازك داخلياً ضمن مشروع Firebase الخاص بـ Lerix، باستخدام معرّف Sender ID الخاص بمشروعك في Lerix (يُجلَب تلقائياً من الباك إند). بعد إتمام [تثبيت Android](/ar/frameworks/android/installation)، اتّبع الخطوات أدناه لتفعيل تسليم الإشعارات.
 
 <Note>
   تأكّد من تهيئة الـ SDK عبر `Lerix.initialize()` قبل إعداد الإشعارات.
@@ -17,7 +17,7 @@ description: "أعِدّ تسليم الإشعارات عبر Firebase Cloud Mes
 
 1. أنشئ أو افتح تطبيقك في [Firebase Console](https://console.firebase.google.com/).
 2. اذهب إلى **Project Settings → Service Accounts → Generate new private key**.
-3. ارفع ملف JSON الذي تم تنزيله إلى لوحة تحكم Atelerix، ضمن **الإشعارات ← الإعدادات**.
+3. ارفع ملف JSON الذي تم تنزيله إلى لوحة تحكم Lerix، ضمن **الإشعارات ← الإعدادات**.
 
 بمجرد الرفع، تُظهر بطاقة **Android** في **الإشعارات ← الإعدادات** شارة **مُهيَّأ (Configured)** — اضغط عليها مجدداً في أي وقت لمراجعة البيانات أو استبدالها.
 
@@ -68,7 +68,7 @@ val status = Lerix.notifications.checkPermissionStatus()
 
 ```kotlin
 data class LerixNotificationPayload(
-    val notificationId: String?, // معرّف هذا الإشعار في Atelerix
+    val notificationId: String?, // معرّف هذا الإشعار في Lerix
     val title: String?,
     val body: String?,
     val imageUrl: String?, // أي قيمة مررتها كـ imageUrl عند الإرسال، إن وُجدت
@@ -90,9 +90,9 @@ Lerix.notifications.setOnNotificationTapped { payload ->
 
 | الدالة | ترجع | استخدمها من أجل |
 |---|---|---|
-| `getRegisteredTokenId()` | معرّف Atelerix الخاص بهذا الجهاز المُسجَّل، يُخصَّص بمجرد نجاح `requestPermissions()` وتسجيل الرمز لدى الباك إند | القيمة التي تضعها في **رموز الأجهزة** عند إرسال إشعار لهذا الجهاز تحديداً — من تبويب **إرسال إشعار** في لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
-| `getDeviceToken()` | رمز تسجيل FCM الأصلي | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي FCM بنفسك خارج Atelerix |
-| `getDeviceId()` | معرّف `Settings.Secure.ANDROID_ID` — معرّف نظام Android محلي، لا علاقة له بالباك إند الخاص بـ Atelerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
+| `getRegisteredTokenId()` | معرّف Lerix الخاص بهذا الجهاز المُسجَّل، يُخصَّص بمجرد نجاح `requestPermissions()` وتسجيل الرمز لدى الباك إند | القيمة التي تضعها في **رموز الأجهزة** عند إرسال إشعار لهذا الجهاز تحديداً — من تبويب **إرسال إشعار** في لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
+| `getDeviceToken()` | رمز تسجيل FCM الأصلي | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي FCM بنفسك خارج Lerix |
+| `getDeviceId()` | معرّف `Settings.Secure.ANDROID_ID` — معرّف نظام Android محلي، لا علاقة له بالباك إند الخاص بـ Lerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
 
 ```kotlin
 val tokenId = Lerix.notifications.getRegisteredTokenId()
@@ -113,7 +113,7 @@ Log.d("MyApp", "Send test notifications to: $tokenId")
 
 اضبط `sound` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`sound`](/ar/api-reference/push-notifications) في REST API — لتشغيل ملف صوت مُرفق بدلاً من صوت الجهاز الافتراضي.
 
-- يجب أن يكون الملف موجوداً بالفعل داخل تطبيقك تحت `res/raw/` — يمرّر Atelerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
+- يجب أن يكون الملف موجوداً بالفعل داخل تطبيقك تحت `res/raw/` — يمرّر Lerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
 - مرّر اسم الملف **دون** امتداده، مثل `notif` لملف `res/raw/notif.mp3`. الصيغ المدعومة: `.wav`، `.mp3`، `.ogg`.
 
 <Note>

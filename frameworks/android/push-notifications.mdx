@@ -5,7 +5,7 @@ description: "Configure Firebase Cloud Messaging (FCM) delivery for your native 
 
 ## Introduction
 
-Atelerix delivers push notifications on Android using Firebase Cloud Messaging (FCM) — but unlike a typical FCM integration, **you don't add a `google-services.json` file or the Google Services Gradle plugin to your app**. The SDK registers your device against Atelerix's own Firebase project internally, using this Atelerix project's Sender ID (fetched from the backend automatically). After you complete the [Android installation](/frameworks/android/installation), follow the steps below to enable push delivery.
+Lerix delivers push notifications on Android using Firebase Cloud Messaging (FCM) — but unlike a typical FCM integration, **you don't add a `google-services.json` file or the Google Services Gradle plugin to your app**. The SDK registers your device against Lerix's own Firebase project internally, using this Lerix project's Sender ID (fetched from the backend automatically). After you complete the [Android installation](/frameworks/android/installation), follow the steps below to enable push delivery.
 
 <Note>
   Make sure you have initialized the SDK with `Lerix.initialize()` before configuring push notifications.
@@ -17,7 +17,7 @@ For the backend to actually send to your devices, it needs to authenticate as *y
 
 1. Create or open your app in the [Firebase Console](https://console.firebase.google.com/).
 2. Go to **Project Settings → Service Accounts → Generate new private key**.
-3. Upload the downloaded JSON file to the Atelerix dashboard, under **Notifications → Settings**.
+3. Upload the downloaded JSON file to the Lerix dashboard, under **Notifications → Settings**.
 
 Once uploaded, the **Android** card in **Notifications → Settings** shows a **Configured** badge — click it again any time to review it or replace it.
 
@@ -69,7 +69,7 @@ Register `setOnNotificationTapped` somewhere with access to your navigation, sin
 
 ```kotlin
 data class LerixNotificationPayload(
-    val notificationId: String?, // this notification's id in Atelerix
+    val notificationId: String?, // this notification's id in Lerix
     val title: String?,
     val body: String?,
     val imageUrl: String?, // whatever you passed as `imageUrl` when sending, if any
@@ -91,9 +91,9 @@ Three different methods return three different things — use the right one for 
 
 | Method | Returns | Use it for |
 |---|---|---|
-| `getRegisteredTokenId()` | Atelerix's own id for this registered device, assigned once `requestPermissions()` succeeds and the token is registered with the backend | The value to put in **device tokens** when sending a notification to this specific device — from the dashboard's **Send notification** tab, or the [REST API](/api-reference/push-notifications) |
-| `getDeviceToken()` | The raw FCM registration token | Rarely needed directly; useful for diagnostics or if you're calling FCM yourself outside of Atelerix |
-| `getDeviceId()` | `Settings.Secure.ANDROID_ID` — a local Android system identifier, unrelated to Atelerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
+| `getRegisteredTokenId()` | Lerix's own id for this registered device, assigned once `requestPermissions()` succeeds and the token is registered with the backend | The value to put in **device tokens** when sending a notification to this specific device — from the dashboard's **Send notification** tab, or the [REST API](/api-reference/push-notifications) |
+| `getDeviceToken()` | The raw FCM registration token | Rarely needed directly; useful for diagnostics or if you're calling FCM yourself outside of Lerix |
+| `getDeviceId()` | `Settings.Secure.ANDROID_ID` — a local Android system identifier, unrelated to Lerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
 
 ```kotlin
 val tokenId = Lerix.notifications.getRegisteredTokenId()
@@ -115,7 +115,7 @@ All three return `null` until notification permission is granted and registratio
 
 Set `sound` when sending a notification — from the dashboard's **Send notification** tab, or the REST API's [`sound` parameter](/api-reference/push-notifications) — to play a bundled sound file instead of the device default.
 
-- The file must already ship inside your app under `res/raw/` — Atelerix only passes the filename through, it never hosts or uploads sound files.
+- The file must already ship inside your app under `res/raw/` — Lerix only passes the filename through, it never hosts or uploads sound files.
 - Pass the filename **without** its extension, e.g. `notif` for `res/raw/notif.mp3`. Supported formats: `.wav`, `.mp3`, `.ogg`.
 
 <Note>

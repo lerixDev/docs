@@ -47,7 +47,7 @@ createRoot(document.getElementById('root')!).render(
 ```
 
 <Note>
-  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Lerix](https://app.lerix.dev) ضمن **إعدادات المشروع (Project Settings)**.
 </Note>
 
 يعمل التسجيل مع الخادم (backend)، ومعالج الأعطال التلقائي، مرة واحدة عند
@@ -62,7 +62,7 @@ StrictMode أثناء التطوير، لأن التهيئة آمنة عند إ�
 |-----------|------|----------|-------------|
 | `apiKey` | `string` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
 | `projectId` | `string` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
-| `url` | `string` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.atelerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `url` | `string` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.lerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
 | `debugMode` | `boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
 | `enableCrashReporting` | `boolean` | لا | تثبيت معالج الأعطال التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/react/error-tracking) |
 | `onError` | `(error: unknown) => void` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
@@ -81,7 +81,7 @@ function MyComponent() {
 }
 ```
 
-ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
 
 <Check>
   كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/react/error-tracking) لإرسال أخطاء مخصّصة وتفعيل الالتقاط التلقائي، أو إلى [الإشعارات](/ar/frameworks/react/push-notifications) لتفعيل الإشعارات.

@@ -1,7 +1,7 @@
 ---
 title: "Push Notifications"
-description: "Send push notifications to one or more devices through the Atelerix REST API."
-api: "POST https://api.atelerix.dev/v1/{project-id}/notifications/send"
+description: "Send push notifications to one or more devices through the Lerix REST API."
+api: "POST https://api.lerix.dev/v1/{project-id}/notifications/send"
 authMethod: "key"
 playground: "interactive"
 ---
@@ -16,7 +16,7 @@ device subscribed to a topic.
 ## Parameters
 
 <ParamField path="project-id" type="string" required placeholder="my-project-id">
-  Your project ID from **Project Settings** in the [dashboard](https://app.atelerix.com).
+  Your project ID from **Project Settings** in the [dashboard](https://app.lerix.dev).
 </ParamField>
 
 <ParamField body="title" type="string" required placeholder="Hello">
@@ -47,7 +47,7 @@ device subscribed to a topic.
 
 <ParamField body="sound" type="string" placeholder="sound.mp3">
   Name of a custom notification sound. The file itself must already be
-  bundled inside your app project — Atelerix only passes the filename
+  bundled inside your app project — Lerix only passes the filename
   through to APNs/FCM, it doesn't host or upload sound files. Leave empty to
   use the device's default notification sound.
 
@@ -74,7 +74,7 @@ device subscribed to a topic.
 </ParamField>
 
 <ParamField body="imageUrl" type="string" placeholder="https://example.com/image.jpg">
-  URL of an image to show as a rich image in the notification. Atelerix
+  URL of an image to show as a rich image in the notification. Lerix
   downloads it — this is a normal `https://` URL, not a file you need to
   bundle in your app (unlike `sound`).
 

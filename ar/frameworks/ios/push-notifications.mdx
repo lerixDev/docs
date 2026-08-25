@@ -5,7 +5,7 @@ description: "أعِدّ تسليم الإشعارات عبر Apple Push Notific
 
 ## مقدمة
 
-يُرسِل Atelerix الإشعارات على iOS باستخدام Apple Push Notification service (APNs) مباشرةً — بدون الحاجة إلى Firebase. بعد إتمام [تثبيت iOS](/ar/frameworks/ios/installation)، اتّبع الخطوات أدناه لتفعيل تسليم الإشعارات في تطبيقك.
+يُرسِل Lerix الإشعارات على iOS باستخدام Apple Push Notification service (APNs) مباشرةً — بدون الحاجة إلى Firebase. بعد إتمام [تثبيت iOS](/ar/frameworks/ios/installation)، اتّبع الخطوات أدناه لتفعيل تسليم الإشعارات في تطبيقك.
 
 <Note>
   تأكّد من تهيئة الـ SDK عبر `Lerix.initialize()` قبل إعداد الإشعارات.
@@ -18,8 +18,8 @@ description: "أعِدّ تسليم الإشعارات عبر Apple Push Notific
 1. في [بوابة Apple Developer](https://developer.apple.com/account/resources/authkeys/list)، اذهب إلى **Certificates, Identifiers & Profiles → Keys**.
 2. أنشئ مفتاحاً جديداً مع تفعيل **Apple Push Notifications service (APNs)**.
 3. نزّل مفتاح المصادقة `.p8` ولاحظ **Key ID**. يمكنك تنزيل المفتاح مرة واحدة فقط.
-4. ارفع ملف `.p8` إلى لوحة تحكم Atelerix، ضمن **الإشعارات ← الإعدادات**.
-5. في **Certificates, Identifiers & Profiles → Identifiers**، تأكّد من تفعيل خاصية **Push Notifications** على App ID الخاص بتطبيقك. هذا منفصل عن مفتاح `.p8` أعلاه ومطلوب رغم أن مصادقة Atelerix المعتمدة على الرمز (token-based) لا تحتاج شهادة لكل تطبيق — إذ ترفض APNs الإشعارات الموجّهة لـ App ID لا تملك سجلّاً له.
+4. ارفع ملف `.p8` إلى لوحة تحكم Lerix، ضمن **الإشعارات ← الإعدادات**.
+5. في **Certificates, Identifiers & Profiles → Identifiers**، تأكّد من تفعيل خاصية **Push Notifications** على App ID الخاص بتطبيقك. هذا منفصل عن مفتاح `.p8` أعلاه ومطلوب رغم أن مصادقة Lerix المعتمدة على الرمز (token-based) لا تحتاج شهادة لكل تطبيق — إذ ترفض APNs الإشعارات الموجّهة لـ App ID لا تملك سجلّاً له.
 
 لمعرفة خطوات الإعداد الكاملة، راجع [دليل Apple لتسجيل تطبيقك لدى APNs](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
 
@@ -95,7 +95,7 @@ let status = await Lerix.notifications.checkPermissionStatus()
 
 ```swift
 public struct LerixNotificationPayload {
-    public let notificationId: String? // معرّف هذا الإشعار في Atelerix
+    public let notificationId: String? // معرّف هذا الإشعار في Lerix
     public let title: String?
     public let body: String?
     public let imageUrl: String? // أي قيمة مررتها كـ imageUrl عند الإرسال، إن وُجدت
@@ -117,9 +117,9 @@ Lerix.notifications.setOnNotificationTapped { payload in
 
 | الدالة | ترجع | استخدمها من أجل |
 |---|---|---|
-| `getRegisteredTokenId()` | معرّف Atelerix الخاص بهذا الجهاز المُسجَّل، يُخصَّص بمجرد نجاح `requestPermissions()` وتسجيل الرمز لدى الباك إند | القيمة التي تضعها في **رموز الأجهزة** عند إرسال إشعار لهذا الجهاز تحديداً — من تبويب **إرسال إشعار** في لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
-| `getDeviceToken()` | رمز جهاز APNs الأصلي (مُرمَّز بصيغة hex) | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs بنفسك خارج Atelerix |
-| `getDeviceId()` | معرّف `UIDevice.identifierForVendor` الخاص بالجهاز — معرّف نظام iOS محلي، لا علاقة له بالباك إند الخاص بـ Atelerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
+| `getRegisteredTokenId()` | معرّف Lerix الخاص بهذا الجهاز المُسجَّل، يُخصَّص بمجرد نجاح `requestPermissions()` وتسجيل الرمز لدى الباك إند | القيمة التي تضعها في **رموز الأجهزة** عند إرسال إشعار لهذا الجهاز تحديداً — من تبويب **إرسال إشعار** في لوحة التحكم، أو [REST API](/ar/api-reference/push-notifications) |
+| `getDeviceToken()` | رمز جهاز APNs الأصلي (مُرمَّز بصيغة hex) | نادراً ما تحتاجه مباشرة؛ مفيد للتشخيص أو إذا كنت تستدعي APNs بنفسك خارج Lerix |
+| `getDeviceId()` | معرّف `UIDevice.identifierForVendor` الخاص بالجهاز — معرّف نظام iOS محلي، لا علاقة له بالباك إند الخاص بـ Lerix | للتشخيص المحلي فقط؛ **ليس** ما تتوقّعه عملية الإرسال من لوحة التحكم |
 
 ```swift
 let tokenId = Lerix.notifications.getRegisteredTokenId()
@@ -140,7 +140,7 @@ print("Send test notifications to: \(tokenId ?? "not registered yet")")
 
 اضبط `sound` عند إرسال إشعار — من تبويب **إرسال إشعار** في لوحة التحكم، أو معامل [`sound`](/ar/api-reference/push-notifications) في REST API — لتشغيل ملف صوت مُرفق بدلاً من صوت الجهاز الافتراضي.
 
-- يجب أن يكون الملف موجوداً بالفعل داخل حزمة تطبيقك — يمرّر Atelerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
+- يجب أن يكون الملف موجوداً بالفعل داخل حزمة تطبيقك — يمرّر Lerix اسم الملف فقط، ولا يستضيف أو يرفع ملفات الصوت.
 - مرّر اسم الملف مع امتداده، مثل `sound.mp3` (مدعوم أيضاً `.wav`/`.caf`).
 
 لا حاجة لأي كود في الـ SDK لتشغيل الصوت — يعمل تلقائياً كجزء من الإشعار في النظام.

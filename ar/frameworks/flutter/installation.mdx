@@ -1,6 +1,6 @@
 ---
 title: "Flutter — التثبيت"
-description: "أضف Atelerix إلى تطبيق Flutter الخاص بك في خطوات قليلة."
+description: "أضف Lerix إلى تطبيق Flutter الخاص بك في خطوات قليلة."
 ---
 
 ## المتطلبات
@@ -34,14 +34,14 @@ flutter pub get
 
 ## 2. هيّئ الـ SDK
 
-استدعِ `Atelerix.init()` في أقرب وقت ممكن — يُفضّل في بداية `main()` داخل `main.dart`. التهيئة تُعِدّ مراقبة الأخطاء والإبلاغ عنها فقط. هي **لا** تُهيّئ الإشعارات؛ استدعِ `Atelerix.notifications.init()` بشكل منفصل عند الحاجة لتلك الوحدة.
+استدعِ `Lerix.init()` في أقرب وقت ممكن — يُفضّل في بداية `main()` داخل `main.dart`. التهيئة تُعِدّ مراقبة الأخطاء والإبلاغ عنها فقط. هي **لا** تُهيّئ الإشعارات؛ استدعِ `Lerix.notifications.init()` بشكل منفصل عند الحاجة لتلك الوحدة.
 
 ```dart main.dart
 import 'package:atelerix/atelerix.dart';
 
 void main() {
-  Atelerix.init(
-    url: 'https://api.atelerix.dev',
+  Lerix.init(
+    url: 'https://api.lerix.dev',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () => runApp(const MyApp()),
@@ -50,14 +50,14 @@ void main() {
 ```
 
 <Note>
-  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+  ستجد مفتاح الـ API ومعرّف المشروع في [لوحة تحكم Lerix](https://app.lerix.dev) ضمن **إعدادات المشروع (Project Settings)**.
 </Note>
 
 ### المعاملات (Parameters)
 
 | المعامل | النوع | مطلوب | الوصف |
 |-----------|------|----------|-------------|
-| `url` | `String` | نعم | رابط مشروعك (مثال: `https://api.atelerix.dev`) |
+| `url` | `String` | نعم | رابط مشروعك (مثال: `https://api.lerix.dev`) |
 | `apiKey` | `String` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
 | `projectId` | `String` | نعم | معرّف مشروعك من لوحة التحكم |
 | `builder` | `Function` | نعم | دالة تستدعي `runApp()` لبدء تشغيل تطبيقك |
@@ -70,8 +70,8 @@ void main() {
 
 ```dart main.dart
 void main() {
-  Atelerix.init(
-    url: 'https://api.atelerix.dev',
+  Lerix.init(
+    url: 'https://api.lerix.dev',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () async {
@@ -88,8 +88,8 @@ void main() {
 فعّل `debugMode: true` أثناء التطوير لطباعة سجلّات الـ SDK في الـ console:
 
 ```dart main.dart
-Atelerix.init(
-  url: 'https://api.atelerix.dev',
+Lerix.init(
+  url: 'https://api.lerix.dev',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   debugMode: true,
@@ -102,8 +102,8 @@ Atelerix.init(
 استخدم `onError` لتشغيل منطقك الخاص عند التقاط الـ SDK لخطأ — مثلاً لعرض واجهة بديلة أو تسجيله في خدمة أخرى:
 
 ```dart main.dart
-Atelerix.init(
-  url: 'https://api.atelerix.dev',
+Lerix.init(
+  url: 'https://api.lerix.dev',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   builder: () => runApp(const MyApp()),
@@ -118,13 +118,13 @@ Atelerix.init(
 أرسل خطأً تجريبياً للتأكّد من أن كل شيء يعمل:
 
 ```dart main.dart
-await Atelerix.throwError(
+await Lerix.throwError(
   Exception('Test error'),
   StackTrace.current,
 );
 ```
 
-ثم افتح [لوحة التحكم](https://app.atelerix.com) — يجب أن يظهر الخطأ خلال ثوانٍ.
+ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
 
 <Check>
   كل شيء جاهز! تابع إلى [تتبع الأخطاء](/ar/frameworks/flutter/error-tracking) لإرسال أخطاء مخصّصة، أو إلى [الإشعارات](/ar/frameworks/flutter/push-notifications) لتفعيل الإشعارات.

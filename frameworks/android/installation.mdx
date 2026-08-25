@@ -64,7 +64,7 @@ Register the class in your `AndroidManifest.xml`:
 ```
 
 <Note>
-  Find your API key and project ID in the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+  Find your API key and project ID in the [Lerix Dashboard](https://app.lerix.dev) under **Project Settings**.
 </Note>
 
 ### Parameters
@@ -74,7 +74,7 @@ Register the class in your `AndroidManifest.xml`:
 | `context` | `Context` | Yes | Any application/activity context |
 | `apiKey` | `String` | Yes | Your project API key from the dashboard |
 | `projectId` | `String` | Yes | Your project ID (slug) from the dashboard |
-| `url` | `String` | No | Backend base URL. Defaults to `https://api.atelerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
+| `url` | `String` | No | Backend base URL. Defaults to `https://api.lerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
 | `debugMode` | `Boolean` | No | Print SDK request/response logs to Logcat (default: `false`) |
 | `enableCrashReporting` | `Boolean` | No | Install the automatic crash handler (default: `true`) — see [Error Tracking](/frameworks/android/error-tracking) |
 | `onError` | `((Throwable) -> Unit)?` | No | Called if initialization itself fails (e.g. network unreachable) |
@@ -87,7 +87,7 @@ Throw a test error to confirm everything is working:
 Lerix.throwError("Test error")
 ```
 
-Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
 
 <Check>
   You're all set! Continue to [Error Tracking](/frameworks/android/error-tracking) to report custom errors and enable automatic crash capture, or [Push Notifications](/frameworks/android/push-notifications) to enable push delivery.

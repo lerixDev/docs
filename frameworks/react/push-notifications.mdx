@@ -5,10 +5,10 @@ description: "Configure standard Web Push (VAPID) delivery for your React app �
 
 ## Introduction
 
-Atelerix delivers push notifications to React apps using the standard
+Lerix delivers push notifications to React apps using the standard
 **Web Push protocol (VAPID)** — the same open standard Chrome, Firefox,
 Edge, and modern Safari all implement natively. No Firebase project, no
-OneSignal account — Atelerix generates and manages the key pair for you.
+OneSignal account — Lerix generates and manages the key pair for you.
 After you complete the [React installation](/frameworks/react/installation),
 follow the steps below to enable push delivery.
 
@@ -29,7 +29,7 @@ cp node_modules/lerix-core/sw/lerix-sw.js your-app/public/lerix-sw.js
 ## 2. Generate a Web Push key
 
 From the dashboard: **Notifications → Settings → Web Push → Generate keys**.
-This is a one-click step — Atelerix generates and stores the VAPID key pair
+This is a one-click step — Lerix generates and stores the VAPID key pair
 for the project; there's nothing to copy into your code.
 
 ## 3. Subscribe
@@ -84,9 +84,9 @@ interface LerixNotificationPayload {
 
 | Method | Returns | Use it for |
 |---|---|---|
-| `getRegisteredTokenId()` | Atelerix's own id for this registered device | The value for the dashboard's/REST API's device-targeting field |
+| `getRegisteredTokenId()` | Lerix's own id for this registered device | The value for the dashboard's/REST API's device-targeting field |
 | `getDeviceToken()` | The raw `PushSubscription`, stringified | Rarely needed directly; diagnostics only |
-| `getDeviceId()` | A locally generated identifier, unrelated to Atelerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
+| `getDeviceId()` | A locally generated identifier, unrelated to Lerix's backend | Local diagnostics only; **not** what the dashboard's send flow expects |
 
 ```tsx
 const tokenId = notifications.getRegisteredTokenId();

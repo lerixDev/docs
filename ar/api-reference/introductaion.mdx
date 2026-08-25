@@ -1,6 +1,6 @@
 ---
 title: "مقدمة"
-description: "صادِق وأرسل الطلبات إلى REST API الخاص بـ Atelerix."
+description: "صادِق وأرسل الطلبات إلى REST API الخاص بـ Lerix."
 ---
 
 ## الرابط الأساسي (Base URL)
@@ -8,25 +8,25 @@ description: "صادِق وأرسل الطلبات إلى REST API الخاص ب
 تُرسَل جميع طلبات الـ API إلى نقطة نهاية مشروعك:
 
 ```
-https://api.atelerix.dev/v1/:project-id
+https://api.lerix.dev/v1/:project-id
 ```
 
-استبدل `:project-id` بمعرّف مشروعك من [لوحة تحكم Atelerix](https://app.atelerix.com) ضمن **إعدادات المشروع (Project Settings)**.
+استبدل `:project-id` بمعرّف مشروعك من [لوحة تحكم Lerix](https://app.lerix.dev) ضمن **إعدادات المشروع (Project Settings)**.
 
 **مثال:**
 
 ```
-https://api.atelerix.dev/v1/my-project-id
+https://api.lerix.dev/v1/my-project-id
 ```
 
 ## المصادقة (Authentication)
 
-قبل استدعاء الـ API، أنشئ **مفتاحاً خاصاً (private key)** من **إعدادات المشروع** في [لوحة التحكم](https://app.atelerix.com).
+قبل استدعاء الـ API، أنشئ **مفتاحاً خاصاً (private key)** من **إعدادات المشروع** في [لوحة التحكم](https://app.lerix.dev).
 
 أرسل المفتاح الخاص في كل طلب ضمن ترويسة (header) باسم `atelerix-api-key`:
 
 ```bash
-curl https://api.atelerix.dev/v1/my-project-id/endpoint \
+curl https://api.lerix.dev/v1/my-project-id/endpoint \
   -H "atelerix-api-key: <your-private-key>"
 ```
 

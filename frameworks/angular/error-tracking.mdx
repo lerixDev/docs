@@ -1,11 +1,11 @@
 ---
 title: "Angular — Error Tracking"
-description: "Report errors and automatically capture uncaught exceptions from your Angular app to the Atelerix dashboard."
+description: "Report errors and automatically capture uncaught exceptions from your Angular app to the Lerix dashboard."
 ---
 
 ## Introduction
 
-Atelerix captures errors from your Angular app so you can debug issues
+Lerix captures errors from your Angular app so you can debug issues
 faster. After you complete the [Angular installation](/frameworks/angular/installation),
 use `LerixService.throwError()` to send custom errors to your dashboard —
 uncaught errors are captured automatically, with no extra code required.
@@ -124,4 +124,4 @@ This happens automatically; there's nothing to configure.
 this.lerix.throwError('Test error');
 ```
 
-Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds, with a resolved stack trace pointing at this exact line.
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds, with a resolved stack trace pointing at this exact line.

@@ -14,7 +14,7 @@
 
 ## Terminology
 
-- "Atelerix" refers to the platform as a whole (SDK + dashboard + API), not
+- "Lerix" refers to the platform as a whole (SDK + dashboard + API), not
   any single component.
 - Use "project" for the unit a developer configures (has its own API key,
   push credentials, topics, etc.) — not "app" or "workspace".
@@ -47,9 +47,9 @@
 ## Content boundaries
 
 - Document the SDK's public API and the REST API's public endpoints —
-  anything an external developer integrating Atelerix would call.
+  anything an external developer integrating Lerix would call.
 - Don't document internal admin-portal features (admin account management,
-  redeem codes, manual subscription grants) — those are for the Atelerix
+  redeem codes, manual subscription grants) — those are for the Lerix
   team operating the platform, not for developers integrating it.
 - Endpoints that exist only to be called by the SDK itself (e.g. device-token
   registration) are not yet documented as public REST endpoints on purpose —

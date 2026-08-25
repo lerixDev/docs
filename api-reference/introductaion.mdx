@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "Authenticate and send requests to the Atelerix REST API."
+description: "Authenticate and send requests to the Lerix REST API."
 ---
 
 ## Base URL
@@ -8,25 +8,25 @@ description: "Authenticate and send requests to the Atelerix REST API."
 All API requests are sent to your project endpoint:
 
 ```
-https://api.atelerix.dev/v1/:project-id
+https://api.lerix.dev/v1/:project-id
 ```
 
-Replace `:project-id` with your project ID from the [Atelerix Dashboard](https://app.atelerix.com) under **Project Settings**.
+Replace `:project-id` with your project ID from the [Lerix Dashboard](https://app.lerix.dev) under **Project Settings**.
 
 **Example:**
 
 ```
-https://api.atelerix.dev/v1/my-project-id
+https://api.lerix.dev/v1/my-project-id
 ```
 
 ## Authentication
 
-Before you call the API, create a **private key** in **Project Settings** in the [dashboard](https://app.atelerix.com).
+Before you call the API, create a **private key** in **Project Settings** in the [dashboard](https://app.lerix.dev).
 
 Send the private key on every request in the `atelerix-api-key` header:
 
 ```bash
-curl https://api.atelerix.dev/v1/my-project-id/endpoint \
+curl https://api.lerix.dev/v1/my-project-id/endpoint \
   -H "atelerix-api-key: <your-private-key>"
 ```
 

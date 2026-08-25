@@ -1,11 +1,11 @@
 ---
 title: "iOS (Swift) — Error Tracking"
-description: "Report errors and automatically capture crashes from your native iOS app to the Atelerix dashboard."
+description: "Report errors and automatically capture crashes from your native iOS app to the Lerix dashboard."
 ---
 
 ## Introduction
 
-Atelerix captures errors and crashes from your native iOS app so you can debug issues faster. After you complete the [iOS installation](/frameworks/ios/installation), use `Lerix.throwError` to send custom errors or caught exceptions to your dashboard — uncaught crashes are captured automatically, with no extra code required.
+Lerix captures errors and crashes from your native iOS app so you can debug issues faster. After you complete the [iOS installation](/frameworks/ios/installation), use `Lerix.throwError` to send custom errors or caught exceptions to your dashboard — uncaught crashes are captured automatically, with no extra code required.
 
 <Note>
   Make sure you have initialized the SDK with `Lerix.initialize()` before reporting errors.
@@ -13,7 +13,7 @@ Atelerix captures errors and crashes from your native iOS app so you can debug i
 
 ## Report an error
 
-Use `Lerix.throwError` to manually report an error. This is useful when you catch an error yourself and want to send it to Atelerix with extra context.
+Use `Lerix.throwError` to manually report an error. This is useful when you catch an error yourself and want to send it to Lerix with extra context.
 
 ```swift
 do {
@@ -95,4 +95,4 @@ Throw a test error to confirm everything is working:
 Lerix.throwError("Test error", stack: Thread.callStackSymbols)
 ```
 
-Then open your [dashboard](https://app.atelerix.com) — the error should appear within seconds.
+Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
