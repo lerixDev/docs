@@ -74,6 +74,7 @@ no API key to generate or paste in.
 | `search_events` | Raw occurrence counts grouped by type/severity/day |
 | `get_usage_stats` | Notification delivery and device/geo usage for a project |
 | `list_topics` | Push-notification topics configured for a project |
+| `get_push_config_status` | Which push providers (iOS/Android/Web) are configured for a project — never returns a secret |
 
 **Create / connect** (requires confirmation):
 
@@ -82,6 +83,9 @@ no API key to generate or paste in.
 | `create_organization` | Create a brand-new organization, owned by you |
 | `link_project` | Find or create a project, and return a real SDK init snippet for the detected framework |
 | `create_topic` | Create a push-notification topic |
+| `provision_web_push` | Generate VAPID keys for web push — no credential needed from you. Regenerates (and invalidates existing subscribers) if already configured |
+| `configure_android_push` | Store a Firebase service-account JSON you paste in, for Android/FCM |
+| `configure_ios_push` | Store an APNs `.p8` key's contents you paste in, plus Team ID and Key ID, for iOS |
 
 **Write** (requires confirmation):
 
@@ -99,3 +103,7 @@ no API key to generate or paste in.
 - To disconnect a client, remove the server from it directly (e.g.
   `claude mcp remove lerix`). If you believe a specific token was
   compromised, contact [support@lerix.dev](mailto:support@lerix.dev).
+- `configure_android_push` and `configure_ios_push` ask you to paste a real
+  push-provider credential (a Firebase service-account key, or an APNs `.p8`
+  key) into the chat. That text passes through your AI tool the same way any
+  other message does — only paste it into a client and session you trust.
