@@ -1,0 +1,159 @@
+---
+title: "NestJS — تتبع الأخطاء"
+description: "إبلاغ تلقائي عن الاستثناءات غير المعالَجة في NestJS، مع إبلاغ يدوي بالنوع والخطورة والبيانات الوصفية."
+---
+
+## مقدمة
+
+بعد إكمال [تثبيت NestJS](/ar/frameworks/nestjs/installation)، يُبلَّغ عن
+الاستثناءات غير المعالَجة تلقائياً. احقن `LerixService` للإبلاغ عن
+الاستثناءات المعالَجة بنفسك مع سياق إضافي.
+
+## الالتقاط التلقائي
+
+تسجّل `LerixModule` أمرين:
+
+- **مرشّح استثناءات عام.** يمرّ عبره كل استثناء يُلقى من متحكم أو حارس أو
+  أنبوب أو معترض. يبلّغ افتراضياً عن الاستثناءات التي ليست `HttpException`،
+  وعن `HttpException` برمز 500 فأكثر. لا يُبلَّغ عن أخطاء العميل المتوقعة مثل
+  `NotFoundException` أو فشل `ValidationPipe`. ثم يسلّم المرشّح الاستثناء إلى
+  مرشّح Nest الافتراضي، فتبقى استجابة HTTP كما كانت ستكون بدون Lerix.
+- **معالجات على مستوى العملية.** يُبلَّغ عن `uncaughtException`
+  و`unhandledRejection`، ويُمنح التقرير مهلة `flushTimeoutMs` للإرسال، ثم تخرج
+  العملية برمز 1 كما يفعل Node. اضبط `exitOnUnhandled: false` لإبقاء العملية
+  حية، أو `captureUnhandled: false` لتخطي المعالجات.
+
+يحمل كل تقرير تلقائي طريقة الطلب وعنوانه ومساره ورمز الحالة، وترويسة
+`x-request-id` (أو `x-correlation-id`) إن وُجدت، تحت `metadata.request`.
+
+### تغيير ما يُبلَّغ عنه
+
+تتلقى `shouldCapture` الاستثناء وكائن سياق يحوي تفاصيل الطلب:
+
+```ts app.module.ts
+import { HttpException } from '@nestjs/common';
+
+LerixModule.forRoot({
+  apiKey, projectId,
+  shouldCapture: (exception, context) => {
+    if (context.request?.route === '/health') return false;
+    if (exception instanceof HttpException) return exception.getStatus() >= 500;
+    return true;
+  },
+});
+```
+
+### استخدام مرشّحك الخاص
+
+إن كان تطبيقك يسجّل بالفعل `APP_FILTER` شاملاً، فاضبط
+`captureHttpExceptions: false` وأبلغ من ذلك المرشّح:
+
+```ts all-exceptions.filter.ts
+@Catch()
+export class AllExceptionsFilter extends BaseExceptionFilter {
+  constructor(adapterHost: HttpAdapterHost, private readonly lerix: LerixService) {
+    super(adapterHost.httpAdapter);
+  }
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    void this.lerix.captureException(exception);
+    super.catch(exception, host);
+  }
+}
+```
+
+يمكنك أيضاً وراثة `LerixExceptionFilter` وتجاوز `catch` لتخصيص الاستجابة مع
+الإبقاء على الإبلاغ.
+
+## الإبلاغ عن خطأ يدوياً
+
+```ts orders.service.ts
+import { Injectable } from '@nestjs/common';
+import { BugSeverity, BugType, LerixService } from '@lerix-dev/lerix-nestjs';
+
+@Injectable()
+export class OrdersService {
+  constructor(private readonly lerix: LerixService) {}
+
+  async reconcile(orderId: string) {
+    try {
+      await this.ledger.reconcile(orderId);
+    } catch (error) {
+      await this.lerix.captureException(error, {
+        type: BugType.LOGIC_BUG,
+        severity: BugSeverity.HIGH,
+        metadata: { orderId, job: 'reconcile' },
+      });
+      throw error;
+    }
+  }
+}
+```
+
+لا تُلقي `captureException` استثناءً أبداً وتكتمل عند قبول التقرير أو التخلي
+عنه. استخدم `captureMessage` لشيء لم يُلقَ كاستثناء:
+
+```ts
+await this.lerix.captureMessage('Inventory drift detected', {
+  severity: BugSeverity.MEDIUM,
+  metadata: { sku: 'A-1', expected: 10, actual: 7 },
+});
+```
+
+### المعاملات
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `error` / `message` | `unknown` / `string` | نعم | الاستثناء الملتقط، أو رسالة |
+| `type` | `BugType` | لا | تصنيف الخطأ (الافتراضي `RUNTIME_ERROR` للاستثناءات و`LOGIC_BUG` للرسائل) |
+| `severity` | `BugSeverity` | لا | مستوى الخطورة (الافتراضي `HIGH` للاستثناءات و`MEDIUM` للرسائل) |
+| `metadata` | `Record<string, unknown>` | لا | سياق JSON إضافي يُرفق بالتقرير |
+
+### قيم `BugType`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `RUNTIME_ERROR` | استثناء غير معالَج أُلقي وقت التشغيل |
+| `LOGIC_BUG` | سلوك خاطئ لا يُلقي استثناءً |
+| `UI_BUG` | عيب مرئي أو في التخطيط |
+| `NETWORK_ERROR` | طلب شبكة فاشل أو مشوّه |
+| `PERFORMANCE` | بطء أو استهلاك مفرط للموارد |
+| `COMPATIBILITY` | يتعطل على بيئة تشغيل أو نظام أو منصة محددة |
+| `VALIDATION_ERROR` | مدخل غير صالح اجتاز التحقق |
+| `SECURITY` | عيب متعلق بالأمان |
+| `CRASH` | توقفت العملية بشكل غير متوقع |
+| `UNKNOWN` | لا شيء مما سبق |
+
+### قيم `BugSeverity`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `CRITICAL` | يعطّل وظيفة أساسية أو يؤثر على كل المستخدمين |
+| `HIGH` | تأثير خطير مع وجود حل بديل |
+| `MEDIUM` | تأثير ملحوظ لكنه محدود |
+| `LOW` | بسيط أو شكلي |
+| `UNKNOWN` | لم تُقيَّم الخطورة بعد |
+
+## ما يُرفق بالتقرير
+
+| الحقل | القيمة |
+|-------|-------|
+| الجهاز | اسم المضيف، معمارية المعالج، نوع النظام وإصداره، المنطقة الزمنية |
+| التطبيق | اسم الخدمة ومعرّفها من `package.json` (أو الخيار `app`)، الإصدار ورقم البناء |
+| البيانات الوصفية | `environment`، إصدار Node.js ومعرّف العملية، إضافة إلى ما تمرّره في `metadata` |
+
+## دوال `LerixService` الأخرى
+
+| الدالة | الوصف |
+|--------|-------------|
+| `getUserId()` | معرّف المستخدم المجهول المسجّلة به هذه الخدمة |
+| `flush(timeoutMs?)` | انتظار التقارير قيد الإرسال |
+| `deleteUser()` / `reRegisterUser()` | إعادة تعيين المستخدم المجهول، مثلاً بعد توجيه الخدمة إلى مشروع آخر |
+
+## التعطيل في الاختبارات
+
+مرّر `enabled: false` لتحويل كل استدعاء إلى لا شيء دون تغيير الكود:
+
+```ts
+LerixModule.forRoot({ apiKey: 'x', projectId: 'x', enabled: process.env.NODE_ENV !== 'test' });
+```

@@ -1,0 +1,149 @@
+---
+title: "NestJS — الإشعارات"
+description: "أرسل وجدوِل وحدّث وألغِ الإشعارات من خادم NestJS عبر عميل مُهيكل لواجهة Lerix REST API."
+---
+
+## مقدمة
+
+لا يستقبل الخادم الإشعارات بل يرسلها. يغلّف SDK الخاص بـ NestJS
+[واجهة REST للإشعارات](/ar/api-reference/push-notifications) في عميل مُهيكل
+حتى تتمكن خدماتك من إشعار مستخدمي تطبيقات الهاتف والويب دون كتابة طلبات
+HTTP يدوياً.
+
+## 1. أنشئ مفتاحاً خاصاً
+
+تُرسَل الإشعارات إلى أجهزة المشروع الذي يستخدمه **تطبيقك**، وهو عادةً مشروع
+مختلف عن الذي يبلّغ خادمك عن أخطائه. من **إعدادات المشروع** في ذلك المشروع،
+أنشئ **مفتاحاً خاصاً** بصلاحية *إرسال الإشعارات*.
+
+<Warning>
+  يستطيع المفتاح الخاص إرسال إشعارات إلى كل مستخدمي المشروع. احفظه في متغير
+  بيئة على الخادم ولا تضعه أبداً في تطبيق عميل.
+</Warning>
+
+## 2. هيّئ العميل
+
+مرّر معرّف المشروع الهدف والمفتاح الخاص في `notifications`:
+
+```ts app.module.ts
+LerixModule.forRoot({
+  apiKey: process.env.LERIX_API_KEY!,
+  projectId: process.env.LERIX_PROJECT_ID!,
+  notifications: {
+    projectId: process.env.MOBILE_PROJECT_ID!,
+    apiKey: process.env.MOBILE_PROJECT_PRIVATE_KEY!,
+  },
+});
+```
+
+يصبح العميل متاحاً عبر `LerixService.notifications`.
+
+## 3. أرسل إشعاراً
+
+```ts orders.service.ts
+const { notificationId } = await this.lerix.notifications.send({
+  title: 'تم شحن طلبك',
+  body: 'طلبك رقم 1234 في الطريق إليك',
+  deviceTokens: [user.lerixDeviceId],
+  metadata: { orderId: '1234' },
+});
+```
+
+`deviceTokens` هي معرّفات أجهزة Lerix التي تحصل عليها تطبيقاتك من
+`getDeviceId()` وترسلها إلى خادمك عند تسجيل الدخول. احفظ `notificationId`
+المُعاد، فكل الدوال الأخرى تحتاجه.
+
+### البث إلى موضوع
+
+```ts
+await this.lerix.notifications.send({
+  title: 'تخفيضات نهاية الأسبوع',
+  body: 'خصم 20% على كل شيء حتى الأحد',
+  sendByTopic: true,
+  topic: 'promotions',
+});
+```
+
+### الجدولة لوقت لاحق
+
+```ts
+await this.lerix.notifications.send({
+  title: 'تذكير',
+  body: 'موعدك بعد ساعة',
+  deviceTokens: [deviceId],
+  sentAt: new Date(appointment.getTime() - 3600_000),
+});
+```
+
+### المعاملات
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `title` | `string` | نعم | عنوان الإشعار |
+| `body` | `string` | نعم | نص الإشعار |
+| `deviceTokens` | `string[]` | ما لم يُستخدم `sendByTopic` | معرّفات أجهزة Lerix المستهدفة |
+| `sendByTopic` | `boolean` | لا | الإرسال إلى كل جهاز مشترك في `topic` بدلاً من ذلك |
+| `topic` | `string` | مع `sendByTopic` | مفتاح الموضوع |
+| `sound` | `string` | لا | ملف صوت مخصص مضمّن في تطبيق العميل |
+| `imageUrl` | `string` | لا | صورة عامة بعنوان `https://` تُعرض كصورة غنية |
+| `metadata` | `object` | لا | يصل إلى العميل باسم `payload.metadata` |
+| `sentAt` | `string \| Date` | لا | وقت ISO 8601 أو `Date` لجدولة التسليم |
+
+ملاحظات المنصات حول `sound` و`imageUrl` موجودة في
+[مرجع REST API](/ar/api-reference/push-notifications).
+
+## 4. إدارة إشعار مُرسَل
+
+```ts
+// تغيير المحتوى. المجدوَل يُعدَّل في مكانه، والمُرسَل يُعاد تسليمه.
+await this.lerix.notifications.update(notificationId, { title: 'تم التوصيل', body: 'بالهناء!' });
+
+// إزالة إشعار مُسلَّم بالفعل من الأجهزة.
+await this.lerix.notifications.unsend(notificationId);
+
+// إيقاف إشعار مجدوَل قبل إرساله.
+await this.lerix.notifications.cancel(notificationId);
+
+// نتيجة التسليم لكل مستلم كما أبلغت عنها APNs أو FCM أو خدمة دفع المتصفح.
+const deliveries = await this.lerix.notifications.deliveries(notificationId);
+```
+
+| الدالة | نقطة REST |
+|--------|---------------|
+| `send(input)` | [`POST /notifications/send`](/ar/api-reference/push-notifications) |
+| `update(id, { title, body })` | [`POST /notifications/{id}/update`](/ar/api-reference/update-notification) |
+| `unsend(id)` | [`POST /notifications/{id}/unsend`](/ar/api-reference/unsend-notification) |
+| `cancel(id)` | [`POST /notifications/{id}/cancel`](/ar/api-reference/cancel-notification) |
+| `deliveries(id)` | [`GET /notifications/{id}/deliveries`](/ar/api-reference/notification-deliveries) |
+
+## الأخطاء
+
+تُلقي كل دالة `LerixApiException` عندما ترفض الواجهة الطلب. يحمل `code` رمز
+الخطأ من الخادم و`status` رمز حالة HTTP:
+
+```ts
+import { LerixApiException } from '@lerix-dev/lerix-nestjs';
+
+try {
+  await this.lerix.notifications.cancel(id);
+} catch (error) {
+  if (error instanceof LerixApiException && error.code === 'CANNOT_CANCEL_SENT_NOTIFICATION') {
+    // سُلِّم بالفعل
+  }
+}
+```
+
+يُرفض المدخل غير الصالح، مثل غياب `topic` مع `sendByTopic`، محلياً برمز
+`INVALID_INPUT` قبل إرسال أي طلب. القائمة الكاملة للرموز في
+[رموز الأخطاء والنجاح](/ar/developers/errors-responses).
+
+## عدة مشاريع مستهدفة
+
+أنشئ `LerixNotificationsClient` مباشرة عندما يخدم خادم واحد أكثر من تطبيق:
+
+```ts
+import { LerixNotificationsClient } from '@lerix-dev/lerix-nestjs';
+
+const rider = new LerixNotificationsClient({ projectId: 'rider-app', apiKey: process.env.RIDER_PRIVATE_KEY! });
+const driver = new LerixNotificationsClient({ projectId: 'driver-app', apiKey: process.env.DRIVER_PRIVATE_KEY! });
+```

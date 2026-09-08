@@ -1,11 +1,145 @@
 ---
-title: "NestJS"
-description: "تكامل Lerix من جانب الخادم لـ NestJS — قريباً."
+title: "NestJS — التثبيت"
+description: "أضف Lerix NestJS SDK إلى خادمك للإبلاغ عن الاستثناءات غير المعالَجة وإرسال الإشعارات من الخادم."
 ---
 
-<Badge>قريباً</Badge>
+## مقدمة
 
-يوجد SDK لـ NestJS لتتبع الأخطاء وإرسال الإشعارات من جانب الخادم على خارطة
-الطريق، لكنه غير متاح بعد. تابعنا قريباً للحصول على خطوات الإعداد.
+`@lerix-dev/lerix-nestjs` هو SDK الخاص بـ Lerix من جانب الخادم لإطار NestJS.
+بعد تسجيل الوحدة، يُبلَّغ عن كل استثناء غير معالَج في واجهتك البرمجية إلى
+لوحة التحكم مع تتبّع المكدس واسم المضيف والإصدار وسياق الطلب، وتحصل خدماتك
+على عميل مُهيكل لواجهة REST الخاصة بالإشعارات.
 
-في هذه الأثناء، يمكنك استدعاء [REST API](/ar/api-reference/introductaion) مباشرة من أي خدمة NestJS.
+<Note>
+  أنشئ مشروعاً بإطار **NestJS** في [لوحة التحكم](https://app.lerix.dev)
+  وانسخ **مفتاح API** و**معرّف المشروع** من **إعدادات المشروع**.
+</Note>
+
+## المتطلبات
+
+| | الحد الأدنى |
+|---|---|
+| Node.js | 18 |
+| NestJS | 10 |
+| TypeScript | 5 |
+
+لا توجد للحزمة أي اعتماديات وقت التشغيل، وتعمل مع محوّلي Express وFastify.
+
+## 1. ثبّت الحزمة
+
+```bash
+npm install @lerix-dev/lerix-nestjs
+```
+
+## 2. سجّل الوحدة
+
+استورد `LerixModule` مرة واحدة في الوحدة الجذرية:
+
+```ts app.module.ts
+import { Module } from '@nestjs/common';
+import { LerixModule } from '@lerix-dev/lerix-nestjs';
+
+@Module({
+  imports: [
+    LerixModule.forRoot({
+      apiKey: process.env.LERIX_API_KEY!,
+      projectId: process.env.LERIX_PROJECT_ID!,
+      environment: process.env.NODE_ENV,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+فعّل خطافات الإيقاف حتى تُرسَل التقارير العالقة عند إيقاف العملية:
+
+```ts main.ts
+const app = await NestFactory.create(AppModule);
+app.enableShutdownHooks();
+await app.listen(3000);
+```
+
+هذا كل الإعداد. تسجّل الوحدة مرشّح استثناءات عاماً ومعالجات على مستوى
+العملية، فيُبلَّغ عن الأخطاء غير المعالَجة من الآن. راجع
+[تتبع الأخطاء](/ar/frameworks/nestjs/error-tracking) لمعرفة ما يُلتقط وكيفية
+الإبلاغ عن الأخطاء بنفسك.
+
+### تحميل الخيارات من `ConfigService`
+
+تقبل `forRootAsync` الخيارات نفسها إضافة إلى `imports` و`inject`:
+
+```ts app.module.ts
+LerixModule.forRootAsync({
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    apiKey: config.getOrThrow('LERIX_API_KEY'),
+    projectId: config.getOrThrow('LERIX_PROJECT_ID'),
+    environment: config.get('NODE_ENV'),
+  }),
+});
+```
+
+## 3. تحقّق من التكامل
+
+أضف مساراً يُلقي خطأً واستدعِه مرة واحدة:
+
+```ts app.controller.ts
+@Get('lerix-test')
+lerixTest() {
+  throw new Error('Lerix test error');
+}
+```
+
+يتلقى العميل استجابة `500` المعتادة من Nest، ويظهر الخطأ في
+[لوحة التحكم](https://app.lerix.dev) خلال ثوانٍ. احذف المسار بعد ذلك.
+
+## الخيارات
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `apiKey` | مطلوب | مفتاح API للمشروع |
+| `projectId` | مطلوب | معرّف المشروع |
+| `url` | `https://api.lerix.dev/v1` | عنوان API الأساسي |
+| `environment` | `NODE_ENV` | يُرسَل كبيانات وصفية مع كل تقرير |
+| `app` | من `package.json` | `{ id, name, version, buildNumber }` لتعريف هذه الخدمة |
+| `enabled` | `true` | `false` يعطّل الحزمة بالكامل، مفيد في الاختبارات |
+| `debug` | `false` | تسجيل الطلبات والتقارير عبر مسجّل Nest |
+| `captureHttpExceptions` | `true` | تسجيل مرشّح الاستثناءات العام |
+| `shouldCapture` | 5xx وغير HTTP | `(exception, context) => boolean` لتحديد ما يُبلَّغ عنه |
+| `captureUnhandled` | `true` | الإبلاغ عن `uncaughtException` و`unhandledRejection` |
+| `exitOnUnhandled` | `true` | الخروج برمز 1 بعد الإبلاغ عنها كما يفعل Node |
+| `statePath` | `.lerix/state.json` | مكان حفظ معرّف المستخدم المجهول؛ `false` يبقيه في الذاكرة |
+| `userId` | | تثبيت معرّف المستخدم المجهول بدل تسجيل واحد |
+| `notifications` | | `{ projectId, apiKey }` لتفعيل [عميل الإشعارات](/ar/frameworks/nestjs/push-notifications) |
+| `flushTimeoutMs` | `2000` | مدة انتظار التقارير العالقة عند الإيقاف |
+
+## كيف تظهر خدمتك في لوحة التحكم
+
+يسجّل SDK خدمتك كتطبيق من نوع `server`. يأتي معرّف التطبيق افتراضياً من
+`name` في `package.json` والإصدار من `version`، فتُجمَّع التقارير لكل خدمة
+ولكل إصدار. عدّلهما عبر الخيار `app` عند نشر عدة نسخ من الكود نفسه أو عندما
+تريد استخدام git SHA كرقم بناء:
+
+```ts
+LerixModule.forRoot({
+  apiKey, projectId,
+  app: { id: 'orders-api', version: process.env.APP_VERSION, buildNumber: process.env.GIT_SHA },
+});
+```
+
+يُسجَّل مستخدم مجهول عند أول تشغيل ويُحفظ في `.lerix/state.json` داخل مجلد
+العمل حتى تعيد عمليات التشغيل استخدامه. أضف هذا المجلد إلى `.gitignore` أو
+اربطه في الحاويات. مرّر `statePath: false` لتخطي الحفظ، أو `userId` للتحكم
+بالمعرّف بنفسك.
+
+## الخطوات التالية
+
+<CardGroup cols={2}>
+  <Card title="تتبع الأخطاء" icon="bug" href="/ar/frameworks/nestjs/error-tracking">
+    ما الذي يبلّغ عنه المرشّح، وكيف تغيّر السياسة، والإبلاغ اليدوي.
+  </Card>
+  <Card title="الإشعارات" icon="bell" href="/ar/frameworks/nestjs/push-notifications">
+    أرسل وجدوِل وحدّث وألغِ الإشعارات من خادمك.
+  </Card>
+</CardGroup>

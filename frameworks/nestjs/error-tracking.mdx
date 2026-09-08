@@ -1,0 +1,165 @@
+---
+title: "NestJS — Error Tracking"
+description: "Automatic reporting of unhandled exceptions in NestJS, plus manual reporting with type, severity and metadata."
+---
+
+## Introduction
+
+After you complete the [NestJS installation](/frameworks/nestjs/installation),
+unhandled exceptions are reported automatically. Inject `LerixService` to
+report handled exceptions yourself with extra context.
+
+## Automatic capture
+
+`LerixModule` registers two things:
+
+- **A global exception filter.** Every exception thrown from a controller,
+  guard, pipe or interceptor passes through it. By default it reports
+  exceptions that are not an `HttpException`, and `HttpException`s with a
+  status of 500 or above. Expected client errors such as `NotFoundException`
+  or a failed `ValidationPipe` are not reported. The filter then hands the
+  exception to Nest's default filter, so the HTTP response is exactly what it
+  would have been without Lerix.
+- **Process-level handlers.** `uncaughtException` and `unhandledRejection`
+  are reported, the report is given up to `flushTimeoutMs` to leave, and the
+  process exits with code 1 as Node would. Set `exitOnUnhandled: false` to
+  keep the process alive, or `captureUnhandled: false` to skip the handlers.
+
+Every automatic report carries the request method, URL, route, status code,
+and the `x-request-id` (or `x-correlation-id`) header when present, under
+`metadata.request`.
+
+### Change what is reported
+
+`shouldCapture` receives the exception and a context object with the
+request details:
+
+```ts app.module.ts
+import { HttpException } from '@nestjs/common';
+
+LerixModule.forRoot({
+  apiKey, projectId,
+  shouldCapture: (exception, context) => {
+    if (context.request?.route === '/health') return false;
+    if (exception instanceof HttpException) return exception.getStatus() >= 500;
+    return true;
+  },
+});
+```
+
+### Use your own filter
+
+If your app already registers a catch-all `APP_FILTER`, set
+`captureHttpExceptions: false` and report from that filter:
+
+```ts all-exceptions.filter.ts
+@Catch()
+export class AllExceptionsFilter extends BaseExceptionFilter {
+  constructor(adapterHost: HttpAdapterHost, private readonly lerix: LerixService) {
+    super(adapterHost.httpAdapter);
+  }
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    void this.lerix.captureException(exception);
+    super.catch(exception, host);
+  }
+}
+```
+
+You can also extend `LerixExceptionFilter` and override `catch` to customise
+the response while keeping the reporting.
+
+## Report an error manually
+
+```ts orders.service.ts
+import { Injectable } from '@nestjs/common';
+import { BugSeverity, BugType, LerixService } from '@lerix-dev/lerix-nestjs';
+
+@Injectable()
+export class OrdersService {
+  constructor(private readonly lerix: LerixService) {}
+
+  async reconcile(orderId: string) {
+    try {
+      await this.ledger.reconcile(orderId);
+    } catch (error) {
+      await this.lerix.captureException(error, {
+        type: BugType.LOGIC_BUG,
+        severity: BugSeverity.HIGH,
+        metadata: { orderId, job: 'reconcile' },
+      });
+      throw error;
+    }
+  }
+}
+```
+
+`captureException` never throws and resolves once the report has been
+accepted or given up on. Use `captureMessage` for something that was not
+thrown:
+
+```ts
+await this.lerix.captureMessage('Inventory drift detected', {
+  severity: BugSeverity.MEDIUM,
+  metadata: { sku: 'A-1', expected: 10, actual: 7 },
+});
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `error` / `message` | `unknown` / `string` | Yes | The caught exception, or a message |
+| `type` | `BugType` | No | Bug classification (default `RUNTIME_ERROR` for exceptions, `LOGIC_BUG` for messages) |
+| `severity` | `BugSeverity` | No | Severity level (default `HIGH` for exceptions, `MEDIUM` for messages) |
+| `metadata` | `Record<string, unknown>` | No | Additional JSON context attached to the report |
+
+### `BugType` values
+
+| Value | Description |
+|-------|-------------|
+| `RUNTIME_ERROR` | An unhandled exception thrown at runtime |
+| `LOGIC_BUG` | Incorrect behavior that doesn't throw |
+| `UI_BUG` | A visual or layout defect |
+| `NETWORK_ERROR` | A failed or malformed network request |
+| `PERFORMANCE` | Slowness or excessive resource use |
+| `COMPATIBILITY` | Breaks on a specific runtime, OS or platform |
+| `VALIDATION_ERROR` | Invalid input passed validation it shouldn't have |
+| `SECURITY` | A security-relevant defect |
+| `CRASH` | The process terminated unexpectedly |
+| `UNKNOWN` | None of the above |
+
+### `BugSeverity` values
+
+| Value | Description |
+|-------|-------------|
+| `CRITICAL` | Blocks core functionality or affects all users |
+| `HIGH` | Serious impact, but a workaround exists |
+| `MEDIUM` | Noticeable but limited impact |
+| `LOW` | Minor or cosmetic |
+| `UNKNOWN` | Severity not yet assessed |
+
+## What is attached to a report
+
+| Field | Value |
+|-------|-------|
+| Device | Hostname, CPU architecture, OS type and release, time zone |
+| App | Service name and id from `package.json` (or the `app` option), version and build number |
+| Metadata | `environment`, Node.js version and process id, plus anything you pass in `metadata` |
+
+## Other `LerixService` methods
+
+| Method | Description |
+|--------|-------------|
+| `getUserId()` | Anonymous user id this service is registered as |
+| `flush(timeoutMs?)` | Wait for in-flight reports |
+| `deleteUser()` / `reRegisterUser()` | Reset the anonymous user, for example after pointing the service at a different project |
+
+## Disable in tests
+
+Pass `enabled: false` to turn every call into a no-op without changing your
+code:
+
+```ts
+LerixModule.forRoot({ apiKey: 'x', projectId: 'x', enabled: process.env.NODE_ENV !== 'test' });
+```

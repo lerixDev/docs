@@ -1,12 +1,148 @@
 ---
-title: "NestJS"
-description: "Server-side Lerix integration for NestJS — coming soon."
+title: "NestJS — Installation"
+description: "Add the Lerix NestJS SDK to your backend to report unhandled exceptions and send push notifications from your server."
 ---
 
-<Badge>Coming Soon</Badge>
+## Introduction
 
-A NestJS SDK for server-side error tracking and push notification sending
-is on the roadmap, but not available yet. Check back soon for setup
-instructions.
+`@lerix-dev/lerix-nestjs` is the server-side Lerix SDK for NestJS. Once the
+module is registered, every unhandled exception in your API is reported to the
+dashboard with its stack trace, host, release and request context, and your
+services get a typed client for the push notifications REST API.
 
-In the meantime, you can call the [REST API](/api-reference/introductaion) directly from any NestJS service.
+<Note>
+  Create a project with the **NestJS** framework in the [dashboard](https://app.lerix.dev)
+  and copy its **API key** and **project id** from **Project Settings**.
+</Note>
+
+## Requirements
+
+| | Minimum |
+|---|---|
+| Node.js | 18 |
+| NestJS | 10 |
+| TypeScript | 5 |
+
+The package has no runtime dependencies and works with both the Express and
+Fastify adapters.
+
+## 1. Install the package
+
+```bash
+npm install @lerix-dev/lerix-nestjs
+```
+
+## 2. Register the module
+
+Import `LerixModule` once in your root module:
+
+```ts app.module.ts
+import { Module } from '@nestjs/common';
+import { LerixModule } from '@lerix-dev/lerix-nestjs';
+
+@Module({
+  imports: [
+    LerixModule.forRoot({
+      apiKey: process.env.LERIX_API_KEY!,
+      projectId: process.env.LERIX_PROJECT_ID!,
+      environment: process.env.NODE_ENV,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+Enable shutdown hooks so in-flight reports are flushed when the process is
+stopped:
+
+```ts main.ts
+const app = await NestFactory.create(AppModule);
+app.enableShutdownHooks();
+await app.listen(3000);
+```
+
+That is the whole setup. The module registers a global exception filter and
+process-level handlers, so unhandled errors are reported from now on. See
+[Error Tracking](/frameworks/nestjs/error-tracking) for what gets captured and
+how to report errors yourself.
+
+### Load options from `ConfigService`
+
+`forRootAsync` accepts the same options plus `imports` and `inject`:
+
+```ts app.module.ts
+LerixModule.forRootAsync({
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    apiKey: config.getOrThrow('LERIX_API_KEY'),
+    projectId: config.getOrThrow('LERIX_PROJECT_ID'),
+    environment: config.get('NODE_ENV'),
+  }),
+});
+```
+
+## 3. Verify the integration
+
+Add a route that throws and call it once:
+
+```ts app.controller.ts
+@Get('lerix-test')
+lerixTest() {
+  throw new Error('Lerix test error');
+}
+```
+
+The client receives Nest's normal `500` response and the error appears in your
+[dashboard](https://app.lerix.dev) within seconds. Remove the route afterwards.
+
+## Options
+
+| Option | Default | Description |
+|---|---|---|
+| `apiKey` | required | Project API key |
+| `projectId` | required | Project id |
+| `url` | `https://api.lerix.dev/v1` | API base URL |
+| `environment` | `NODE_ENV` | Sent as metadata with every report |
+| `app` | from `package.json` | `{ id, name, version, buildNumber }` used to identify this service |
+| `enabled` | `true` | `false` turns the SDK into a no-op, useful in tests |
+| `debug` | `false` | Log requests and reports through the Nest logger |
+| `captureHttpExceptions` | `true` | Register the global exception filter |
+| `shouldCapture` | 5xx and non-HTTP | `(exception, context) => boolean` deciding what the filter reports |
+| `captureUnhandled` | `true` | Report `uncaughtException` / `unhandledRejection` |
+| `exitOnUnhandled` | `true` | Exit with code 1 after reporting one, as Node would |
+| `statePath` | `.lerix/state.json` | Where the anonymous user id is persisted; `false` keeps it in memory |
+| `userId` | | Pin the anonymous user id instead of registering one |
+| `notifications` | | `{ projectId, apiKey }` enabling the [push notifications client](/frameworks/nestjs/push-notifications) |
+| `flushTimeoutMs` | `2000` | How long shutdown waits for pending reports |
+
+## How your service appears in the dashboard
+
+The SDK registers your service as a `server` app. The app id defaults to the
+`name` in `package.json` and the release to its `version`, so reports are
+grouped per service and per release. Override them with the `app` option when
+you deploy several instances of the same code base or want a git SHA as the
+build number:
+
+```ts
+LerixModule.forRoot({
+  apiKey, projectId,
+  app: { id: 'orders-api', version: process.env.APP_VERSION, buildNumber: process.env.GIT_SHA },
+});
+```
+
+An anonymous user is registered on first boot and stored in
+`.lerix/state.json` under the working directory, so restarts reuse it. Add
+that folder to `.gitignore`, or mount it in containers. Pass
+`statePath: false` to skip persistence, or `userId` to control the id yourself.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Error Tracking" icon="bug" href="/frameworks/nestjs/error-tracking">
+    What the filter reports, how to change the policy, and manual reporting.
+  </Card>
+  <Card title="Push Notifications" icon="bell" href="/frameworks/nestjs/push-notifications">
+    Send, schedule, update and unsend notifications from your backend.
+  </Card>
+</CardGroup>

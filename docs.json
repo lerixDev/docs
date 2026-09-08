@@ -123,9 +123,11 @@
                 "pages": [
                   {
                     "group": "NestJS",
-                    "icon": "n",
+                    "icon": "node-js",
                     "pages": [
-                      "frameworks/nestjs/installation"
+                      "frameworks/nestjs/installation",
+                      "frameworks/nestjs/error-tracking",
+                      "frameworks/nestjs/push-notifications"
                     ]
                   },
                   {
@@ -293,9 +295,11 @@
                 "pages": [
                   {
                     "group": "NestJS",
-                    "icon": "n",
+                    "icon": "node-js",
                     "pages": [
-                      "ar/frameworks/nestjs/installation"
+                      "ar/frameworks/nestjs/installation",
+                      "ar/frameworks/nestjs/error-tracking",
+                      "ar/frameworks/nestjs/push-notifications"
                     ]
                   },
                   {

@@ -1,0 +1,151 @@
+---
+title: "NestJS — Push Notifications"
+description: "Send, schedule, update and unsend push notifications from your NestJS backend with a typed client for the Lerix REST API."
+---
+
+## Introduction
+
+A backend does not receive push notifications, it sends them. The NestJS SDK
+wraps the [push notifications REST API](/api-reference/push-notifications)
+in a typed client so your services can notify the users of your mobile and
+web apps without hand-writing HTTP calls.
+
+## 1. Create a private key
+
+Notifications are sent to the devices of the project your **app** uses,
+which is usually a different project from the one your backend reports
+errors to. In that project's **Project Settings**, create a **private key**
+with the *send push notifications* permission.
+
+<Warning>
+  A private key can send notifications to all of a project's users. Keep it
+  in an environment variable on the server and never ship it to a client.
+</Warning>
+
+## 2. Configure the client
+
+Pass the target project id and the private key as `notifications`:
+
+```ts app.module.ts
+LerixModule.forRoot({
+  apiKey: process.env.LERIX_API_KEY!,
+  projectId: process.env.LERIX_PROJECT_ID!,
+  notifications: {
+    projectId: process.env.MOBILE_PROJECT_ID!,
+    apiKey: process.env.MOBILE_PROJECT_PRIVATE_KEY!,
+  },
+});
+```
+
+The client is then available as `LerixService.notifications`.
+
+## 3. Send a notification
+
+```ts orders.service.ts
+const { notificationId } = await this.lerix.notifications.send({
+  title: 'Order shipped',
+  body: 'Your order #1234 is on its way',
+  deviceTokens: [user.lerixDeviceId],
+  metadata: { orderId: '1234' },
+});
+```
+
+`deviceTokens` are the Lerix device ids your client apps obtain from
+`getDeviceId()` and send to your backend at login. Save the returned
+`notificationId`, every other method takes it.
+
+### Broadcast to a topic
+
+```ts
+await this.lerix.notifications.send({
+  title: 'Weekend sale',
+  body: '20% off everything until Sunday',
+  sendByTopic: true,
+  topic: 'promotions',
+});
+```
+
+### Schedule for later
+
+```ts
+await this.lerix.notifications.send({
+  title: 'Reminder',
+  body: 'Your appointment is in one hour',
+  deviceTokens: [deviceId],
+  sentAt: new Date(appointment.getTime() - 3600_000),
+});
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `title` | `string` | Yes | Notification title |
+| `body` | `string` | Yes | Notification body |
+| `deviceTokens` | `string[]` | Unless `sendByTopic` | Lerix device ids to deliver to |
+| `sendByTopic` | `boolean` | No | Deliver to every device subscribed to `topic` instead |
+| `topic` | `string` | When `sendByTopic` | Topic key |
+| `sound` | `string` | No | Custom sound file bundled in the client app |
+| `imageUrl` | `string` | No | Public `https://` image shown as a rich image |
+| `metadata` | `object` | No | Delivered to the client as `payload.metadata` |
+| `sentAt` | `string \| Date` | No | ISO 8601 time or `Date` to schedule delivery |
+
+Platform notes for `sound` and `imageUrl` are in the
+[REST API reference](/api-reference/push-notifications).
+
+## 4. Manage a sent notification
+
+```ts
+// Change the content. Scheduled ones are edited in place; sent ones are redelivered.
+await this.lerix.notifications.update(notificationId, { title: 'Delivered', body: 'Enjoy your order!' });
+
+// Remove an already-delivered notification from devices.
+await this.lerix.notifications.unsend(notificationId);
+
+// Stop a scheduled notification before it goes out.
+await this.lerix.notifications.cancel(notificationId);
+
+// Per-recipient delivery outcome as reported by APNs, FCM or the browser push service.
+const deliveries = await this.lerix.notifications.deliveries(notificationId);
+```
+
+| Method | REST endpoint |
+|--------|---------------|
+| `send(input)` | [`POST /notifications/send`](/api-reference/push-notifications) |
+| `update(id, { title, body })` | [`POST /notifications/{id}/update`](/api-reference/update-notification) |
+| `unsend(id)` | [`POST /notifications/{id}/unsend`](/api-reference/unsend-notification) |
+| `cancel(id)` | [`POST /notifications/{id}/cancel`](/api-reference/cancel-notification) |
+| `deliveries(id)` | [`GET /notifications/{id}/deliveries`](/api-reference/notification-deliveries) |
+
+## Errors
+
+Every method throws `LerixApiException` when the API rejects the request.
+`code` is the backend's error code and `status` the HTTP status:
+
+```ts
+import { LerixApiException } from '@lerix-dev/lerix-nestjs';
+
+try {
+  await this.lerix.notifications.cancel(id);
+} catch (error) {
+  if (error instanceof LerixApiException && error.code === 'CANNOT_CANCEL_SENT_NOTIFICATION') {
+    // already delivered
+  }
+}
+```
+
+Invalid input such as a missing `topic` with `sendByTopic` is rejected
+locally with code `INVALID_INPUT` before any request is made. The full list
+of codes is in [Error & success codes](/developers/errors-responses).
+
+## Several target projects
+
+Instantiate `LerixNotificationsClient` directly when one backend serves more
+than one app:
+
+```ts
+import { LerixNotificationsClient } from '@lerix-dev/lerix-nestjs';
+
+const rider = new LerixNotificationsClient({ projectId: 'rider-app', apiKey: process.env.RIDER_PRIVATE_KEY! });
+const driver = new LerixNotificationsClient({ projectId: 'driver-app', apiKey: process.env.DRIVER_PRIVATE_KEY! });
+```
