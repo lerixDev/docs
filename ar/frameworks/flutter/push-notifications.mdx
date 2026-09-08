@@ -39,28 +39,28 @@ description: "أعِدّ الإشعارات لأنظمة Android وiOS والو�
 أضف الاستدعاءات التالية إلى `ios/Runner/AppDelegate.swift`:
 
 ```swift AppDelegate.swift
-import atelerix
+import lerix
 
 override func application(
   _ application: UIApplication,
   didRegisterForRemoteNotificationsWithDeviceToken deviceData: Data
 ) {
-  atelerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceData)
+  lerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceData)
 }
 
 override func application(
   _ application: UIApplication,
   didFailToRegisterForRemoteNotificationsWithError error: Error
 ) {
-  atelerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
+  lerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
 }
 ```
 
 ## إعداد الويب
 
-Flutter Web مدعوم من نفس حزمة `atelerix` — بدون JS SDK منفصل، وبدون مشروع Firebase. خطوتان فقط بدلاً من إعداد Xcode:
+Flutter Web مدعوم من نفس حزمة `lerix` — بدون JS SDK منفصل، وبدون مشروع Firebase. خطوتان فقط بدلاً من إعداد Xcode:
 
-1. **انسخ عامل الخدمة (service worker).** لا يمكن لحزمة Flutter إضافة ملف إلى مجلد `web/` في تطبيقك تلقائياً — انسخ ملف `web_sw/atelerix-sw.js` من حزمة `atelerix` إلى `web/atelerix-sw.js` في تطبيقك، بحيث يُقدَّم من جذر موقعك (مثال: `https://yoursite.com/atelerix-sw.js`).
+1. **انسخ عامل الخدمة (service worker).** لا يمكن لحزمة Flutter إضافة ملف إلى مجلد `web/` في تطبيقك تلقائياً — انسخ ملف `web_sw/atelerix-sw.js` من حزمة `lerix` إلى `web/atelerix-sw.js` في تطبيقك، بحيث يُقدَّم من جذر موقعك (مثال: `https://yoursite.com/atelerix-sw.js`).
 2. **أنشئ مفتاح Web Push** من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**. نقرة واحدة — ينشئ Lerix زوج مفاتيح VAPID ويخزّنه لك؛ لا حاجة لنسخ أي شيء في كودك.
 
 <Note>
@@ -196,7 +196,7 @@ Lerix.notifications.setOnNotificationTapped((payload) {
 - **الويب**: يعمل تلقائياً أيضاً، بدون إعداد إضافي — يعرضها عامل الخدمة (service worker) مباشرة كأيقونة/صورة الإشعار.
 - **iOS**: يتطلّب أن يملك تطبيقك **Notification Service Extension** — لا تملك APNs حقل "صورة" أصلياً، لذا يحتاج النظام إلى امتداد صغير لتنزيل الصورة وإرفاقها قبل عرض الإشعار. هذه خطوة إعداد لمرة واحدة لكل تطبيق:
   1. في Xcode: **File → New → Target… → Notification Service Extension**. سمِّه (مثلاً `NotificationServiceExtension`).
-  2. استبدل ملف `NotificationService.swift` المُولَّد بالملف الموجود في حزمة `atelerix` عند `ios/NotificationServiceExtension/NotificationService.swift`.
+  2. استبدل ملف `NotificationService.swift` المُولَّد بالملف الموجود في حزمة `lerix` عند `ios/NotificationServiceExtension/NotificationService.swift`.
   3. ابنِ التطبيق وشغّله — لا حاجة لأي إعداد آخر. يضبط الباك إند تلقائياً علم `mutable-content` الخاص بـ APNs كلما حمل الإشعار قيمة `imageUrl`، وهذا ما يُشغّل الامتداد.
 
 <Note>

@@ -1,31 +1,49 @@
 ---
 title: "مقدمة"
-description: "SDK واحد. رؤية كاملة لتطبيقك — الأخطاء، الإشعارات، التحليلات، والمزيد."
+description: "حزمة SDK واحدة لتتبّع الأعطال والتصحيح بالذكاء الاصطناعي والإشعارات الفورية. لوحة تحكم واحدة للجميع."
 ---
 
-## ما هو Lerix؟
+ليركس يلتقط العطل، ويشرحه، ويساعدك على إخبار من حدث لهم. حزمة SDK واحدة لكل منصة، لوحة تحكم واحدة، بلا أداة ثانية.
 
-Lerix هي منصة موحّدة لمراقبة التطبيقات وتفاعل المستخدمين، مبنية لفرق تطوير الجوال الحديثة. بدلاً من استخدام Sentry وOneSignal وInstabug وFirebase Analytics كلٌّ على حدة، تحصل على كل ذلك في SDK واحد ولوحة تحكم واحدة.
+<CardGroup cols={2}>
+  <Card title="البدء السريع" icon="rocket" href="/ar/quickstart">
+    حساب، مشروع، SDK، أول حدث. خمس دقائق.
+  </Card>
+  <Card title="افتح لوحة التحكم" icon="gauge" href="https://app.lerix.dev">
+    أنشئ حساباً مجانياً ومشروعك الأول.
+  </Card>
+</CardGroup>
 
-تكامل واحد. تحكّم كامل.
+## ماذا يفعل ليركس
 
-## البدء
+<CardGroup cols={2}>
+  <Card title="تتبّع الأخطاء" icon="bug" href="/ar/modules/error-tracking">
+    أعطال وأخطاء مجمّعة حسب البصمة، مرتّبة بعدد المستخدمين المتأثرين، مع الجهاز ونظام التشغيل والإصدار والخطوات السابقة. مساعد ذكي يقرأ تتبّع الخطأ مقابل مستودع GitHub ويشرح السبب.
+  </Card>
+  <Card title="الإشعارات الفورية" icon="bell" href="/ar/modules/push-notifications">
+    APNs وFCM وWeb Push من شاشة واحدة. مواضيع، جدولة، صور، أصوات مخصصة، حالة التسليم لكل جهاز، والتعديل أو الإلغاء بعد التسليم.
+  </Card>
+  <Card title="وكلاء الذكاء الاصطناعي (MCP)" icon="robot" href="/ar/developers/mcp">
+    خادم MCP أصلي ليتمكن أي وكيل يدعم MCP من إنشاء المشاريع وتوليد بيانات الإشعارات وإدارة المواضيع نيابةً عنك.
+  </Card>
+  <Card title="واجهة REST" icon="code" href="/ar/api-reference/introduction">
+    أرسل الإشعارات وعدّلها وألغِها واقرأ حالات التسليم من خادمك.
+  </Card>
+</CardGroup>
 
-إذا كنت جديداً على Lerix، يمكنك <a href="https://app.lerix.dev">إنشاء حساب</a> والبدء في استخدام المنصة. جديد على لوحة التحكم نفسها؟ راجع [لوحة التحكم](/ar/dashboard) لجولة في المنظمات والمشاريع ومكان كل وحدة.
-
-اختر إطار العمل للبدء:
+## اختر منصتك
 
 ### الجوال
 
 <CardGroup cols={3}>
   <Card title="Swift" icon="swift" href="/ar/frameworks/ios/installation">
-    أضف Lerix إلى تطبيق iOS الأصلي (native) الخاص بك.
+    iOS أصلي. معالج أعطال وAPNs وصور غنية عبر امتداد الخدمة.
   </Card>
   <Card title="Kotlin" icon="android" href="/ar/frameworks/android/installation">
-    أضف Lerix إلى تطبيق Android الأصلي (native) الخاص بك.
+    أندرويد أصلي. معالج أعطال وFCM، مع جلب معرّف المرسل أثناء التشغيل.
   </Card>
   <Card title="Flutter" icon="flutter" href="/ar/frameworks/flutter/installation">
-    أضف Lerix إلى تطبيق Flutter الخاص بك — iOS وAndroid والويب — في أقل من 5 دقائق.
+    iOS وأندرويد والويب من حزمة واحدة.
   </Card>
 </CardGroup>
 
@@ -33,19 +51,19 @@ Lerix هي منصة موحّدة لمراقبة التطبيقات وتفاعل 
 
 <CardGroup cols={3}>
   <Card title="React" icon="react" href="/ar/frameworks/react/installation">
-    أضف Lerix إلى تطبيق React الخاص بك — تتبع الأخطاء وWeb Push.
+    مزوّد، حدود أخطاء، وWeb Push.
   </Card>
   <Card title="Next.js" icon="n" href="/ar/frameworks/nextjs/installation">
-    أضف Lerix إلى تطبيق Next.js الخاص بك — تتبع الأخطاء وWeb Push.
+    App Router وPages Router بمكوّنات عميل جاهزة.
   </Card>
   <Card title="Angular" icon="angular" href="/ar/frameworks/angular/installation">
-    أضف Lerix إلى تطبيق Angular الخاص بك — تتبع الأخطاء وWeb Push.
+    `provideLerix()` في إعدادات تطبيقك.
   </Card>
   <Card title="Web (JS)" icon="js" href="/ar/frameworks/web/push-notifications">
-    أضف إشعارات المتصفح عبر JS SDK.
+    إشعارات المتصفح عبر service worker وVAPID.
   </Card>
-  <Card title="React Native" icon="react" href="#">
-  <p>قريباً</p>
+  <Card title="React Native" icon="react">
+    <Badge>قريباً</Badge>
   </Card>
 </CardGroup>
 
@@ -53,76 +71,20 @@ Lerix هي منصة موحّدة لمراقبة التطبيقات وتفاعل 
 
 <CardGroup cols={3}>
   <Card title="NestJS" icon="node-js" href="/ar/frameworks/nestjs/installation">
-    أبلغ عن الاستثناءات غير المعالَجة من خادم NestJS وأرسل الإشعارات من الخادم.
+    أبلغ عن الاستثناءات غير المعالَجة وأرسل الإشعارات من الخادم.
   </Card>
   <Card title="ASP.NET" icon="microsoft" href="/ar/frameworks/aspnet/installation">
-  <p>قريباً</p>
+    <Badge>قريباً</Badge>
   </Card>
   <Card title="Laravel" icon="laravel" href="/ar/frameworks/laravel/installation">
-  <p>قريباً</p>
+    <Badge>قريباً</Badge>
   </Card>
 </CardGroup>
 
-## وحدات SDK
+## خارطة الطريق
 
-<CardGroup cols={2}>
-  <Card title="تتبع الأخطاء" icon="bug" href="/ar/modules/error-tracking">
-    تتبّع الأخطاء والمستخدمين المتأثرين بها، واطّلع على تفاصيل كاملة لكل خطأ، مع اقتراح مدعوم بالذكاء الاصطناعي لإصلاحه.
-  </Card>
-  <Card title="الإشعارات" icon="bell" href="/ar/modules/push-notifications">
-    أعِدّ وأرسل إشعارات الجوال.
-  </Card>
-  <Card title="التحليلات" icon="chart-bar" href="/ar/modules/analytics">
-    <Badge>قريباً</Badge>
-
-    تتبّع المستخدمين والجلسات والموقع الجغرافي وأداء التطبيق في الوقت الفعلي.
-  </Card>
-  <Card title="الرسائل داخل التطبيق" icon="message" href="/ar/modules/in-app-messages">
-    <Badge>قريباً</Badge>
-
-    اعرض نوافذ منبثقة وشرائط إعلانية موجّهة للمستخدمين دون إصدار جديد للتطبيق.
-  </Card>
-  <Card title="الملاحظات" icon="star" href="/ar/modules/feedback">
-    <Badge>قريباً</Badge>
-
-    اجمع ملاحظات المستخدمين بشكل منظّم مباشرة داخل تطبيقك.
-  </Card>
-
-  <Card title="التحديثات" icon="wrench" href="/ar/modules/updates">
-    <Badge>قريباً</Badge>
-
-    اجبر المستخدمين على التحديث أو اقترحه عليهم وفق قواعد إصدار مرنة.
-  </Card>
-</CardGroup>
-
-## أطر العمل المتاحة
-
-**الجوال**
-
-| إطار العمل | الحالة |
-|----------|--------|
-| Swift (iOS) | ✅ متاح |
-| Kotlin (Android) | ✅ متاح |
-| Flutter (iOS + Android + الويب) | ✅ متاح |
-
-**الويب**
-
-| إطار العمل | الحالة |
-|----------|--------|
-| React | ✅ متاح |
-| Next.js | ✅ متاح |
-| Angular | ✅ متاح |
-| الويب (JS SDK، الإشعارات) | ✅ متاح |
-| React Native | 🔜 قريباً |
-
-**الخادم**
-
-| إطار العمل | الحالة |
-|----------|--------|
-| NestJS | ✅ متاح |
-| ASP.NET | 🔜 قريباً |
-| Laravel | 🔜 قريباً |
+التحليلات والرسائل داخل التطبيق والملاحظات وتنبيهات التحديث تصل عبر الحزمة نفسها. صفحاتها تصف المخطط له: [التحليلات](/ar/modules/analytics)، [الرسائل داخل التطبيق](/ar/modules/in-app-messages)، [الملاحظات](/ar/modules/feedback)، [التحديثات](/ar/modules/updates).
 
 <Note>
-  Lerix حالياً في مرحلة **تجريبية (beta)**. وحدتا تتبع الأخطاء والإشعارات متاحتان الآن. وحدات التحليلات والرسائل داخل التطبيق والملاحظات والتحديثات قادمة قريباً.
+  ليركس في مرحلة **البيتا**. تتبّع الأخطاء والمساعد الذكي والإشعارات وخادم MCP متاحة الآن. إن كان هناك شيء ناقص، راسلنا على [support@lerix.dev](mailto:support@lerix.dev).
 </Note>

@@ -23,11 +23,11 @@ https://api.lerix.dev/v1/my-project-id
 
 قبل استدعاء الـ API، أنشئ **مفتاحاً خاصاً (private key)** من **إعدادات المشروع** في [لوحة التحكم](https://app.lerix.dev).
 
-أرسل المفتاح الخاص في كل طلب ضمن ترويسة (header) باسم `atelerix-api-key`:
+أرسل المفتاح الخاص في كل طلب ضمن ترويسة (header) باسم `lerix-key`:
 
 ```bash
 curl https://api.lerix.dev/v1/my-project-id/endpoint \
-  -H "atelerix-api-key: <your-private-key>"
+  -H "lerix-key: <your-private-key>"
 ```
 
 <Warning>

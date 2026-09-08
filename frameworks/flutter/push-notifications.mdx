@@ -39,28 +39,28 @@ For the full setup steps, see [Apple's guide to registering your app with APNs](
 Add the following overrides to `ios/Runner/AppDelegate.swift`:
 
 ```swift AppDelegate.swift
-import atelerix
+import lerix
 
 override func application(
   _ application: UIApplication,
   didRegisterForRemoteNotificationsWithDeviceToken deviceData: Data
 ) {
-  atelerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceData)
+  lerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceData)
 }
 
 override func application(
   _ application: UIApplication,
   didFailToRegisterForRemoteNotificationsWithError error: Error
 ) {
-  atelerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
+  lerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
 }
 ```
 
 ## Web configuration
 
-Flutter Web is supported by the same `atelerix` package — no separate JS SDK, no Firebase project. Two steps instead of Xcode's:
+Flutter Web is supported by the same `lerix` package — no separate JS SDK, no Firebase project. Two steps instead of Xcode's:
 
-1. **Copy the service worker.** A Flutter package can't add a file to your app's `web/` folder for you — copy the `atelerix` package's `web_sw/atelerix-sw.js` into your app's `web/atelerix-sw.js`, so it's served at your site's root (e.g. `https://yoursite.com/atelerix-sw.js`).
+1. **Copy the service worker.** A Flutter package can't add a file to your app's `web/` folder for you — copy the `lerix` package's `web_sw/atelerix-sw.js` into your app's `web/atelerix-sw.js`, so it's served at your site's root (e.g. `https://yoursite.com/atelerix-sw.js`).
 2. **Generate a Web Push key** from the dashboard: **Notifications → Settings → Web Push → Generate keys**. One click — Lerix generates and stores the VAPID key pair for you; there's nothing to copy into your code.
 
 <Note>
@@ -199,7 +199,7 @@ Set `imageUrl` when sending a notification — from the dashboard's **Send notif
 - **Web**: works automatically, no extra setup — the service worker renders it as the notification's icon/image directly.
 - **iOS**: requires your app to have a **Notification Service Extension** — APNs has no native "image" field, so the OS needs a small extension to download and attach the image before displaying the notification. This is a one-time setup step per app:
   1. In Xcode: **File → New → Target… → Notification Service Extension**. Name it (e.g. `NotificationServiceExtension`).
-  2. Replace the generated `NotificationService.swift` with the one from the `atelerix` package at `ios/NotificationServiceExtension/NotificationService.swift`.
+  2. Replace the generated `NotificationService.swift` with the one from the `lerix` package at `ios/NotificationServiceExtension/NotificationService.swift`.
   3. Build and run — no other configuration needed. The backend automatically sets APNs' `mutable-content` flag whenever a notification carries an `imageUrl`, which is what triggers your extension to run.
 
 <Note>

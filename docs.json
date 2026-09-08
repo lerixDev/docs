@@ -1,18 +1,18 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "aspen",
   "name": "Lerix Docs",
   "colors": {
-    "primary": "#64523C",
-    "light": "#997668",
-    "dark": "#8F7656"
+    "primary": "#202224",
+    "light": "#f2f3f4",
+    "dark": "#202224"
   },
   "fonts": {
-    "family": "Alexandria"
+    "family": "Alexandria",
+    "weight": 400
   },
-  "favicon": "/atelerix-icon.svg",
+  "favicon": "/favicon.svg",
   "navigation": {
-  
     "global": {
       "anchors": [
         {
@@ -25,18 +25,17 @@
           "href": "https://app.lerix.dev",
           "icon": "gauge"
         }
-       
       ]
     },
-
     "languages": [
       {
         "language": "en",
         "pages": [
           {
-            "group": "Getting Started",
+            "group": "Getting started",
             "pages": [
               "index",
+              "quickstart",
               "dashboard"
             ]
           },
@@ -151,7 +150,7 @@
           {
             "group": "Modules",
             "icon": "rocket",
-            "pages": [ 
+            "pages": [
               "modules/error-tracking",
               "modules/push-notifications",
               "modules/analytics",
@@ -160,7 +159,6 @@
               "modules/updates"
             ]
           },
-
           {
             "group": "Developers",
             "icon": "laptop-code",
@@ -169,7 +167,7 @@
                 "group": "API Reference",
                 "icon": "code",
                 "pages": [
-                  "api-reference/introductaion",
+                  "api-reference/introduction",
                   {
                     "group": "Push Notifications",
                     "pages": [
@@ -198,7 +196,6 @@
               }
             ]
           }
-
         ]
       },
       {
@@ -340,7 +337,7 @@
                 "group": "مرجع API",
                 "icon": "code",
                 "pages": [
-                  "ar/api-reference/introductaion",
+                  "ar/api-reference/introduction",
                   {
                     "group": "الإشعارات",
                     "pages": [
@@ -375,10 +372,15 @@
   },
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "https://lerix.dev"
   },
   "navbar": {
     "links": [
+      {
+        "label": "Website",
+        "href": "https://lerix.dev"
+      },
       {
         "label": "Support",
         "href": "mailto:support@lerix.dev"
@@ -386,7 +388,7 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
+      "label": "Open dashboard",
       "href": "https://app.lerix.dev"
     }
   },
@@ -408,15 +410,46 @@
       "server": "https://api.lerix.dev/v1",
       "auth": {
         "method": "key",
-        "name": "atelerix-api-key"
+        "name": "lerix-key"
       }
     }
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/atelerixDev",
-      "github": "https://github.com/AtelerixDev",
-      "linkedin": "https://linkedin.com/company/AtelerixDev"
+      "x": "https://x.com/lerixdev",
+      "github": "https://github.com/lerixDev",
+      "instagram": "https://instagram.com/lerix.dev"
     }
-  }
+  },
+  "background": {
+    "color": {
+      "light": "#ffffff",
+      "dark": "#0e0f11"
+    }
+  },
+  "appearance": {
+    "default": "system",
+    "strict": false
+  },
+  "styling": {
+    "codeblocks": "dark"
+  },
+  "description": "Lerix: crash reporting, AI debugging and push notifications for Flutter, iOS, Android, React, Next.js, Angular and the web.",
+  "seo": {
+    "indexing": "navigable",
+    "metatags": {
+      "og:site_name": "Lerix Docs",
+      "twitter:site": "@lerixdev"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/api-reference/introductaion",
+      "destination": "/api-reference/introduction"
+    },
+    {
+      "source": "/ar/api-reference/introductaion",
+      "destination": "/ar/api-reference/introduction"
+    }
+  ]
 }

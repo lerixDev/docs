@@ -23,11 +23,11 @@ https://api.lerix.dev/v1/my-project-id
 
 Before you call the API, create a **private key** in **Project Settings** in the [dashboard](https://app.lerix.dev).
 
-Send the private key on every request in the `atelerix-api-key` header:
+Send the private key on every request in the `lerix-key` header:
 
 ```bash
 curl https://api.lerix.dev/v1/my-project-id/endpoint \
-  -H "atelerix-api-key: <your-private-key>"
+  -H "lerix-key: <your-private-key>"
 ```
 
 <Warning>

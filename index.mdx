@@ -1,32 +1,49 @@
 ---
 title: "Introduction"
-description: "One SDK. Full visibility into your app — errors, notifications, analytics, and more."
+description: "One SDK for crash reporting, AI debugging and push notifications. One dashboard for all of it."
 ---
 
+Lerix catches the crash, explains it, and helps you tell the people it happened to. One SDK per platform, one dashboard, no second tool.
 
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Account, project, SDK, first event. Five minutes.
+  </Card>
+  <Card title="Open the dashboard" icon="gauge" href="https://app.lerix.dev">
+    Create a free account and your first project.
+  </Card>
+</CardGroup>
 
-## What is Lerix?
+## What Lerix does
 
-Lerix is a unified developer monitoring and engagement platform built for modern mobile teams. Instead of juggling Sentry, OneSignal, Instabug, and Firebase Analytics separately — you get all of it in one SDK, one dashboard.
+<CardGroup cols={2}>
+  <Card title="Error tracking" icon="bug" href="/modules/error-tracking">
+    Crashes and errors grouped by fingerprint, ranked by users affected, with device, OS, version and breadcrumbs. An AI assistant reads the stack trace against your GitHub repo and explains the cause.
+  </Card>
+  <Card title="Push notifications" icon="bell" href="/modules/push-notifications">
+    APNs, FCM and Web Push from one screen. Topics, scheduling, images, custom sounds, per-device delivery status, and update or unsend after delivery.
+  </Card>
+  <Card title="AI agents (MCP)" icon="robot" href="/developers/mcp">
+    A native MCP server so any agent that speaks MCP can create projects, generate push credentials and manage topics for you.
+  </Card>
+  <Card title="REST API" icon="code" href="/api-reference/introduction">
+    Send, update, unsend and cancel notifications, and read deliveries, from your own backend.
+  </Card>
+</CardGroup>
 
-One integration. Full control.
-
-## Get Started
-If you are new to Lerix, you can <a href="https://app.lerix.dev">create account</a> and start using the platform. New to the dashboard itself? See [The Dashboard](/dashboard) for a tour of organizations, projects, and where each module lives.
-
-Select your framework to get started:
+## Pick your platform
 
 ### Mobile
 
 <CardGroup cols={3}>
   <Card title="Swift" icon="swift" href="/frameworks/ios/installation">
-    Add Lerix to your native iOS app.
+    Native iOS. Crash handler, APNs, rich images via a service extension.
   </Card>
   <Card title="Kotlin" icon="android" href="/frameworks/android/installation">
-    Add Lerix to your native Android app.
+    Native Android. Crash handler and FCM, with the sender ID fetched at runtime.
   </Card>
   <Card title="Flutter" icon="flutter" href="/frameworks/flutter/installation">
-    Add Lerix to your Flutter app — iOS, Android, and Web — in under 5 minutes.
+    iOS, Android and Web from one package.
   </Card>
 </CardGroup>
 
@@ -34,19 +51,19 @@ Select your framework to get started:
 
 <CardGroup cols={3}>
   <Card title="React" icon="react" href="/frameworks/react/installation">
-    Add Lerix to your React app — error tracking and Web Push.
+    Provider, error boundary, Web Push.
   </Card>
   <Card title="Next.js" icon="n" href="/frameworks/nextjs/installation">
-    Add Lerix to your Next.js app — error tracking and Web Push.
+    App Router and Pages Router, pre-marked client components.
   </Card>
   <Card title="Angular" icon="angular" href="/frameworks/angular/installation">
-    Add Lerix to your Angular app — error tracking and Web Push.
+    `provideLerix()` in your app config.
   </Card>
   <Card title="Web (JS)" icon="js" href="/frameworks/web/push-notifications">
-    Add browser push notifications with the JS SDK.
+    Browser push with a service worker and VAPID.
   </Card>
-  <Card title="React Native" icon="react" href="#">
-  <p>Coming Soon</p>
+  <Card title="React Native" icon="react">
+    <Badge>Coming soon</Badge>
   </Card>
 </CardGroup>
 
@@ -54,79 +71,20 @@ Select your framework to get started:
 
 <CardGroup cols={3}>
   <Card title="NestJS" icon="node-js" href="/frameworks/nestjs/installation">
-    Report unhandled exceptions from your NestJS backend and send push notifications from the server.
+    Report unhandled exceptions and send notifications from the server.
   </Card>
   <Card title="ASP.NET" icon="microsoft" href="/frameworks/aspnet/installation">
-  <p>Coming Soon</p>
+    <Badge>Coming soon</Badge>
   </Card>
   <Card title="Laravel" icon="laravel" href="/frameworks/laravel/installation">
-  <p>Coming Soon</p>
+    <Badge>Coming soon</Badge>
   </Card>
 </CardGroup>
 
+## Roadmap
 
-## SDK Modules
-
-
-<CardGroup cols={2}>
-  <Card title="Error Tracking" icon="bug" href="/modules/error-tracking">
-   Track bugs and the users affected by them, see full bug details, and get an AI-assisted suggestion to fix it.
-  </Card>
-  <Card title="Push Notifications" icon="bell" href="/modules/push-notifications">
-    Set up and send mobile notifications.
-  </Card>
-  <Card title="Analytics" icon="chart-bar" href="/modules/analytics">
-  <Badge>Coming Soon</Badge>
-  
-    Track users, sessions, geography, and app performance in real time.
-  </Card>
-  <Card title="In-App Messages" icon="message" href="/modules/in-app-messages">
-    <Badge>Coming Soon</Badge>
-   
-    Display targeted popups and banners to users without a new app release.
-  </Card>
-  <Card title="Feedback" icon="star" href="/modules/feedback">
-    <Badge>Coming Soon</Badge>
-  
-    Collect structured user feedback directly inside your app.
-  </Card> 
-
-  <Card title="Updates" icon="wrench" href="/modules/updates">
-  <Badge>Coming Soon</Badge>
-
-    Force or suggest app updates with flexible version rules.
-  </Card>
-</CardGroup>
-
-
-## Available Frameworks
-
-**Mobile**
-
-| Framework | Status |
-|----------|--------|
-| Swift (iOS) | ✅ Available |
-| Kotlin (Android) | ✅ Available |
-| Flutter (iOS + Android + Web) | ✅ Available |
-
-**Web**
-
-| Framework | Status |
-|----------|--------|
-| React | ✅ Available |
-| Next.js | ✅ Available |
-| Angular | ✅ Available |
-| Web (JS SDK, push notifications) | ✅ Available |
-| React Native | 🔜 Coming Soon |
-
-**Backend**
-
-| Framework | Status |
-|----------|--------|
-| NestJS | ✅ Available |
-| ASP.NET | 🔜 Coming Soon |
-| Laravel | 🔜 Coming Soon |
+Analytics, in-app messages, feedback and update prompts ship through the same SDK. Their pages describe what's planned: [Analytics](/modules/analytics), [In-App Messages](/modules/in-app-messages), [Feedback](/modules/feedback), [Updates](/modules/updates).
 
 <Note>
-  Lerix is currently in **beta**. Error Tracking and Push Notifications are live. Analytics, In-App Messages, Feedback, and Updates modules are coming soon.
+  Lerix is in **beta**. Error tracking, the AI assistant, push notifications and the MCP server are live. If something is missing, write to [support@lerix.dev](mailto:support@lerix.dev).
 </Note>

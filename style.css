@@ -1,0 +1,43 @@
+/* Lerix docs: the same system as the product. Alexandria is loaded by
+   docs.json; this file only nudges shapes, weights and the RTL locale. */
+
+:root {
+  --lerix-radius: 12px;
+}
+
+/* Headings a touch tighter, body a touch calmer. */
+h1, h2, h3, h4 {
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+
+/* Cards and callouts share one radius and a hairline border. */
+[class*="card"], .card, .callout {
+  border-radius: var(--lerix-radius);
+}
+
+/* Code blocks: soft corners, no heavy shadow. */
+pre {
+  border-radius: var(--lerix-radius);
+}
+
+/* Arabic pages: mirror direction-sensitive bits that Mintlify leaves LTR. */
+html[dir="rtl"] body {
+  text-align: start;
+}
+html[dir="rtl"] pre,
+html[dir="rtl"] code,
+html[dir="rtl"] .api-playground,
+html[dir="rtl"] table {
+  direction: ltr;
+  text-align: left;
+}
+html[dir="rtl"] ul,
+html[dir="rtl"] ol {
+  padding-inline-start: 1.5rem;
+  padding-inline-end: 0;
+}
+html[dir="rtl"] blockquote {
+  border-inline-start-width: 4px;
+  border-inline-end-width: 0;
+}

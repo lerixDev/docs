@@ -19,11 +19,11 @@ description: "أضف Lerix إلى تطبيق Flutter الخاص بك في خطو
 
 ## 1. أضف الاعتمادية (Dependency)
 
-أضف `atelerix` إلى ملف `pubspec.yaml`:
+أضف `lerix` إلى ملف `pubspec.yaml`:
 
 ```yaml pubspec.yaml
 dependencies:
-  atelerix: ^0.0.1
+  lerix: ^0.0.1
 ```
 
 ثم نفّذ:
@@ -37,7 +37,7 @@ flutter pub get
 استدعِ `Lerix.init()` في أقرب وقت ممكن — يُفضّل في بداية `main()` داخل `main.dart`. التهيئة تُعِدّ مراقبة الأخطاء والإبلاغ عنها فقط. هي **لا** تُهيّئ الإشعارات؛ استدعِ `Lerix.notifications.init()` بشكل منفصل عند الحاجة لتلك الوحدة.
 
 ```dart main.dart
-import 'package:atelerix/atelerix.dart';
+import 'package:lerix/lerix.dart';
 
 void main() {
   Lerix.init(
