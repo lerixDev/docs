@@ -1,11 +1,178 @@
 ---
-title: "ASP.NET"
-description: "تكامل Lerix من جانب الخادم لـ ASP.NET — قريباً."
+title: "ASP.NET Core — التثبيت"
+description: "أضف Lerix .NET SDK إلى خادم ASP.NET Core للإبلاغ عن الاستثناءات غير المعالَجة وإرسال الإشعارات من الخادم."
 ---
 
-<Badge>قريباً</Badge>
+## مقدمة
 
-يوجد SDK لـ ASP.NET لتتبع الأخطاء وإرسال الإشعارات من جانب الخادم على
-خارطة الطريق، لكنه غير متاح بعد. تابعنا قريباً للحصول على خطوات الإعداد.
+`Lerix.AspNetCore` هو SDK الخاص بـ Lerix من جانب الخادم لإطار ASP.NET Core.
+بعد سطرين في `Program.cs`، يُبلَّغ عن كل استثناء غير معالَج في واجهتك
+البرمجية إلى لوحة التحكم مع تتبّع المكدس واسم المضيف والإصدار وسياق الطلب،
+وتحصل خدماتك على عميل مُهيكل لواجهة REST الخاصة بالإشعارات.
 
-في هذه الأثناء، يمكنك استدعاء [REST API](/ar/api-reference/introduction) مباشرة من أي خدمة ASP.NET.
+<Note>
+  أنشئ مشروعاً بإطار **ASP.NET** في [لوحة التحكم](https://app.lerix.dev)
+  وانسخ **مفتاح API** و**معرّف المشروع** من **إعدادات المشروع**.
+</Note>
+
+## المتطلبات
+
+| | الحد الأدنى |
+|---|---|
+| .NET | 8.0 |
+| ASP.NET Core | 8.0 |
+
+تستهدف الحزمة الأساسية `Lerix` أيضاً .NET Standard 2.0 لتطبيقات الطرفية
+والعمّال والدوال السحابية التي لا تستخدم ASP.NET Core.
+
+## 1. ثبّت الحزمة
+
+```bash
+dotnet add package Lerix.AspNetCore
+```
+
+## 2. سجّل الحزمة
+
+أضف الخدمات والوسيط في `Program.cs`:
+
+```csharp Program.cs
+using Lerix.AspNetCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddLerix(builder.Configuration.GetSection("Lerix"));
+
+var app = builder.Build();
+
+app.UseExceptionHandler("/error");
+app.UseLerix();
+
+app.MapControllers();
+app.Run();
+```
+
+ضع الخيارات في `appsettings.json`، أو ضع الأسرار في user secrets أو متغيرات
+البيئة:
+
+```json appsettings.json
+{
+  "Lerix": {
+    "ApiKey": "YOUR_PROJECT_API_KEY",
+    "ProjectId": "YOUR_PROJECT_ID",
+    "Environment": "production"
+  }
+}
+```
+
+يعود `ApiKey` و`ProjectId` أيضاً إلى متغيري البيئة `LERIX_API_KEY`
+و`LERIX_PROJECT_ID`، فيمكن حذف القسم كلياً على خادم يضبطهما بالفعل.
+
+هذا كل الإعداد. تسجّل `AddLerix` خدمة مستضافة تتصل بمشروعك عند بدء التشغيل
+وترسل التقارير العالقة عند الإيقاف، ويضيف `UseLerix` الوسيط الذي يبلّغ عن
+الاستثناءات غير المعالَجة. راجع
+[تتبع الأخطاء](/ar/frameworks/aspnet/error-tracking) لمعرفة ما يُلتقط وكيفية
+الإبلاغ عن الأخطاء بنفسك.
+
+<Warning>
+  استدعِ `app.UseLerix()` **بعد** `UseExceptionHandler` أو
+  `UseDeveloperExceptionPage` و**قبل** التوجيه ونقاط النهاية. تلتقط تلك
+  المعالجات الاستثناءات من الوسائط التي تليها، فإن سُجّل Lerix قبلها لن يرى
+  الاستثناء أبداً.
+</Warning>
+
+### الضبط من الكود
+
+تقبل `AddLerix` أيضاً دالة، وحدها أو فوق قسم الإعدادات:
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.ApiKey = builder.Configuration["LERIX_API_KEY"];
+    o.ProjectId = builder.Configuration["LERIX_PROJECT_ID"];
+    o.Environment = builder.Environment.EnvironmentName;
+    o.IgnorePaths.Add("/health");
+});
+```
+
+## 3. تحقّق من التكامل
+
+أضف نقطة نهاية تُلقي خطأً واستدعِها مرة واحدة:
+
+```csharp Program.cs
+app.MapGet("/lerix-test", () => { throw new InvalidOperationException("Lerix test error"); });
+```
+
+يتلقى العميل استجابة `500` المعتادة من تطبيقك، ويظهر الخطأ في
+[لوحة التحكم](https://app.lerix.dev) خلال ثوانٍ. احذف نقطة النهاية بعد ذلك.
+
+## الخيارات
+
+كل خيار هو خاصية في `LerixAspNetCoreOptions`، تُضبط من الإعدادات أو الدالة.
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `ApiKey` | `LERIX_API_KEY` | مفتاح API للمشروع |
+| `ProjectId` | `LERIX_PROJECT_ID` | معرّف المشروع |
+| `Url` | `https://api.lerix.dev/v1` | عنوان API الأساسي (`LERIX_API_URL`) |
+| `Environment` | `LERIX_ENVIRONMENT` ثم `ASPNETCORE_ENVIRONMENT` | يُرسَل كبيانات وصفية مع كل تقرير |
+| `App` | من تجميعة الدخول | `AppInfo { Id, Name, Version, BuildNumber }` لتعريف هذه الخدمة |
+| `Enabled` | `true` | `false` يعطّل الحزمة بالكامل، مفيد في الاختبارات |
+| `Debug` | `false` | تسجيل الطلبات والتقارير عبر `ILogger<LerixClient>` |
+| `CaptureUnhandled` | `true` | الإبلاغ عن `AppDomain.UnhandledException` و`TaskScheduler.UnobservedTaskException` |
+| `ShouldCapture` | 5xx فقط | `(exception, httpContext, status) => bool` لتحديد ما يبلّغ عنه الوسيط |
+| `IgnorePaths` | فارغ | بادئات مسارات الطلبات التي لا يُبلَّغ عن استثناءاتها أبداً |
+| `PersistState` | `true` | حفظ معرّف المستخدم المجهول على القرص بين عمليات التشغيل |
+| `StatePath` | `.lerix/state.json` | مكان حفظ ذلك المعرّف نسبةً إلى مجلد العمل |
+| `UserId` | | تثبيت معرّف المستخدم المجهول بدل تسجيل واحد |
+| `FlushTimeout` | `00:00:02` | مدة انتظار التقارير العالقة عند الإيقاف |
+| `Timeout` | `00:00:10` | مهلة HTTP لكل طلب |
+
+## كيف تظهر خدمتك في لوحة التحكم
+
+يسجّل SDK خدمتك كتطبيق من نوع `server`. يأتي معرّف التطبيق افتراضياً من اسم
+تجميعة الدخول والإصدار من إصدارها المعلوماتي (`<Version>` في ملف `.csproj`)،
+فتُجمَّع التقارير لكل خدمة ولكل إصدار. عدّلهما عبر `App` عند نشر عدة نسخ من
+الكود نفسه أو عندما تريد استخدام git SHA كرقم بناء:
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.App = new AppInfo { Id = "orders-api", Version = version, BuildNumber = gitSha };
+});
+```
+
+يُسجَّل مستخدم مجهول عند أول تشغيل ويُحفظ في `.lerix/state.json` داخل مجلد
+العمل حتى تعيد عمليات التشغيل استخدامه. أضف هذا المجلد إلى `.gitignore` أو
+اربطه في الحاويات. اضبط `PersistState = false` لتخطي الحفظ، أو `UserId`
+للتحكم بالمعرّف بنفسك.
+
+## خارج ASP.NET Core
+
+يمكن لتطبيقات الطرفية والعمّال والدوال استخدام حزمة `Lerix` مباشرة:
+
+```bash
+dotnet add package Lerix
+```
+
+```csharp
+using Lerix;
+
+using var lerix = new LerixClient("YOUR_PROJECT_API_KEY", "YOUR_PROJECT_ID");
+lerix.InstallProcessHandlers();
+await lerix.InitializeAsync();
+
+try { await DoWork(); }
+catch (Exception error) { await lerix.CaptureException(error); throw; }
+finally { await lerix.FlushAsync(); }
+```
+
+## الخطوات التالية
+
+<CardGroup cols={2}>
+  <Card title="تتبع الأخطاء" icon="bug" href="/ar/frameworks/aspnet/error-tracking">
+    ما الذي يبلّغ عنه الوسيط، وكيف تغيّر السياسة، والإبلاغ اليدوي.
+  </Card>
+  <Card title="الإشعارات" icon="bell" href="/ar/frameworks/aspnet/push-notifications">
+    أرسل وجدوِل وحدّث وألغِ الإشعارات من خادمك.
+  </Card>
+</CardGroup>

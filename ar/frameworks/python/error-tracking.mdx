@@ -1,0 +1,188 @@
+---
+title: "Python — تتبع الأخطاء"
+description: "إبلاغ تلقائي عن الاستثناءات غير المعالَجة في Python وFastAPI وFlask وDjango، مع إبلاغ يدوي بالنوع والخطورة والبيانات الوصفية."
+---
+
+## مقدمة
+
+بعد إكمال [تثبيت Python](/ar/frameworks/python/installation)، يُبلَّغ عن
+الاستثناءات غير المعالَجة تلقائياً. استدعِ `lerix.capture_exception()`
+للإبلاغ عن الاستثناءات المعالَجة بنفسك مع سياق إضافي.
+
+## الالتقاط التلقائي
+
+تثبّت `lerix.init()` خطافين على مستوى العملية:
+
+- **`sys.excepthook`.** يُبلَّغ عن الاستثناء الذي يفلت من الخيط الرئيسي،
+  ويُمنح مهلة `flush_timeout` ثانية للإرسال، ثم يُسلَّم إلى الخطاف السابق
+  فيُطبع التتبّع ويخرج المفسّر كالمعتاد. لا يُبلَّغ عن `KeyboardInterrupt`
+  و`SystemExit`.
+- **`threading.excepthook`.** يُبلَّغ عن الاستثناء الذي يُنهي
+  `threading.Thread` مع اسم الخيط في `metadata.thread`.
+
+اضبط `capture_unhandled=False` لتخطي الخطافين.
+
+### asyncio
+
+الاستثناءات داخل المهام التي لا يُنتظر ناتجها أبداً لا يسجّلها asyncio إلا في
+السجل. استدعِ `install_asyncio_handler` بعد إنشاء الحلقة للإبلاغ عنها أيضاً:
+
+```python
+import asyncio
+import lerix
+
+async def main():
+    lerix.install_asyncio_handler(asyncio.get_running_loop())
+    ...
+
+asyncio.run(main())
+```
+
+### أطر الويب
+
+تحوّل الأطر الاستثناءات إلى استجابة `500` قبل أن تصل إلى خطافات العملية،
+لذلك لكل إطار خطافه الخاص. ترفق جميعها طريقة الطلب وعنوانه ومساره ورمز
+الحالة وترويسة `X-Request-Id` إن وُجدت، تحت `metadata.request`، ثم تترك
+معالجة الأخطاء الخاصة بالإطار تعمل دون تغيير.
+
+| الإطار | الخطاف | ما يُبلَّغ عنه |
+|---|---|---|
+| FastAPI / Starlette | `app.add_middleware(LerixMiddleware)` من `lerix.integrations.fastapi` | كل استثناء يفلت من التطبيق؛ يُتجاهل `HTTPException` تحت 500 |
+| Flask | `LerixFlask(app)` من `lerix.integrations.flask` | كل استثناء يُمرَّر إلى `got_request_exception`؛ يُتجاهل `HTTPException` تحت 500 |
+| Django | `"lerix.integrations.django.LerixMiddleware"` في `MIDDLEWARE` | كل استثناء يصل إلى `process_exception`؛ تُتجاهل `Http404` و`PermissionDenied` و`SuspiciousOperation` |
+
+### تغيير ما يُبلَّغ عنه
+
+يقبل كل خطاف دالة `should_capture` تتلقى الاستثناء ورمز حالة HTTP الذي
+سيُرسَل (إن كان معروفاً) وتُعيد ما إذا كان يجب الإبلاغ عنه:
+
+```python main.py
+from lerix.integrations.fastapi import LerixMiddleware
+
+def should_capture(exc: BaseException, status_code: int | None) -> bool:
+    if isinstance(exc, TimeoutError):
+        return False
+    return status_code is None or status_code >= 500
+
+app.add_middleware(LerixMiddleware, should_capture=should_capture)
+```
+
+مع Flask مرّرها إلى `LerixFlask(app, should_capture=...)`. مع Django اضبطها
+على الصنف في `settings.py`:
+
+```python settings.py
+from lerix.integrations.django import LerixMiddleware
+
+LerixMiddleware.should_capture = lambda exc, status: status is None or status >= 500
+```
+
+### عدة عملاء
+
+تستخدم الخطافات العميل الذي أنشأته `lerix.init()`. مرّر `client=` إلى الخطاف
+(أو اضبط `LerixMiddleware.client` مع Django) عندما تبلّغ عملية واحدة إلى أكثر
+من مشروع.
+
+## الإبلاغ عن خطأ يدوياً
+
+```python orders.py
+import lerix
+from lerix import BugSeverity, BugType
+
+def reconcile(order_id: str) -> None:
+    try:
+        ledger.reconcile(order_id)
+    except LedgerError as error:
+        lerix.capture_exception(
+            error,
+            type=BugType.LOGIC_BUG,
+            severity=BugSeverity.HIGH,
+            metadata={"order_id": order_id, "job": "reconcile"},
+        )
+        raise
+```
+
+داخل كتلة `except` يمكنك حذف الاستثناء وستلتقط `capture_exception()`
+الاستثناء الجاري معالجته. لا تُلقي استثناءً أبداً ولا تحجب التنفيذ: يُرسَل
+التقرير من خيط في الخلفية، ويكتمل `Future` المُعاد عند قبول التقرير أو
+التخلي عنه. استخدم `capture_message` لشيء لم يُلقَ كاستثناء:
+
+```python
+lerix.capture_message(
+    "Inventory drift detected",
+    severity=BugSeverity.MEDIUM,
+    metadata={"sku": "A-1", "expected": 10, "actual": 7},
+)
+```
+
+### المعاملات
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `error` / `message` | `BaseException` / `str` | نعم | الاستثناء الملتقط (افتراضياً الجاري معالجته)، أو رسالة |
+| `type` | `BugType` | لا | تصنيف الخطأ (الافتراضي `RUNTIME_ERROR` للاستثناءات و`LOGIC_BUG` للرسائل) |
+| `severity` | `BugSeverity` | لا | مستوى الخطورة (الافتراضي `HIGH` للاستثناءات و`MEDIUM` للرسائل) |
+| `metadata` | `dict` | لا | سياق JSON إضافي يُرفق بالتقرير |
+
+### قيم `BugType`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `RUNTIME_ERROR` | استثناء غير معالَج أُلقي وقت التشغيل |
+| `LOGIC_BUG` | سلوك خاطئ لا يُلقي استثناءً |
+| `UI_BUG` | عيب مرئي أو في التخطيط |
+| `NETWORK_ERROR` | طلب شبكة فاشل أو مشوّه |
+| `PERFORMANCE` | بطء أو استهلاك مفرط للموارد |
+| `COMPATIBILITY` | يتعطل على بيئة تشغيل أو نظام أو منصة محددة |
+| `VALIDATION_ERROR` | مدخل غير صالح اجتاز التحقق |
+| `SECURITY` | عيب متعلق بالأمان |
+| `CRASH` | توقفت العملية بشكل غير متوقع |
+| `UNKNOWN` | لا شيء مما سبق |
+
+### قيم `BugSeverity`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `CRITICAL` | يعطّل وظيفة أساسية أو يؤثر على كل المستخدمين |
+| `HIGH` | تأثير خطير مع وجود حل بديل |
+| `MEDIUM` | تأثير ملحوظ لكنه محدود |
+| `LOW` | بسيط أو شكلي |
+| `UNKNOWN` | لم تُقيَّم الخطورة بعد |
+
+## ما يُرفق بالتقرير
+
+| الحقل | القيمة |
+|-------|-------|
+| الجهاز | اسم المضيف، معمارية المعالج، اسم النظام وإصداره، المنطقة الزمنية |
+| التطبيق | اسم الخدمة ومعرّفها من `pyproject.toml` (أو الخيار `app`)، الإصدار ورقم البناء |
+| البيانات الوصفية | `environment`، إصدار Python وتطبيقه، معرّف العملية، إضافة إلى ما تمرّره في `metadata` |
+
+## الإرسال قبل الخروج
+
+تُرسَل التقارير في الخلفية. لا تحتاج الخوادم طويلة التشغيل إلى فعل شيء،
+وتُرسل الحزمة ما تبقى عند خروج المفسّر الطبيعي. في السكربتات القصيرة
+والعمّال ومعالجات serverless، استدعِ `flush()` قبل العودة:
+
+```python
+lerix.flush()        # ينتظر حتى flush_timeout ثانية
+lerix.flush(5.0)     # أو مهلة صريحة
+```
+
+## دوال أخرى
+
+| الدالة | الوصف |
+|--------|-------------|
+| `lerix.get_client()` | كائن `LerixClient` الذي أنشأته `init()` |
+| `client.get_user_id()` | معرّف المستخدم المجهول المسجّلة به هذه الخدمة |
+| `client.delete_user()` / `client.re_register_user()` | إعادة تعيين المستخدم المجهول، مثلاً بعد توجيه الخدمة إلى مشروع آخر |
+| `lerix.close()` | الإرسال، ثم إيقاف خيط الخلفية وإزالة خطافات العملية |
+
+يمكن أيضاً إنشاء `LerixClient` مباشرة بالخيارات نفسها التي تقبلها `init()`
+عندما تحتاج إلى أكثر من عميل في العملية الواحدة.
+
+## التعطيل في الاختبارات
+
+مرّر `enabled=False` لتحويل كل استدعاء إلى لا شيء دون تغيير الكود:
+
+```python
+lerix.init(api_key="x", project_id="x", enabled=os.environ.get("ENV") != "test")
+```

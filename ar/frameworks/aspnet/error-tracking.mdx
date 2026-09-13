@@ -1,0 +1,162 @@
+---
+title: "ASP.NET Core — تتبع الأخطاء"
+description: "إبلاغ تلقائي عن الاستثناءات غير المعالَجة في ASP.NET Core، مع إبلاغ يدوي بالنوع والخطورة والبيانات الوصفية."
+---
+
+## مقدمة
+
+بعد إكمال [تثبيت ASP.NET Core](/ar/frameworks/aspnet/installation)، يُبلَّغ
+عن الاستثناءات غير المعالَجة تلقائياً. احقن `LerixClient` للإبلاغ عن
+الاستثناءات المعالَجة بنفسك مع سياق إضافي.
+
+## الالتقاط التلقائي
+
+تسجّل `AddLerix` و`UseLerix` أمرين:
+
+- **وسيط.** يمرّ عبره كل استثناء يفلت من الوسائط التي تليه (التوجيه،
+  المصادقة، نقاط النهاية). يبلّغ افتراضياً عن كل استثناء باستثناء ما يحمل
+  رمز حالة أقل من 500، مثل `BadHttpRequestException` برمز 400. ثم يعيد
+  الوسيط إلقاء الاستثناء، فيبني `UseExceptionHandler` أو صفحة استثناءات
+  المطوّر الاستجابة نفسها التي كان سيبنيها بدون Lerix. لا يُبلَّغ عن
+  الطلبات التي ألغاها العميل.
+- **معالجات على مستوى العملية.** يُبلَّغ عن `AppDomain.UnhandledException`
+  و`TaskScheduler.UnobservedTaskException` بنوع `Crash` وخطورة `Critical`.
+  اضبط `CaptureUnhandled = false` لتخطيها.
+
+يحمل كل تقرير تلقائي طريقة الطلب وعنوانه ونمط مساره ورمز الحالة، وترويسة
+`X-Request-Id` (أو `TraceIdentifier` الخاص بـ ASP.NET)، تحت `metadata.request`.
+
+### تغيير ما يُبلَّغ عنه
+
+تتلقى `ShouldCapture` الاستثناء و`HttpContext` ورمز الحالة الذي سيُرسَل إن كان
+معروفاً:
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.IgnorePaths.Add("/health");
+    o.ShouldCapture = (exception, context, status) =>
+    {
+        if (exception is OperationCanceledException) return false;
+        return status is null or >= 500;
+    };
+});
+```
+
+`IgnorePaths` اختصار لتخطي بادئات مسارات كاملة دون كتابة دالة.
+
+### ترتيب الوسائط
+
+يجب أن يأتي `UseLerix` بعد `UseExceptionHandler` (الذي سيلتقط الاستثناء
+أولاً لولا ذلك) وقبل الوسائط التي تريد تغطيتها. خط أنابيب نموذجي:
+
+```csharp Program.cs
+app.UseExceptionHandler("/error");
+app.UseLerix();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+```
+
+## الإبلاغ عن خطأ يدوياً
+
+`LerixClient` مسجَّل كـ singleton في الحاوية:
+
+```csharp OrdersService.cs
+using Lerix;
+
+public class OrdersService(LerixClient lerix, ILedger ledger)
+{
+    public async Task Reconcile(string orderId)
+    {
+        try
+        {
+            await ledger.Reconcile(orderId);
+        }
+        catch (Exception error)
+        {
+            await lerix.CaptureException(error, new CaptureOptions
+            {
+                Type = BugType.LogicBug,
+                Severity = BugSeverity.High,
+                Metadata = new Dictionary<string, object?> { ["orderId"] = orderId, ["job"] = "reconcile" },
+            });
+            throw;
+        }
+    }
+}
+```
+
+لا تُلقي `CaptureException` استثناءً أبداً وتكتمل عند قبول التقرير أو التخلي
+عنه. يمكنك أيضاً تجاهل المهمة بـ `_ =` للمتابعة دون انتظار. استخدم
+`CaptureMessage` لشيء لم يُلقَ كاستثناء:
+
+```csharp
+await lerix.CaptureMessage("Inventory drift detected", new CaptureOptions
+{
+    Severity = BugSeverity.Medium,
+    Metadata = new Dictionary<string, object?> { ["sku"] = "A-1", ["expected"] = 10, ["actual"] = 7 },
+});
+```
+
+### المعاملات
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `error` / `message` | `Exception` / `string` | نعم | الاستثناء الملتقط، أو رسالة |
+| `Type` | `BugType` | لا | تصنيف الخطأ (الافتراضي `RuntimeError` للاستثناءات و`LogicBug` للرسائل) |
+| `Severity` | `BugSeverity` | لا | مستوى الخطورة (الافتراضي `High` للاستثناءات و`Medium` للرسائل) |
+| `Metadata` | `IDictionary<string, object?>` | لا | سياق JSON إضافي يُرفق بالتقرير |
+
+### قيم `BugType`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `RuntimeError` | استثناء غير معالَج أُلقي وقت التشغيل |
+| `LogicBug` | سلوك خاطئ لا يُلقي استثناءً |
+| `UiBug` | عيب مرئي أو في التخطيط |
+| `NetworkError` | طلب شبكة فاشل أو مشوّه |
+| `Performance` | بطء أو استهلاك مفرط للموارد |
+| `Compatibility` | يتعطل على بيئة تشغيل أو نظام أو منصة محددة |
+| `ValidationError` | مدخل غير صالح اجتاز التحقق |
+| `Security` | عيب متعلق بالأمان |
+| `Crash` | توقفت العملية بشكل غير متوقع |
+| `Unknown` | لا شيء مما سبق |
+
+### قيم `BugSeverity`
+
+| القيمة | الوصف |
+|-------|-------------|
+| `Critical` | يعطّل وظيفة أساسية أو يؤثر على كل المستخدمين |
+| `High` | تأثير خطير مع وجود حل بديل |
+| `Medium` | تأثير ملحوظ لكنه محدود |
+| `Low` | بسيط أو شكلي |
+| `Unknown` | لم تُقيَّم الخطورة بعد |
+
+## ما يُرفق بالتقرير
+
+| الحقل | القيمة |
+|-------|-------|
+| الجهاز | اسم الجهاز، معمارية المعالج، اسم النظام وإصداره، المنطقة الزمنية |
+| التطبيق | اسم الخدمة ومعرّفها من تجميعة الدخول (أو الخيار `App`)، الإصدار ورقم البناء |
+| البيانات الوصفية | `environment`، وصف بيئة تشغيل .NET ومعرّف العملية، إضافة إلى ما تمرّره في `Metadata` |
+
+تتضمن تتبّعات المكدس الاستثناءات الداخلية، يسبق كلاً منها سطر
+`--- caused by ... ---`.
+
+## أعضاء `LerixClient` الأخرى
+
+| العضو | الوصف |
+|--------|-------------|
+| `GetUserId()` | معرّف المستخدم المجهول المسجّلة به هذه الخدمة |
+| `FlushAsync(timeout?)` | انتظار التقارير قيد الإرسال؛ تستدعيها الخدمة المستضافة عند الإيقاف |
+| `DeleteUserAsync()` / `ReRegisterUserAsync()` | إعادة تعيين المستخدم المجهول، مثلاً بعد توجيه الخدمة إلى مشروع آخر |
+| `InstallProcessHandlers()` | تثبيت معالجات مستوى العملية بنفسك عند عدم استخدام الخدمة المستضافة |
+
+## التعطيل في الاختبارات
+
+اضبط `Enabled = false` لتحويل كل استدعاء إلى لا شيء دون تغيير الكود:
+
+```csharp
+builder.Services.AddLerix(o => o.Enabled = !builder.Environment.IsEnvironment("Testing"));
+```

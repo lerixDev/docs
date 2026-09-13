@@ -130,10 +130,21 @@
                     ]
                   },
                   {
+                    "group": "Python",
+                    "icon": "python",
+                    "pages": [
+                      "frameworks/python/installation",
+                      "frameworks/python/error-tracking",
+                      "frameworks/python/push-notifications"
+                    ]
+                  },
+                  {
                     "group": "ASP.NET",
                     "icon": "microsoft",
                     "pages": [
-                      "frameworks/aspnet/installation"
+                      "frameworks/aspnet/installation",
+                      "frameworks/aspnet/error-tracking",
+                      "frameworks/aspnet/push-notifications"
                     ]
                   },
                   {
@@ -300,10 +311,21 @@
                     ]
                   },
                   {
+                    "group": "Python",
+                    "icon": "python",
+                    "pages": [
+                      "ar/frameworks/python/installation",
+                      "ar/frameworks/python/error-tracking",
+                      "ar/frameworks/python/push-notifications"
+                    ]
+                  },
+                  {
                     "group": "ASP.NET",
                     "icon": "microsoft",
                     "pages": [
-                      "ar/frameworks/aspnet/installation"
+                      "ar/frameworks/aspnet/installation",
+                      "ar/frameworks/aspnet/error-tracking",
+                      "ar/frameworks/aspnet/push-notifications"
                     ]
                   },
                   {

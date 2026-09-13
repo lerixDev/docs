@@ -1,0 +1,173 @@
+---
+title: "Python — Installation"
+description: "Add the Lerix Python SDK to your backend to report unhandled exceptions and send push notifications from your server."
+---
+
+## Introduction
+
+`lerix` is the server-side Lerix SDK for Python. After one call to
+`lerix.init()`, every unhandled exception in your service is reported to the
+dashboard with its stack trace, host, release and request context, and your
+code gets a typed client for the push notifications REST API. Drop-in hooks
+are included for FastAPI, Flask and Django.
+
+<Note>
+  Create a project with the **Python** framework in the [dashboard](https://app.lerix.dev)
+  and copy its **API key** and **project id** from **Project Settings**.
+</Note>
+
+## Requirements
+
+| | Minimum |
+|---|---|
+| Python | 3.9 |
+
+The package has no runtime dependencies. The framework hooks import FastAPI,
+Flask or Django only when you use them.
+
+## 1. Install the package
+
+```bash
+pip install lerix
+```
+
+## 2. Initialise the SDK
+
+Call `lerix.init()` once, as early as possible in your program:
+
+```python main.py
+import os
+import lerix
+
+lerix.init(
+    api_key=os.environ["LERIX_API_KEY"],
+    project_id=os.environ["LERIX_PROJECT_ID"],
+    environment=os.environ.get("ENV", "production"),
+)
+```
+
+With no arguments, `init()` reads `LERIX_API_KEY`, `LERIX_PROJECT_ID` and
+`LERIX_ENVIRONMENT` from the environment:
+
+```python
+import lerix
+
+lerix.init()
+```
+
+That is the whole setup. `init()` registers the service in the background
+and installs `sys.excepthook` and `threading.excepthook`, so uncaught
+exceptions are reported from now on and flushed before the interpreter exits.
+See [Error Tracking](/frameworks/python/error-tracking) for what gets captured
+and how to report errors yourself.
+
+### Add the hook for your framework
+
+Web frameworks catch exceptions themselves to return a `500`, so they never
+reach `sys.excepthook`. Add the matching hook to report them:
+
+<Tabs>
+  <Tab title="FastAPI / Starlette">
+    ```python main.py
+    from fastapi import FastAPI
+    import lerix
+    from lerix.integrations.fastapi import LerixMiddleware
+
+    lerix.init()
+    app = FastAPI()
+    app.add_middleware(LerixMiddleware)
+    ```
+  </Tab>
+  <Tab title="Flask">
+    ```python app.py
+    from flask import Flask
+    import lerix
+    from lerix.integrations.flask import LerixFlask
+
+    lerix.init()
+    app = Flask(__name__)
+    LerixFlask(app)
+    ```
+  </Tab>
+  <Tab title="Django">
+    ```python settings.py
+    import lerix
+
+    lerix.init()
+
+    MIDDLEWARE = [
+        "lerix.integrations.django.LerixMiddleware",
+        # ...
+    ]
+    ```
+  </Tab>
+</Tabs>
+
+## 3. Verify the integration
+
+Add a route that raises and call it once:
+
+```python
+@app.get("/lerix-test")
+def lerix_test():
+    raise RuntimeError("Lerix test error")
+```
+
+The client receives the framework's normal `500` response and the error
+appears in your [dashboard](https://app.lerix.dev) within seconds. Remove the
+route afterwards.
+
+## Options
+
+Every option is a keyword argument of `lerix.init()` (and of `LerixClient`).
+
+| Option | Default | Description |
+|---|---|---|
+| `api_key` | `LERIX_API_KEY` | Project API key |
+| `project_id` | `LERIX_PROJECT_ID` | Project id |
+| `url` | `https://api.lerix.dev/v1` | API base URL (`LERIX_API_URL`) |
+| `environment` | `LERIX_ENVIRONMENT` or `ENV` | Sent as metadata with every report |
+| `app` | from `pyproject.toml` | `AppInfo(id, name, version, build_number)` used to identify this service |
+| `enabled` | `True` | `False` turns the SDK into a no-op, useful in tests |
+| `debug` | `False` | Log requests and reports on the `lerix` logger |
+| `capture_unhandled` | `True` | Install `sys.excepthook` / `threading.excepthook` |
+| `state_path` | `.lerix/state.json` | Where the anonymous user id is persisted; `False` keeps it in memory |
+| `user_id` | | Pin the anonymous user id instead of registering one |
+| `flush_timeout` | `2.0` | Seconds `flush()` and shutdown wait for pending reports |
+| `timeout` | `10.0` | HTTP timeout per request, in seconds |
+| `cwd` | process cwd | Directory used to find `pyproject.toml` and the state file |
+
+## How your service appears in the dashboard
+
+The SDK registers your service as a `server` app. The app id defaults to the
+`name` in `pyproject.toml`'s `[project]` table and the release to its
+`version`, so reports are grouped per service and per release. Override them
+with the `app` option when you deploy several instances of the same code base
+or want a git SHA as the build number:
+
+```python
+import os
+import lerix
+from lerix import AppInfo
+
+lerix.init(
+    app=AppInfo(id="orders-api", version=os.environ.get("APP_VERSION"), build_number=os.environ.get("GIT_SHA")),
+)
+```
+
+An anonymous user is registered on first boot and stored in
+`.lerix/state.json` under the working directory, so restarts reuse it. Add
+that folder to `.gitignore`, or mount it in containers. Pass
+`state_path=False` to skip persistence, or `user_id` to control the id
+yourself.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Error Tracking" icon="bug" href="/frameworks/python/error-tracking">
+    What the hooks report, how to change the policy, and manual reporting.
+  </Card>
+  <Card title="Push Notifications" icon="bell" href="/frameworks/python/push-notifications">
+    Send, schedule, update and unsend notifications from your backend.
+  </Card>
+</CardGroup>

@@ -1,0 +1,155 @@
+---
+title: "Python — Push Notifications"
+description: "Send, schedule, update and unsend push notifications from your Python backend with a typed client for the Lerix REST API."
+---
+
+## Introduction
+
+A backend does not receive push notifications, it sends them. The Python SDK
+wraps the [push notifications REST API](/api-reference/push-notifications)
+in a typed client so your services can notify the users of your mobile and
+web apps without hand-writing HTTP calls.
+
+## 1. Create a private key
+
+Notifications are sent to the devices of the project your **app** uses,
+which is usually a different project from the one your backend reports
+errors to. In that project's **Project Settings**, create a **private key**
+with the *send push notifications* permission.
+
+<Warning>
+  A private key can send notifications to all of a project's users. Keep it
+  in an environment variable on the server and never ship it to a client.
+</Warning>
+
+## 2. Create the client
+
+Pass the target project id and the private key to `LerixNotifications`:
+
+```python notifications.py
+import os
+from lerix import LerixNotifications
+
+push = LerixNotifications(
+    project_id=os.environ["MOBILE_PROJECT_ID"],
+    api_key=os.environ["MOBILE_PROJECT_PRIVATE_KEY"],
+)
+```
+
+With no arguments it reads `LERIX_NOTIFICATIONS_PROJECT_ID` and
+`LERIX_NOTIFICATIONS_API_KEY` from the environment. The client is
+independent of `lerix.init()`, so you can use it in a service that does not
+report errors at all.
+
+## 3. Send a notification
+
+```python orders.py
+result = push.send(
+    title="Order shipped",
+    body="Your order #1234 is on its way",
+    device_tokens=[user.lerix_device_id],
+    metadata={"orderId": "1234"},
+)
+notification_id = result.notification_id
+```
+
+`device_tokens` are the Lerix device ids your client apps obtain from
+`getDeviceId()` and send to your backend at login. Save the returned
+`notification_id`, every other method takes it.
+
+### Broadcast to a topic
+
+```python
+push.send(
+    title="Weekend sale",
+    body="20% off everything until Sunday",
+    send_by_topic=True,
+    topic="promotions",
+)
+```
+
+### Schedule for later
+
+```python
+from datetime import timedelta
+
+push.send(
+    title="Reminder",
+    body="Your appointment is in one hour",
+    device_tokens=[device_id],
+    sent_at=appointment - timedelta(hours=1),
+)
+```
+
+### Parameters
+
+`send()` accepts these as keyword arguments, or as a `SendNotificationInput`
+dataclass.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `title` | `str` | Yes | Notification title |
+| `body` | `str` | Yes | Notification body |
+| `device_tokens` | `list[str]` | Unless `send_by_topic` | Lerix device ids to deliver to |
+| `send_by_topic` | `bool` | No | Deliver to every device subscribed to `topic` instead |
+| `topic` | `str` | When `send_by_topic` | Topic key |
+| `sound` | `str` | No | Custom sound file bundled in the client app |
+| `image_url` | `str` | No | Public `https://` image shown as a rich image |
+| `metadata` | `dict` | No | Delivered to the client as `payload.metadata` |
+| `sent_at` | `str \| datetime` | No | ISO 8601 time or `datetime` to schedule delivery |
+
+Platform notes for `sound` and `image_url` are in the
+[REST API reference](/api-reference/push-notifications).
+
+## 4. Manage a sent notification
+
+```python
+# Change the content. Scheduled ones are edited in place; sent ones are redelivered.
+push.update(notification_id, title="Delivered", body="Enjoy your order!")
+
+# Remove an already-delivered notification from devices.
+push.unsend(notification_id)
+
+# Stop a scheduled notification before it goes out.
+push.cancel(notification_id)
+
+# Per-recipient delivery outcome as reported by APNs, FCM or the browser push service.
+deliveries = push.deliveries(notification_id)
+```
+
+| Method | REST endpoint |
+|--------|---------------|
+| `send(...)` | [`POST /notifications/send`](/api-reference/push-notifications) |
+| `update(id, title, body)` | [`POST /notifications/{id}/update`](/api-reference/update-notification) |
+| `unsend(id)` | [`POST /notifications/{id}/unsend`](/api-reference/unsend-notification) |
+| `cancel(id)` | [`POST /notifications/{id}/cancel`](/api-reference/cancel-notification) |
+| `deliveries(id)` | [`GET /notifications/{id}/deliveries`](/api-reference/notification-deliveries) |
+
+## Errors
+
+Every method raises `LerixApiError` when the API rejects the request.
+`code` is the backend's error code and `status` the HTTP status:
+
+```python
+from lerix import LerixApiError
+
+try:
+    push.cancel(notification_id)
+except LerixApiError as error:
+    if error.code == "CANNOT_CANCEL_SENT_NOTIFICATION":
+        ...  # already delivered
+```
+
+Invalid input such as a missing `topic` with `send_by_topic` is rejected
+locally with code `INVALID_INPUT` before any request is made. The full list
+of codes is in [Error & success codes](/developers/errors-responses).
+
+## Several target projects
+
+Create one `LerixNotifications` per app when one backend serves more than
+one:
+
+```python
+rider = LerixNotifications(project_id="rider-app", api_key=os.environ["RIDER_PRIVATE_KEY"])
+driver = LerixNotifications(project_id="driver-app", api_key=os.environ["DRIVER_PRIVATE_KEY"])
+```

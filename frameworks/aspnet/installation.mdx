@@ -1,12 +1,184 @@
 ---
-title: "ASP.NET"
-description: "Server-side Lerix integration for ASP.NET — coming soon."
+title: "ASP.NET Core — Installation"
+description: "Add the Lerix .NET SDK to your ASP.NET Core backend to report unhandled exceptions and send push notifications from your server."
 ---
 
-<Badge>Coming Soon</Badge>
+## Introduction
 
-An ASP.NET SDK for server-side error tracking and push notification
-sending is on the roadmap, but not available yet. Check back soon for
-setup instructions.
+`Lerix.AspNetCore` is the server-side Lerix SDK for ASP.NET Core. After two
+lines in `Program.cs`, every unhandled exception in your API is reported to
+the dashboard with its stack trace, host, release and request context, and
+your services get a typed client for the push notifications REST API.
 
-In the meantime, you can call the [REST API](/api-reference/introduction) directly from any ASP.NET service.
+<Note>
+  Create a project with the **ASP.NET** framework in the [dashboard](https://app.lerix.dev)
+  and copy its **API key** and **project id** from **Project Settings**.
+</Note>
+
+## Requirements
+
+| | Minimum |
+|---|---|
+| .NET | 8.0 |
+| ASP.NET Core | 8.0 |
+
+The `Lerix` core package also targets .NET Standard 2.0 for console apps,
+workers and functions that do not use ASP.NET Core.
+
+## 1. Install the package
+
+```bash
+dotnet add package Lerix.AspNetCore
+```
+
+## 2. Register the SDK
+
+Add the services and the middleware in `Program.cs`:
+
+```csharp Program.cs
+using Lerix.AspNetCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddLerix(builder.Configuration.GetSection("Lerix"));
+
+var app = builder.Build();
+
+app.UseExceptionHandler("/error");
+app.UseLerix();
+
+app.MapControllers();
+app.Run();
+```
+
+Put the options in `appsettings.json` or, for the secrets, in user secrets
+or environment variables:
+
+```json appsettings.json
+{
+  "Lerix": {
+    "ApiKey": "YOUR_PROJECT_API_KEY",
+    "ProjectId": "YOUR_PROJECT_ID",
+    "Environment": "production"
+  }
+}
+```
+
+`ApiKey` and `ProjectId` also fall back to the `LERIX_API_KEY` and
+`LERIX_PROJECT_ID` environment variables, so the section can be omitted
+entirely on a server that already sets them.
+
+That is the whole setup. `AddLerix` registers a hosted service that
+connects to your project on startup and flushes pending reports on shutdown,
+and `UseLerix` adds the middleware that reports unhandled exceptions. See
+[Error Tracking](/frameworks/aspnet/error-tracking) for what gets captured
+and how to report errors yourself.
+
+<Warning>
+  Call `app.UseLerix()` **after** `UseExceptionHandler` or
+  `UseDeveloperExceptionPage` and **before** routing and endpoints. Those
+  handlers catch exceptions from the middleware that follows them, so if
+  Lerix is registered earlier it never sees the exception.
+</Warning>
+
+### Configure in code
+
+`AddLerix` also accepts a delegate, alone or on top of a configuration
+section:
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.ApiKey = builder.Configuration["LERIX_API_KEY"];
+    o.ProjectId = builder.Configuration["LERIX_PROJECT_ID"];
+    o.Environment = builder.Environment.EnvironmentName;
+    o.IgnorePaths.Add("/health");
+});
+```
+
+## 3. Verify the integration
+
+Add an endpoint that throws and call it once:
+
+```csharp Program.cs
+app.MapGet("/lerix-test", () => { throw new InvalidOperationException("Lerix test error"); });
+```
+
+The client receives your app's normal `500` response and the error appears
+in your [dashboard](https://app.lerix.dev) within seconds. Remove the
+endpoint afterwards.
+
+## Options
+
+Every option is a property of `LerixAspNetCoreOptions`, settable from
+configuration or the delegate.
+
+| Option | Default | Description |
+|---|---|---|
+| `ApiKey` | `LERIX_API_KEY` | Project API key |
+| `ProjectId` | `LERIX_PROJECT_ID` | Project id |
+| `Url` | `https://api.lerix.dev/v1` | API base URL (`LERIX_API_URL`) |
+| `Environment` | `LERIX_ENVIRONMENT`, then `ASPNETCORE_ENVIRONMENT` | Sent as metadata with every report |
+| `App` | from the entry assembly | `AppInfo { Id, Name, Version, BuildNumber }` used to identify this service |
+| `Enabled` | `true` | `false` turns the SDK into a no-op, useful in tests |
+| `Debug` | `false` | Log requests and reports through `ILogger<LerixClient>` |
+| `CaptureUnhandled` | `true` | Report `AppDomain.UnhandledException` and `TaskScheduler.UnobservedTaskException` |
+| `ShouldCapture` | 5xx only | `(exception, httpContext, status) => bool` deciding what the middleware reports |
+| `IgnorePaths` | empty | Request path prefixes whose exceptions are never reported |
+| `PersistState` | `true` | Keep the anonymous user id on disk between restarts |
+| `StatePath` | `.lerix/state.json` | Where that id is stored, relative to the working directory |
+| `UserId` | | Pin the anonymous user id instead of registering one |
+| `FlushTimeout` | `00:00:02` | How long shutdown waits for pending reports |
+| `Timeout` | `00:00:10` | HTTP timeout per request |
+
+## How your service appears in the dashboard
+
+The SDK registers your service as a `server` app. The app id defaults to the
+entry assembly name and the release to its informational version (the
+`<Version>` in your `.csproj`), so reports are grouped per service and per
+release. Override them with `App` when you deploy several instances of the
+same code base or want a git SHA as the build number:
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.App = new AppInfo { Id = "orders-api", Version = version, BuildNumber = gitSha };
+});
+```
+
+An anonymous user is registered on first boot and stored in
+`.lerix/state.json` under the working directory, so restarts reuse it. Add
+that folder to `.gitignore`, or mount it in containers. Set
+`PersistState = false` to skip persistence, or `UserId` to control the id
+yourself.
+
+## Outside ASP.NET Core
+
+Console apps, workers and functions can use the `Lerix` package directly:
+
+```bash
+dotnet add package Lerix
+```
+
+```csharp
+using Lerix;
+
+using var lerix = new LerixClient("YOUR_PROJECT_API_KEY", "YOUR_PROJECT_ID");
+lerix.InstallProcessHandlers();
+await lerix.InitializeAsync();
+
+try { await DoWork(); }
+catch (Exception error) { await lerix.CaptureException(error); throw; }
+finally { await lerix.FlushAsync(); }
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Error Tracking" icon="bug" href="/frameworks/aspnet/error-tracking">
+    What the middleware reports, how to change the policy, and manual reporting.
+  </Card>
+  <Card title="Push Notifications" icon="bell" href="/frameworks/aspnet/push-notifications">
+    Send, schedule, update and unsend notifications from your backend.
+  </Card>
+</CardGroup>

@@ -1,0 +1,195 @@
+---
+title: "Python — Error Tracking"
+description: "Automatic reporting of unhandled exceptions in Python, FastAPI, Flask and Django, plus manual reporting with type, severity and metadata."
+---
+
+## Introduction
+
+After you complete the [Python installation](/frameworks/python/installation),
+unhandled exceptions are reported automatically. Call
+`lerix.capture_exception()` to report handled exceptions yourself with extra
+context.
+
+## Automatic capture
+
+`lerix.init()` installs two process-level hooks:
+
+- **`sys.excepthook`.** An exception that escapes the main thread is
+  reported, given up to `flush_timeout` seconds to leave, and then handed to
+  the previous hook so the traceback is still printed and the interpreter
+  exits as it normally would. `KeyboardInterrupt` and `SystemExit` are not
+  reported.
+- **`threading.excepthook`.** An exception that kills a `threading.Thread`
+  is reported with the thread name in `metadata.thread`.
+
+Set `capture_unhandled=False` to skip both.
+
+### asyncio
+
+Exceptions inside tasks whose result is never awaited are only logged by
+asyncio. Call `install_asyncio_handler` after creating the loop to report
+them too:
+
+```python
+import asyncio
+import lerix
+
+async def main():
+    lerix.install_asyncio_handler(asyncio.get_running_loop())
+    ...
+
+asyncio.run(main())
+```
+
+### Web frameworks
+
+Frameworks turn exceptions into a `500` response before they reach the
+process hooks, so each one has its own hook. They all attach the request
+method, URL, route, status code and the `X-Request-Id` header when present,
+under `metadata.request`, and then let the framework's own error handling
+run unchanged.
+
+| Framework | Hook | Reports |
+|---|---|---|
+| FastAPI / Starlette | `app.add_middleware(LerixMiddleware)` from `lerix.integrations.fastapi` | Every exception that escapes the app; `HTTPException`s below 500 are ignored |
+| Flask | `LerixFlask(app)` from `lerix.integrations.flask` | Every exception passed to `got_request_exception`; `HTTPException`s below 500 are ignored |
+| Django | `"lerix.integrations.django.LerixMiddleware"` in `MIDDLEWARE` | Every exception reaching `process_exception`; `Http404`, `PermissionDenied` and `SuspiciousOperation` are ignored |
+
+### Change what is reported
+
+Every hook accepts a `should_capture` callable that receives the exception
+and the HTTP status that will be sent (when known) and returns whether to
+report it:
+
+```python main.py
+from lerix.integrations.fastapi import LerixMiddleware
+
+def should_capture(exc: BaseException, status_code: int | None) -> bool:
+    if isinstance(exc, TimeoutError):
+        return False
+    return status_code is None or status_code >= 500
+
+app.add_middleware(LerixMiddleware, should_capture=should_capture)
+```
+
+For Flask pass it to `LerixFlask(app, should_capture=...)`. For Django set
+it on the class in `settings.py`:
+
+```python settings.py
+from lerix.integrations.django import LerixMiddleware
+
+LerixMiddleware.should_capture = lambda exc, status: status is None or status >= 500
+```
+
+### Several clients
+
+The hooks use the client created by `lerix.init()`. Pass `client=` to a hook
+(or set `LerixMiddleware.client` for Django) when one process reports to
+more than one project.
+
+## Report an error manually
+
+```python orders.py
+import lerix
+from lerix import BugSeverity, BugType
+
+def reconcile(order_id: str) -> None:
+    try:
+        ledger.reconcile(order_id)
+    except LedgerError as error:
+        lerix.capture_exception(
+            error,
+            type=BugType.LOGIC_BUG,
+            severity=BugSeverity.HIGH,
+            metadata={"order_id": order_id, "job": "reconcile"},
+        )
+        raise
+```
+
+Inside an `except` block you can leave the exception out and
+`capture_exception()` picks up the one being handled. It never raises and
+never blocks: the report is sent from a background thread, and the returned
+`Future` resolves once the report has been accepted or given up on. Use
+`capture_message` for something that was not raised:
+
+```python
+lerix.capture_message(
+    "Inventory drift detected",
+    severity=BugSeverity.MEDIUM,
+    metadata={"sku": "A-1", "expected": 10, "actual": 7},
+)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `error` / `message` | `BaseException` / `str` | Yes | The caught exception (defaults to the one being handled), or a message |
+| `type` | `BugType` | No | Bug classification (default `RUNTIME_ERROR` for exceptions, `LOGIC_BUG` for messages) |
+| `severity` | `BugSeverity` | No | Severity level (default `HIGH` for exceptions, `MEDIUM` for messages) |
+| `metadata` | `dict` | No | Additional JSON context attached to the report |
+
+### `BugType` values
+
+| Value | Description |
+|-------|-------------|
+| `RUNTIME_ERROR` | An unhandled exception raised at runtime |
+| `LOGIC_BUG` | Incorrect behavior that doesn't raise |
+| `UI_BUG` | A visual or layout defect |
+| `NETWORK_ERROR` | A failed or malformed network request |
+| `PERFORMANCE` | Slowness or excessive resource use |
+| `COMPATIBILITY` | Breaks on a specific runtime, OS or platform |
+| `VALIDATION_ERROR` | Invalid input passed validation it shouldn't have |
+| `SECURITY` | A security-relevant defect |
+| `CRASH` | The process terminated unexpectedly |
+| `UNKNOWN` | None of the above |
+
+### `BugSeverity` values
+
+| Value | Description |
+|-------|-------------|
+| `CRITICAL` | Blocks core functionality or affects all users |
+| `HIGH` | Serious impact, but a workaround exists |
+| `MEDIUM` | Noticeable but limited impact |
+| `LOW` | Minor or cosmetic |
+| `UNKNOWN` | Severity not yet assessed |
+
+## What is attached to a report
+
+| Field | Value |
+|-------|-------|
+| Device | Hostname, CPU architecture, OS name and release, time zone |
+| App | Service name and id from `pyproject.toml` (or the `app` option), version and build number |
+| Metadata | `environment`, Python version and implementation, process id, plus anything you pass in `metadata` |
+
+## Flush before exit
+
+Reports are sent in the background. Long-running servers do not need to do
+anything, and the SDK flushes on normal interpreter exit. In short-lived
+scripts, workers or serverless handlers, call `flush()` before returning:
+
+```python
+lerix.flush()        # waits up to flush_timeout seconds
+lerix.flush(5.0)     # or an explicit timeout
+```
+
+## Other functions
+
+| Function | Description |
+|--------|-------------|
+| `lerix.get_client()` | The `LerixClient` created by `init()` |
+| `client.get_user_id()` | Anonymous user id this service is registered as |
+| `client.delete_user()` / `client.re_register_user()` | Reset the anonymous user, for example after pointing the service at a different project |
+| `lerix.close()` | Flush, stop the background thread and remove the process hooks |
+
+`LerixClient` can also be instantiated directly, with the same options as
+`init()`, when you need more than one client in a process.
+
+## Disable in tests
+
+Pass `enabled=False` to turn every call into a no-op without changing your
+code:
+
+```python
+lerix.init(api_key="x", project_id="x", enabled=os.environ.get("ENV") != "test")
+```

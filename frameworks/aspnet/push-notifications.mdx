@@ -1,0 +1,170 @@
+---
+title: "ASP.NET Core — Push Notifications"
+description: "Send, schedule, update and unsend push notifications from your ASP.NET Core backend with a typed client for the Lerix REST API."
+---
+
+## Introduction
+
+A backend does not receive push notifications, it sends them. The .NET SDK
+wraps the [push notifications REST API](/api-reference/push-notifications)
+in a typed client so your services can notify the users of your mobile and
+web apps without hand-writing HTTP calls.
+
+## 1. Create a private key
+
+Notifications are sent to the devices of the project your **app** uses,
+which is usually a different project from the one your backend reports
+errors to. In that project's **Project Settings**, create a **private key**
+with the *send push notifications* permission.
+
+<Warning>
+  A private key can send notifications to all of a project's users. Keep it
+  in user secrets or an environment variable on the server and never ship it
+  to a client.
+</Warning>
+
+## 2. Register the client
+
+```csharp Program.cs
+builder.Services.AddLerixNotifications(builder.Configuration.GetSection("LerixNotifications"));
+```
+
+```json appsettings.json
+{
+  "LerixNotifications": {
+    "ProjectId": "MOBILE_PROJECT_ID",
+    "ApiKey": "MOBILE_PROJECT_PRIVATE_KEY"
+  }
+}
+```
+
+A delegate works too, and `ProjectId` / `ApiKey` fall back to
+`LERIX_NOTIFICATIONS_PROJECT_ID` / `LERIX_NOTIFICATIONS_API_KEY`. The client
+is registered as a `LerixNotifications` singleton and is independent of
+`AddLerix`, so a service can send notifications without reporting errors.
+
+## 3. Send a notification
+
+```csharp OrdersService.cs
+using Lerix;
+
+public class OrdersService(LerixNotifications push)
+{
+    public async Task<string> NotifyShipped(User user)
+    {
+        var result = await push.SendAsync(new SendNotificationInput
+        {
+            Title = "Order shipped",
+            Body = "Your order #1234 is on its way",
+            DeviceTokens = new[] { user.LerixDeviceId },
+            Metadata = new Dictionary<string, object?> { ["orderId"] = "1234" },
+        });
+        return result.NotificationId;
+    }
+}
+```
+
+`DeviceTokens` are the Lerix device ids your client apps obtain from
+`getDeviceId()` and send to your backend at login. Save the returned
+`NotificationId`, every other method takes it.
+
+### Broadcast to a topic
+
+```csharp
+await push.SendAsync(new SendNotificationInput
+{
+    Title = "Weekend sale",
+    Body = "20% off everything until Sunday",
+    SendByTopic = true,
+    Topic = "promotions",
+});
+```
+
+### Schedule for later
+
+```csharp
+await push.SendAsync(new SendNotificationInput
+{
+    Title = "Reminder",
+    Body = "Your appointment is in one hour",
+    DeviceTokens = new[] { deviceId },
+    SentAt = appointment.AddHours(-1),
+});
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `Title` | `string` | Yes | Notification title |
+| `Body` | `string` | Yes | Notification body |
+| `DeviceTokens` | `IList<string>` | Unless `SendByTopic` | Lerix device ids to deliver to |
+| `SendByTopic` | `bool` | No | Deliver to every device subscribed to `Topic` instead |
+| `Topic` | `string` | When `SendByTopic` | Topic key |
+| `Sound` | `string` | No | Custom sound file bundled in the client app |
+| `ImageUrl` | `string` | No | Public `https://` image shown as a rich image |
+| `Metadata` | `IDictionary<string, object?>` | No | Delivered to the client as `payload.metadata` |
+| `SentAt` | `DateTimeOffset?` | No | When to deliver; sent as ISO 8601 UTC |
+
+Platform notes for `Sound` and `ImageUrl` are in the
+[REST API reference](/api-reference/push-notifications).
+
+## 4. Manage a sent notification
+
+```csharp
+// Change the content. Scheduled ones are edited in place; sent ones are redelivered.
+await push.UpdateAsync(notificationId, "Delivered", "Enjoy your order!");
+
+// Remove an already-delivered notification from devices.
+await push.UnsendAsync(notificationId);
+
+// Stop a scheduled notification before it goes out.
+await push.CancelAsync(notificationId);
+
+// Per-recipient delivery outcome as reported by APNs, FCM or the browser push service.
+var deliveries = await push.DeliveriesAsync(notificationId);
+```
+
+| Method | REST endpoint |
+|--------|---------------|
+| `SendAsync(input)` | [`POST /notifications/send`](/api-reference/push-notifications) |
+| `UpdateAsync(id, title, body)` | [`POST /notifications/{id}/update`](/api-reference/update-notification) |
+| `UnsendAsync(id)` | [`POST /notifications/{id}/unsend`](/api-reference/unsend-notification) |
+| `CancelAsync(id)` | [`POST /notifications/{id}/cancel`](/api-reference/cancel-notification) |
+| `DeliveriesAsync(id)` | [`GET /notifications/{id}/deliveries`](/api-reference/notification-deliveries) |
+
+`UpdateAsync`, `UnsendAsync` and `CancelAsync` return the raw JSON response
+as a `JsonElement?`; `DeliveriesAsync` returns one `JsonElement` per
+recipient.
+
+## Errors
+
+Every method throws `LerixApiException` when the API rejects the request.
+`Code` is the backend's error code and `Status` the HTTP status:
+
+```csharp
+using Lerix;
+
+try
+{
+    await push.CancelAsync(id);
+}
+catch (LerixApiException error) when (error.Code == "CANNOT_CANCEL_SENT_NOTIFICATION")
+{
+    // already delivered
+}
+```
+
+Invalid input such as a missing `Topic` with `SendByTopic` is rejected
+locally with code `INVALID_INPUT` before any request is made. The full list
+of codes is in [Error & success codes](/developers/errors-responses).
+
+## Several target projects
+
+Instantiate `LerixNotifications` directly when one backend serves more than
+one app:
+
+```csharp
+var rider = new LerixNotifications("rider-app", config["RIDER_PRIVATE_KEY"]!);
+var driver = new LerixNotifications("driver-app", config["DRIVER_PRIVATE_KEY"]!);
+```

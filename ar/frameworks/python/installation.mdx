@@ -1,0 +1,169 @@
+---
+title: "Python — التثبيت"
+description: "أضف Lerix Python SDK إلى خادمك للإبلاغ عن الاستثناءات غير المعالَجة وإرسال الإشعارات من الخادم."
+---
+
+## مقدمة
+
+`lerix` هو SDK الخاص بـ Lerix من جانب الخادم للغة Python. بعد استدعاء واحد
+لـ `lerix.init()`، يُبلَّغ عن كل استثناء غير معالَج في خدمتك إلى لوحة التحكم
+مع تتبّع المكدس واسم المضيف والإصدار وسياق الطلب، ويحصل كودك على عميل مُهيكل
+لواجهة REST الخاصة بالإشعارات. تتضمن الحزمة خطافات جاهزة لأطر FastAPI
+وFlask وDjango.
+
+<Note>
+  أنشئ مشروعاً بإطار **Python** في [لوحة التحكم](https://app.lerix.dev)
+  وانسخ **مفتاح API** و**معرّف المشروع** من **إعدادات المشروع**.
+</Note>
+
+## المتطلبات
+
+| | الحد الأدنى |
+|---|---|
+| Python | 3.9 |
+
+لا توجد للحزمة أي اعتماديات وقت التشغيل. لا تستورد خطافات الأطر FastAPI أو
+Flask أو Django إلا عند استخدامها.
+
+## 1. ثبّت الحزمة
+
+```bash
+pip install lerix
+```
+
+## 2. هيّئ الحزمة
+
+استدعِ `lerix.init()` مرة واحدة في أبكر نقطة ممكنة من برنامجك:
+
+```python main.py
+import os
+import lerix
+
+lerix.init(
+    api_key=os.environ["LERIX_API_KEY"],
+    project_id=os.environ["LERIX_PROJECT_ID"],
+    environment=os.environ.get("ENV", "production"),
+)
+```
+
+بدون وسائط، تقرأ `init()` القيم `LERIX_API_KEY` و`LERIX_PROJECT_ID`
+و`LERIX_ENVIRONMENT` من متغيرات البيئة:
+
+```python
+import lerix
+
+lerix.init()
+```
+
+هذا كل الإعداد. تسجّل `init()` الخدمة في الخلفية وتثبّت `sys.excepthook`
+و`threading.excepthook`، فيُبلَّغ عن الاستثناءات غير الملتقطة من الآن وتُرسَل
+قبل خروج المفسّر. راجع [تتبع الأخطاء](/ar/frameworks/python/error-tracking)
+لمعرفة ما يُلتقط وكيفية الإبلاغ عن الأخطاء بنفسك.
+
+### أضف خطاف إطارك
+
+تلتقط أطر الويب الاستثناءات بنفسها لتُعيد استجابة `500`، فلا تصل أبداً إلى
+`sys.excepthook`. أضف الخطاف المناسب للإبلاغ عنها:
+
+<Tabs>
+  <Tab title="FastAPI / Starlette">
+    ```python main.py
+    from fastapi import FastAPI
+    import lerix
+    from lerix.integrations.fastapi import LerixMiddleware
+
+    lerix.init()
+    app = FastAPI()
+    app.add_middleware(LerixMiddleware)
+    ```
+  </Tab>
+  <Tab title="Flask">
+    ```python app.py
+    from flask import Flask
+    import lerix
+    from lerix.integrations.flask import LerixFlask
+
+    lerix.init()
+    app = Flask(__name__)
+    LerixFlask(app)
+    ```
+  </Tab>
+  <Tab title="Django">
+    ```python settings.py
+    import lerix
+
+    lerix.init()
+
+    MIDDLEWARE = [
+        "lerix.integrations.django.LerixMiddleware",
+        # ...
+    ]
+    ```
+  </Tab>
+</Tabs>
+
+## 3. تحقّق من التكامل
+
+أضف مساراً يُلقي خطأً واستدعِه مرة واحدة:
+
+```python
+@app.get("/lerix-test")
+def lerix_test():
+    raise RuntimeError("Lerix test error")
+```
+
+يتلقى العميل استجابة `500` المعتادة من الإطار، ويظهر الخطأ في
+[لوحة التحكم](https://app.lerix.dev) خلال ثوانٍ. احذف المسار بعد ذلك.
+
+## الخيارات
+
+كل خيار هو وسيط مسمّى لـ `lerix.init()` (ولـ `LerixClient`).
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `api_key` | `LERIX_API_KEY` | مفتاح API للمشروع |
+| `project_id` | `LERIX_PROJECT_ID` | معرّف المشروع |
+| `url` | `https://api.lerix.dev/v1` | عنوان API الأساسي (`LERIX_API_URL`) |
+| `environment` | `LERIX_ENVIRONMENT` أو `ENV` | يُرسَل كبيانات وصفية مع كل تقرير |
+| `app` | من `pyproject.toml` | `AppInfo(id, name, version, build_number)` لتعريف هذه الخدمة |
+| `enabled` | `True` | `False` يعطّل الحزمة بالكامل، مفيد في الاختبارات |
+| `debug` | `False` | تسجيل الطلبات والتقارير على مسجّل `lerix` |
+| `capture_unhandled` | `True` | تثبيت `sys.excepthook` و`threading.excepthook` |
+| `state_path` | `.lerix/state.json` | مكان حفظ معرّف المستخدم المجهول؛ `False` يبقيه في الذاكرة |
+| `user_id` | | تثبيت معرّف المستخدم المجهول بدل تسجيل واحد |
+| `flush_timeout` | `2.0` | عدد الثواني التي تنتظرها `flush()` والإيقاف للتقارير العالقة |
+| `timeout` | `10.0` | مهلة HTTP لكل طلب بالثواني |
+| `cwd` | مجلد العمل الحالي | المجلد المستخدم للعثور على `pyproject.toml` وملف الحالة |
+
+## كيف تظهر خدمتك في لوحة التحكم
+
+يسجّل SDK خدمتك كتطبيق من نوع `server`. يأتي معرّف التطبيق افتراضياً من
+`name` في جدول `[project]` داخل `pyproject.toml` والإصدار من `version`،
+فتُجمَّع التقارير لكل خدمة ولكل إصدار. عدّلهما عبر الخيار `app` عند نشر عدة
+نسخ من الكود نفسه أو عندما تريد استخدام git SHA كرقم بناء:
+
+```python
+import os
+import lerix
+from lerix import AppInfo
+
+lerix.init(
+    app=AppInfo(id="orders-api", version=os.environ.get("APP_VERSION"), build_number=os.environ.get("GIT_SHA")),
+)
+```
+
+يُسجَّل مستخدم مجهول عند أول تشغيل ويُحفظ في `.lerix/state.json` داخل مجلد
+العمل حتى تعيد عمليات التشغيل استخدامه. أضف هذا المجلد إلى `.gitignore` أو
+اربطه في الحاويات. مرّر `state_path=False` لتخطي الحفظ، أو `user_id` للتحكم
+بالمعرّف بنفسك.
+
+## الخطوات التالية
+
+<CardGroup cols={2}>
+  <Card title="تتبع الأخطاء" icon="bug" href="/ar/frameworks/python/error-tracking">
+    ما الذي تبلّغ عنه الخطافات، وكيف تغيّر السياسة، والإبلاغ اليدوي.
+  </Card>
+  <Card title="الإشعارات" icon="bell" href="/ar/frameworks/python/push-notifications">
+    أرسل وجدوِل وحدّث وألغِ الإشعارات من خادمك.
+  </Card>
+</CardGroup>

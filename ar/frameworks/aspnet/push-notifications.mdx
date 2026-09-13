@@ -1,0 +1,166 @@
+---
+title: "ASP.NET Core — الإشعارات"
+description: "أرسل وجدوِل وحدّث وألغِ الإشعارات من خادم ASP.NET Core عبر عميل مُهيكل لواجهة Lerix REST API."
+---
+
+## مقدمة
+
+لا يستقبل الخادم الإشعارات بل يرسلها. يغلّف SDK الخاص بـ .NET
+[واجهة REST للإشعارات](/ar/api-reference/push-notifications) في عميل مُهيكل
+حتى تتمكن خدماتك من إشعار مستخدمي تطبيقات الهاتف والويب دون كتابة طلبات
+HTTP يدوياً.
+
+## 1. أنشئ مفتاحاً خاصاً
+
+تُرسَل الإشعارات إلى أجهزة المشروع الذي يستخدمه **تطبيقك**، وهو عادةً مشروع
+مختلف عن الذي يبلّغ خادمك عن أخطائه. من **إعدادات المشروع** في ذلك المشروع،
+أنشئ **مفتاحاً خاصاً** بصلاحية *إرسال الإشعارات*.
+
+<Warning>
+  يستطيع المفتاح الخاص إرسال إشعارات إلى كل مستخدمي المشروع. احفظه في user
+  secrets أو متغير بيئة على الخادم ولا تضعه أبداً في تطبيق عميل.
+</Warning>
+
+## 2. سجّل العميل
+
+```csharp Program.cs
+builder.Services.AddLerixNotifications(builder.Configuration.GetSection("LerixNotifications"));
+```
+
+```json appsettings.json
+{
+  "LerixNotifications": {
+    "ProjectId": "MOBILE_PROJECT_ID",
+    "ApiKey": "MOBILE_PROJECT_PRIVATE_KEY"
+  }
+}
+```
+
+تعمل الدالة أيضاً، ويعود `ProjectId` / `ApiKey` إلى
+`LERIX_NOTIFICATIONS_PROJECT_ID` / `LERIX_NOTIFICATIONS_API_KEY`. يُسجَّل
+العميل كـ singleton من نوع `LerixNotifications` وهو مستقل عن `AddLerix`،
+فيمكن لخدمة أن ترسل الإشعارات دون الإبلاغ عن الأخطاء.
+
+## 3. أرسل إشعاراً
+
+```csharp OrdersService.cs
+using Lerix;
+
+public class OrdersService(LerixNotifications push)
+{
+    public async Task<string> NotifyShipped(User user)
+    {
+        var result = await push.SendAsync(new SendNotificationInput
+        {
+            Title = "تم شحن طلبك",
+            Body = "طلبك رقم 1234 في الطريق إليك",
+            DeviceTokens = new[] { user.LerixDeviceId },
+            Metadata = new Dictionary<string, object?> { ["orderId"] = "1234" },
+        });
+        return result.NotificationId;
+    }
+}
+```
+
+`DeviceTokens` هي معرّفات أجهزة Lerix التي تحصل عليها تطبيقاتك من
+`getDeviceId()` وترسلها إلى خادمك عند تسجيل الدخول. احفظ `NotificationId`
+المُعاد، فكل الدوال الأخرى تحتاجه.
+
+### البث إلى موضوع
+
+```csharp
+await push.SendAsync(new SendNotificationInput
+{
+    Title = "تخفيضات نهاية الأسبوع",
+    Body = "خصم 20% على كل شيء حتى الأحد",
+    SendByTopic = true,
+    Topic = "promotions",
+});
+```
+
+### الجدولة لوقت لاحق
+
+```csharp
+await push.SendAsync(new SendNotificationInput
+{
+    Title = "تذكير",
+    Body = "موعدك بعد ساعة",
+    DeviceTokens = new[] { deviceId },
+    SentAt = appointment.AddHours(-1),
+});
+```
+
+### المعاملات
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `Title` | `string` | نعم | عنوان الإشعار |
+| `Body` | `string` | نعم | نص الإشعار |
+| `DeviceTokens` | `IList<string>` | ما لم يُستخدم `SendByTopic` | معرّفات أجهزة Lerix المستهدفة |
+| `SendByTopic` | `bool` | لا | الإرسال إلى كل جهاز مشترك في `Topic` بدلاً من ذلك |
+| `Topic` | `string` | مع `SendByTopic` | مفتاح الموضوع |
+| `Sound` | `string` | لا | ملف صوت مخصص مضمّن في تطبيق العميل |
+| `ImageUrl` | `string` | لا | صورة عامة بعنوان `https://` تُعرض كصورة غنية |
+| `Metadata` | `IDictionary<string, object?>` | لا | يصل إلى العميل باسم `payload.metadata` |
+| `SentAt` | `DateTimeOffset?` | لا | وقت التسليم؛ يُرسَل بصيغة ISO 8601 بتوقيت UTC |
+
+ملاحظات المنصات حول `Sound` و`ImageUrl` موجودة في
+[مرجع REST API](/ar/api-reference/push-notifications).
+
+## 4. إدارة إشعار مُرسَل
+
+```csharp
+// تغيير المحتوى. المجدوَل يُعدَّل في مكانه، والمُرسَل يُعاد تسليمه.
+await push.UpdateAsync(notificationId, "تم التوصيل", "بالهناء!");
+
+// إزالة إشعار مُسلَّم بالفعل من الأجهزة.
+await push.UnsendAsync(notificationId);
+
+// إيقاف إشعار مجدوَل قبل إرساله.
+await push.CancelAsync(notificationId);
+
+// نتيجة التسليم لكل مستلم كما أبلغت عنها APNs أو FCM أو خدمة دفع المتصفح.
+var deliveries = await push.DeliveriesAsync(notificationId);
+```
+
+| الدالة | نقطة REST |
+|--------|---------------|
+| `SendAsync(input)` | [`POST /notifications/send`](/ar/api-reference/push-notifications) |
+| `UpdateAsync(id, title, body)` | [`POST /notifications/{id}/update`](/ar/api-reference/update-notification) |
+| `UnsendAsync(id)` | [`POST /notifications/{id}/unsend`](/ar/api-reference/unsend-notification) |
+| `CancelAsync(id)` | [`POST /notifications/{id}/cancel`](/ar/api-reference/cancel-notification) |
+| `DeliveriesAsync(id)` | [`GET /notifications/{id}/deliveries`](/ar/api-reference/notification-deliveries) |
+
+تُعيد `UpdateAsync` و`UnsendAsync` و`CancelAsync` استجابة JSON الخام كـ
+`JsonElement?`؛ وتُعيد `DeliveriesAsync` عنصر `JsonElement` واحداً لكل مستلم.
+
+## الأخطاء
+
+تُلقي كل دالة `LerixApiException` عندما ترفض الواجهة الطلب. يحمل `Code` رمز
+الخطأ من الخادم و`Status` رمز حالة HTTP:
+
+```csharp
+using Lerix;
+
+try
+{
+    await push.CancelAsync(id);
+}
+catch (LerixApiException error) when (error.Code == "CANNOT_CANCEL_SENT_NOTIFICATION")
+{
+    // سُلِّم بالفعل
+}
+```
+
+يُرفض المدخل غير الصالح، مثل غياب `Topic` مع `SendByTopic`، محلياً برمز
+`INVALID_INPUT` قبل إرسال أي طلب. القائمة الكاملة للرموز في
+[رموز الأخطاء والنجاح](/ar/developers/errors-responses).
+
+## عدة مشاريع مستهدفة
+
+أنشئ `LerixNotifications` مباشرة عندما يخدم خادم واحد أكثر من تطبيق:
+
+```csharp
+var rider = new LerixNotifications("rider-app", config["RIDER_PRIVATE_KEY"]!);
+var driver = new LerixNotifications("driver-app", config["DRIVER_PRIVATE_KEY"]!);
+```

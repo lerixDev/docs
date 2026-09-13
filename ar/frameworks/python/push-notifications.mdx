@@ -1,0 +1,151 @@
+---
+title: "Python — الإشعارات"
+description: "أرسل وجدوِل وحدّث وألغِ الإشعارات من خادم Python عبر عميل مُهيكل لواجهة Lerix REST API."
+---
+
+## مقدمة
+
+لا يستقبل الخادم الإشعارات بل يرسلها. يغلّف SDK الخاص بـ Python
+[واجهة REST للإشعارات](/ar/api-reference/push-notifications) في عميل مُهيكل
+حتى تتمكن خدماتك من إشعار مستخدمي تطبيقات الهاتف والويب دون كتابة طلبات
+HTTP يدوياً.
+
+## 1. أنشئ مفتاحاً خاصاً
+
+تُرسَل الإشعارات إلى أجهزة المشروع الذي يستخدمه **تطبيقك**، وهو عادةً مشروع
+مختلف عن الذي يبلّغ خادمك عن أخطائه. من **إعدادات المشروع** في ذلك المشروع،
+أنشئ **مفتاحاً خاصاً** بصلاحية *إرسال الإشعارات*.
+
+<Warning>
+  يستطيع المفتاح الخاص إرسال إشعارات إلى كل مستخدمي المشروع. احفظه في متغير
+  بيئة على الخادم ولا تضعه أبداً في تطبيق عميل.
+</Warning>
+
+## 2. أنشئ العميل
+
+مرّر معرّف المشروع الهدف والمفتاح الخاص إلى `LerixNotifications`:
+
+```python notifications.py
+import os
+from lerix import LerixNotifications
+
+push = LerixNotifications(
+    project_id=os.environ["MOBILE_PROJECT_ID"],
+    api_key=os.environ["MOBILE_PROJECT_PRIVATE_KEY"],
+)
+```
+
+بدون وسائط يقرأ `LERIX_NOTIFICATIONS_PROJECT_ID` و`LERIX_NOTIFICATIONS_API_KEY`
+من متغيرات البيئة. العميل مستقل عن `lerix.init()`، فيمكنك استخدامه في خدمة
+لا تبلّغ عن الأخطاء إطلاقاً.
+
+## 3. أرسل إشعاراً
+
+```python orders.py
+result = push.send(
+    title="تم شحن طلبك",
+    body="طلبك رقم 1234 في الطريق إليك",
+    device_tokens=[user.lerix_device_id],
+    metadata={"orderId": "1234"},
+)
+notification_id = result.notification_id
+```
+
+`device_tokens` هي معرّفات أجهزة Lerix التي تحصل عليها تطبيقاتك من
+`getDeviceId()` وترسلها إلى خادمك عند تسجيل الدخول. احفظ `notification_id`
+المُعاد، فكل الدوال الأخرى تحتاجه.
+
+### البث إلى موضوع
+
+```python
+push.send(
+    title="تخفيضات نهاية الأسبوع",
+    body="خصم 20% على كل شيء حتى الأحد",
+    send_by_topic=True,
+    topic="promotions",
+)
+```
+
+### الجدولة لوقت لاحق
+
+```python
+from datetime import timedelta
+
+push.send(
+    title="تذكير",
+    body="موعدك بعد ساعة",
+    device_tokens=[device_id],
+    sent_at=appointment - timedelta(hours=1),
+)
+```
+
+### المعاملات
+
+تقبل `send()` هذه المعاملات كوسائط مسمّاة، أو ككائن `SendNotificationInput`.
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `title` | `str` | نعم | عنوان الإشعار |
+| `body` | `str` | نعم | نص الإشعار |
+| `device_tokens` | `list[str]` | ما لم يُستخدم `send_by_topic` | معرّفات أجهزة Lerix المستهدفة |
+| `send_by_topic` | `bool` | لا | الإرسال إلى كل جهاز مشترك في `topic` بدلاً من ذلك |
+| `topic` | `str` | مع `send_by_topic` | مفتاح الموضوع |
+| `sound` | `str` | لا | ملف صوت مخصص مضمّن في تطبيق العميل |
+| `image_url` | `str` | لا | صورة عامة بعنوان `https://` تُعرض كصورة غنية |
+| `metadata` | `dict` | لا | يصل إلى العميل باسم `payload.metadata` |
+| `sent_at` | `str \| datetime` | لا | وقت ISO 8601 أو `datetime` لجدولة التسليم |
+
+ملاحظات المنصات حول `sound` و`image_url` موجودة في
+[مرجع REST API](/ar/api-reference/push-notifications).
+
+## 4. إدارة إشعار مُرسَل
+
+```python
+# تغيير المحتوى. المجدوَل يُعدَّل في مكانه، والمُرسَل يُعاد تسليمه.
+push.update(notification_id, title="تم التوصيل", body="بالهناء!")
+
+# إزالة إشعار مُسلَّم بالفعل من الأجهزة.
+push.unsend(notification_id)
+
+# إيقاف إشعار مجدوَل قبل إرساله.
+push.cancel(notification_id)
+
+# نتيجة التسليم لكل مستلم كما أبلغت عنها APNs أو FCM أو خدمة دفع المتصفح.
+deliveries = push.deliveries(notification_id)
+```
+
+| الدالة | نقطة REST |
+|--------|---------------|
+| `send(...)` | [`POST /notifications/send`](/ar/api-reference/push-notifications) |
+| `update(id, title, body)` | [`POST /notifications/{id}/update`](/ar/api-reference/update-notification) |
+| `unsend(id)` | [`POST /notifications/{id}/unsend`](/ar/api-reference/unsend-notification) |
+| `cancel(id)` | [`POST /notifications/{id}/cancel`](/ar/api-reference/cancel-notification) |
+| `deliveries(id)` | [`GET /notifications/{id}/deliveries`](/ar/api-reference/notification-deliveries) |
+
+## الأخطاء
+
+تُلقي كل دالة `LerixApiError` عندما ترفض الواجهة الطلب. يحمل `code` رمز
+الخطأ من الخادم و`status` رمز حالة HTTP:
+
+```python
+from lerix import LerixApiError
+
+try:
+    push.cancel(notification_id)
+except LerixApiError as error:
+    if error.code == "CANNOT_CANCEL_SENT_NOTIFICATION":
+        ...  # سُلِّم بالفعل
+```
+
+يُرفض المدخل غير الصالح، مثل غياب `topic` مع `send_by_topic`، محلياً برمز
+`INVALID_INPUT` قبل إرسال أي طلب. القائمة الكاملة للرموز في
+[رموز الأخطاء والنجاح](/ar/developers/errors-responses).
+
+## عدة مشاريع مستهدفة
+
+أنشئ كائن `LerixNotifications` لكل تطبيق عندما يخدم خادم واحد أكثر من تطبيق:
+
+```python
+rider = LerixNotifications(project_id="rider-app", api_key=os.environ["RIDER_PRIVATE_KEY"])
+driver = LerixNotifications(project_id="driver-app", api_key=os.environ["DRIVER_PRIVATE_KEY"])
+```

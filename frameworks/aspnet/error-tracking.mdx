@@ -1,0 +1,168 @@
+---
+title: "ASP.NET Core — Error Tracking"
+description: "Automatic reporting of unhandled exceptions in ASP.NET Core, plus manual reporting with type, severity and metadata."
+---
+
+## Introduction
+
+After you complete the [ASP.NET Core installation](/frameworks/aspnet/installation),
+unhandled exceptions are reported automatically. Inject `LerixClient` to
+report handled exceptions yourself with extra context.
+
+## Automatic capture
+
+`AddLerix` and `UseLerix` register two things:
+
+- **A middleware.** Every exception that escapes the middleware after it
+  (routing, authentication, your endpoints) passes through it. By default it
+  reports every exception except those that carry a status below 500, such
+  as a `BadHttpRequestException` with status 400. The middleware then
+  rethrows, so `UseExceptionHandler` or the developer exception page builds
+  exactly the response it would have built without Lerix. Requests the client
+  aborted are not reported.
+- **Process-level handlers.** `AppDomain.UnhandledException` and
+  `TaskScheduler.UnobservedTaskException` are reported as `Crash` with
+  `Critical` severity. Set `CaptureUnhandled = false` to skip them.
+
+Every automatic report carries the request method, URL, route pattern,
+status code, and the `X-Request-Id` header (or ASP.NET's `TraceIdentifier`)
+under `metadata.request`.
+
+### Change what is reported
+
+`ShouldCapture` receives the exception, the `HttpContext` and the status
+that will be sent when it is known:
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.IgnorePaths.Add("/health");
+    o.ShouldCapture = (exception, context, status) =>
+    {
+        if (exception is OperationCanceledException) return false;
+        return status is null or >= 500;
+    };
+});
+```
+
+`IgnorePaths` is a shortcut for skipping whole route prefixes without a
+delegate.
+
+### Middleware order
+
+`UseLerix` must sit after `UseExceptionHandler` (which would otherwise catch
+the exception first) and before the middleware you want covered. A typical
+pipeline:
+
+```csharp Program.cs
+app.UseExceptionHandler("/error");
+app.UseLerix();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+```
+
+## Report an error manually
+
+`LerixClient` is a singleton in the container:
+
+```csharp OrdersService.cs
+using Lerix;
+
+public class OrdersService(LerixClient lerix, ILedger ledger)
+{
+    public async Task Reconcile(string orderId)
+    {
+        try
+        {
+            await ledger.Reconcile(orderId);
+        }
+        catch (Exception error)
+        {
+            await lerix.CaptureException(error, new CaptureOptions
+            {
+                Type = BugType.LogicBug,
+                Severity = BugSeverity.High,
+                Metadata = new Dictionary<string, object?> { ["orderId"] = orderId, ["job"] = "reconcile" },
+            });
+            throw;
+        }
+    }
+}
+```
+
+`CaptureException` never throws and completes once the report has been
+accepted or given up on. You can also discard the task with `_ =` to keep
+going without waiting. Use `CaptureMessage` for something that was not
+thrown:
+
+```csharp
+await lerix.CaptureMessage("Inventory drift detected", new CaptureOptions
+{
+    Severity = BugSeverity.Medium,
+    Metadata = new Dictionary<string, object?> { ["sku"] = "A-1", ["expected"] = 10, ["actual"] = 7 },
+});
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `error` / `message` | `Exception` / `string` | Yes | The caught exception, or a message |
+| `Type` | `BugType` | No | Bug classification (default `RuntimeError` for exceptions, `LogicBug` for messages) |
+| `Severity` | `BugSeverity` | No | Severity level (default `High` for exceptions, `Medium` for messages) |
+| `Metadata` | `IDictionary<string, object?>` | No | Additional JSON context attached to the report |
+
+### `BugType` values
+
+| Value | Description |
+|-------|-------------|
+| `RuntimeError` | An unhandled exception thrown at runtime |
+| `LogicBug` | Incorrect behavior that doesn't throw |
+| `UiBug` | A visual or layout defect |
+| `NetworkError` | A failed or malformed network request |
+| `Performance` | Slowness or excessive resource use |
+| `Compatibility` | Breaks on a specific runtime, OS or platform |
+| `ValidationError` | Invalid input passed validation it shouldn't have |
+| `Security` | A security-relevant defect |
+| `Crash` | The process terminated unexpectedly |
+| `Unknown` | None of the above |
+
+### `BugSeverity` values
+
+| Value | Description |
+|-------|-------------|
+| `Critical` | Blocks core functionality or affects all users |
+| `High` | Serious impact, but a workaround exists |
+| `Medium` | Noticeable but limited impact |
+| `Low` | Minor or cosmetic |
+| `Unknown` | Severity not yet assessed |
+
+## What is attached to a report
+
+| Field | Value |
+|-------|-------|
+| Device | Machine name, CPU architecture, OS name and version, time zone |
+| App | Service name and id from the entry assembly (or the `App` option), version and build number |
+| Metadata | `environment`, .NET runtime description and process id, plus anything you pass in `Metadata` |
+
+Stack traces include inner exceptions, each introduced by a
+`--- caused by ... ---` line.
+
+## Other `LerixClient` members
+
+| Member | Description |
+|--------|-------------|
+| `GetUserId()` | Anonymous user id this service is registered as |
+| `FlushAsync(timeout?)` | Wait for in-flight reports; the hosted service calls it on shutdown |
+| `DeleteUserAsync()` / `ReRegisterUserAsync()` | Reset the anonymous user, for example after pointing the service at a different project |
+| `InstallProcessHandlers()` | Install the process-level handlers yourself when not using the hosted service |
+
+## Disable in tests
+
+Set `Enabled = false` to turn every call into a no-op without changing your
+code:
+
+```csharp
+builder.Services.AddLerix(o => o.Enabled = !builder.Environment.IsEnvironment("Testing"));
+```
