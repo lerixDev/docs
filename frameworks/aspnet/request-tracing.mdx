@@ -1,0 +1,122 @@
+---
+title: "ASP.NET — Request Tracing"
+description: "One span per request from ASP.NET Core's own activity, HttpClient and database spans, sampling, and the trace behind every error."
+---
+
+## Introduction
+
+After the [installation](/frameworks/aspnet/installation), turn on request
+tracing to see, under **Requests** in the dashboard, every request your
+service handled with its route, duration, database commands and outbound
+calls — and to open the exact request behind any error. See
+[Request Tracing](/modules/request-tracing) for what the dashboard shows.
+
+## Enable it
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.ApiKey = "...";
+    o.ProjectId = "...";
+    o.Tracing.Enabled = true;
+});
+
+var app = builder.Build();
+app.UseExceptionHandler("/error");
+app.UseLerix();
+```
+
+Or from configuration:
+
+```json appsettings.json
+{ "Lerix": { "ApiKey": "...", "ProjectId": "...", "Tracing": { "Enabled": true } } }
+```
+
+Tracing is off by default; when off, no activity listener is registered and
+nothing changes for the application. It is built on
+`System.Diagnostics.Activity`, so it needs no extra packages.
+
+## What is recorded
+
+- **One server span per request**, taken from ASP.NET Core's own request
+  activity and named after the **route template** (`GET /users/{id:int}`),
+  never the raw path. The framework continues an incoming W3C `traceparent`
+  header; `UseLerix()` completes the span with route, status and client
+  address. Only requests that pass through `UseLerix()` are traced.
+- **`HttpClient` calls** become `client` spans named `METHOD host` and carry
+  `traceparent` to the next service. Calls to the Lerix API itself are ignored.
+- **Database commands** from drivers that publish activities — Npgsql,
+  Microsoft.Data.SqlClient, MySqlConnector, and EF Core on top of them —
+  become `client` spans with the SQL reduced to a template
+  (`SELECT * FROM users WHERE id = ?`); parameters and rows are never recorded.
+
+Each source can be switched off, and your own `ActivitySource`s added:
+
+```csharp
+o.Tracing.Instrumentations.HttpClient = true;
+o.Tracing.Instrumentations.Database = true;
+o.Tracing.Instrumentations.AdditionalActivitySources = new[] { "MyCompany.Cache" };
+```
+
+Anything else by hand:
+
+```csharp
+using (LerixTracing.StartChild("cache get", ActivityKind.Client, new Dictionary<string, object?> { ["server.address"] = "redis" }))
+{
+    await cache.GetAsync(key);
+}
+```
+
+Outside a request `StartChild` returns `null`, and `using` on `null` is a
+no-op.
+
+## The current trace
+
+The trace id is `Activity.Current`'s, for example for your own logs:
+
+```csharp
+logger.LogInformation("handling order, trace {Trace}", Activity.Current?.TraceId.ToHexString());
+```
+
+## Sampling
+
+| Option | Default | Description |
+|---|---|---|
+| `Tracing.SampleRate` | `0.1` | Share of successful requests kept in full. Decided once at the root and carried in the W3C trace flags. |
+| `Tracing.SlowThreshold` | `2 s` | A request slower than this is always kept in full. |
+| `Tracing.MaxSpansPerRequest` | `1000` | Child spans held per request until it ends. |
+
+Failed requests and requests that reported an error are always kept whole.
+Every request's root span is still sent, so the per-route counts and
+percentiles in the dashboard cover 100% of traffic.
+
+## Errors and traces
+
+Every error report made inside a request — the middleware's automatic
+reports as well as your own `CaptureException` / `CaptureMessage` calls —
+carries that request's trace, so the issue page shows the waterfall inline
+with the failing command highlighted. An error reported outside any request
+records as before, with no trace attached.
+
+## Client addresses
+
+Each request span carries the client's address, resolved the way the project
+asks under **Project settings → Tracing**: in the default `masked` mode the
+SDK zeroes the last IPv4 octet or truncates IPv6 to its /64 before anything
+is sent; in `hashed` and `full` modes the address is handled on the Lerix
+side. The trusted-proxy depth and header decide how it is read from
+`X-Forwarded-For`; the whole chain is never trusted.
+
+## Exporter options
+
+| Option | Default | Description |
+|---|---|---|
+| `Tracing.FlushInterval` | `5 s` | How often queued spans are sent when the batch is not full |
+| `Tracing.MaxQueueSize` | `2048` | Spans held in memory before new ones are dropped |
+| `Tracing.MaxBatchSize` | `512` | Spans per export request |
+| `Tracing.RequestTimeout` | `10 s` | Timeout of one export request |
+
+Spans leave as OTLP/HTTP JSON from the thread pool. If the Lerix API is
+unreachable the batch is counted and dropped; nothing is retried, nothing
+blocks a request, nothing throws into your code. Counters are on
+`lerixClient.Tracing?.Stats()`.

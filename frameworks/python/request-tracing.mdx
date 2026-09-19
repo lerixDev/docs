@@ -1,0 +1,114 @@
+---
+title: "Python — Request Tracing"
+description: "One span per request in FastAPI, Flask and Django, psycopg and httpx/requests spans, sampling, and the trace behind every error."
+---
+
+## Introduction
+
+After the [installation](/frameworks/python/installation), turn on request
+tracing to see, under **Requests** in the dashboard, every request your
+service handled with its route, duration, queries and outbound calls — and
+to open the exact request behind any error. See
+[Request Tracing](/modules/request-tracing) for what the dashboard shows.
+
+## Enable it
+
+```python
+import lerix
+
+lerix.init(api_key="...", project_id="...", tracing={"enabled": True})
+```
+
+Tracing is off by default; when off, the `lerix.tracing` package is never
+imported and no hook is installed. The request span itself comes from the
+framework integration you already registered:
+
+| Framework | Integration | Route template |
+|---|---|---|
+| FastAPI / Starlette | `LerixMiddleware` | `GET /users/{user_id}` |
+| Flask | `LerixFlask(app)` | `GET /items/<int:item_id>` |
+| Django | `lerix.integrations.django.LerixMiddleware` | `GET /things/<int:pk>/` |
+
+## What is recorded
+
+- **One server span per request**, named after the route template, never the
+  raw path. An incoming W3C `traceparent` header is continued.
+- **PostgreSQL** — `psycopg` (3) and `psycopg2`, so Django and SQLAlchemy on
+  Postgres too. Each query becomes a `client` span named after the SQL
+  template (`SELECT * FROM users WHERE id = ?`); parameters and rows are never
+  recorded.
+- **Outbound HTTP** — `httpx` (sync and async) and `requests`. Each call
+  becomes a `client` span named `METHOD host` and carries a `traceparent`
+  header so a downstream service continues the trace. Calls to the Lerix API
+  itself are ignored.
+
+Each hook can be switched off:
+
+```python
+lerix.init(tracing={"enabled": True, "instrumentations": {"psycopg": True, "httpx": True, "requests": False}})
+```
+
+Anything else can be traced by hand:
+
+```python
+tracer = lerix.get_client().tracing.tracer
+
+with tracer.child("cache get", "client", {"server.address": "redis"}):
+    cache.get(key)
+```
+
+The block ends the span with `error` if it raises. Outside a traced request
+`tracer.child(...)` does nothing.
+
+## The current trace
+
+```python
+ctx = lerix.current()
+log.info("handling order, trace %s", ctx.trace_id if ctx else None)
+```
+
+The context follows `await`s and task switches (it is a `contextvars`
+variable); a thread you start by hand does not inherit it.
+
+## Sampling
+
+| Option | Default | Description |
+|---|---|---|
+| `sample_rate` | `0.1` | Share of successful requests kept in full. Decided once at the root and inherited downstream. |
+| `slow_threshold_ms` | `2000` | A request slower than this is always kept in full. |
+| `max_spans_per_request` | `1000` | Child spans held per request until it ends. |
+
+Failed requests and requests that reported an error are always kept whole.
+Every request's root span is still sent, so the per-route counts and
+percentiles in the dashboard cover 100% of traffic.
+
+## Errors and traces
+
+Every error report made inside a request — the integrations' automatic
+reports as well as your own `lerix.capture_exception()` — carries that
+request's trace, so the issue page shows the waterfall inline with the
+failing query highlighted. An error reported outside any request records as
+before, with no trace attached.
+
+## Client addresses
+
+Each request span carries the client's address, resolved the way the project
+asks under **Project settings → Tracing**: in the default `masked` mode the
+SDK zeroes the last IPv4 octet or truncates IPv6 to its /64 before anything
+is sent; in `hashed` and `full` modes the address is handled on the Lerix
+side. The trusted-proxy depth and header decide how it is read from
+`X-Forwarded-For`; the whole chain is never trusted.
+
+## Exporter options
+
+| Option | Default | Description |
+|---|---|---|
+| `flush_interval` | `5.0` | Seconds between exports when the batch is not full |
+| `max_queue_size` | `2048` | Spans held in memory before new ones are dropped |
+| `max_batch_size` | `512` | Spans per export request |
+| `request_timeout` | `10.0` | Timeout of one export request, in seconds |
+
+Spans leave as OTLP/HTTP JSON from a background thread. If the Lerix API is
+unreachable the batch is counted and dropped; nothing is retried, nothing
+blocks a request, nothing raises into your code. Counters are on
+`lerix.get_client().tracing.stats()`.

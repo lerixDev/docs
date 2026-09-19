@@ -1,0 +1,131 @@
+---
+title: "NestJS — Request Tracing"
+description: "One span per request, PostgreSQL and outbound fetch spans, sampling, and the trace behind every error — for NestJS services."
+---
+
+## Introduction
+
+After the [installation](/frameworks/nestjs/installation), turn on request
+tracing to see, under **Requests** in the dashboard, every request your
+service handled with its route, duration, queries and outbound calls — and
+to open the exact request behind any error. See
+[Request Tracing](/modules/request-tracing) for what the dashboard shows.
+
+## Enable it
+
+```ts app.module.ts
+LerixModule.forRoot({
+  apiKey: process.env.LERIX_API_KEY!,
+  projectId: process.env.LERIX_PROJECT_ID!,
+  tracing: { enabled: true },
+})
+```
+
+With `forRootAsync`, also pass the static flag so the interceptor can be
+registered when the module is built:
+
+```ts
+LerixModule.forRootAsync({
+  tracing: true,
+  useFactory: (config: ConfigService) => ({ ...config.get('lerix'), tracing: { enabled: true } }),
+  inject: [ConfigService],
+})
+```
+
+Tracing is off by default; when off, the tracing code is never even loaded
+(it lives in a separate chunk of the package).
+
+## What is recorded
+
+- **One server span per request**, created by a global interceptor and named
+  after the **route template** from the controller and handler paths
+  (`GET /users/:id`), never the URL. The application's global prefix is not
+  part of the name. An incoming W3C `traceparent` header is continued.
+- **PostgreSQL** — the application's `pg` driver is patched (found from the
+  working directory; nothing is added to your dependencies), which covers
+  Drizzle, TypeORM, Knex and plain `pg`. Each query becomes a `client` span
+  named after the SQL template; parameters and rows are never recorded.
+- **Outbound `fetch`** — every call becomes a `client` span named
+  `METHOD host` and carries a `traceparent` header. Calls to the Lerix API
+  itself are ignored.
+
+Either hook can be switched off:
+
+```ts
+tracing: { enabled: true, instrumentations: { pg: true, fetch: false } }
+```
+
+Anything else can be traced by hand through `LerixService`:
+
+```ts
+const handle = this.lerix.tracing?.tracer.startChild('cache get', 'client', { 'server.address': 'redis' });
+try {
+  await cache.get(key);
+  handle?.end('ok');
+} catch (error) {
+  handle?.end('error', { 'error.type': (error as Error).name });
+  throw error;
+}
+```
+
+A child span needs a request to belong to: outside a traced request the hooks
+do nothing.
+
+## The current trace
+
+The trace id is available anywhere in the request through `current()`, for
+example to put it in your own logs:
+
+```ts
+import { current } from '@lerix-dev/lerix-nestjs';
+
+this.logger.log(`handling order, trace ${current()?.traceId}`);
+```
+
+## Sampling
+
+| Option | Default | Description |
+|---|---|---|
+| `sampleRate` | `0.1` | Share of successful requests kept in full. Decided once at the root and inherited downstream. |
+| `slowThresholdMs` | `2000` | A request slower than this is always kept in full. |
+| `maxSpansPerRequest` | `1000` | Child spans held per request until it ends. |
+
+Failed requests and requests that reported an error are always kept whole.
+Every request's root span is still sent, so the per-route counts and
+percentiles in the dashboard cover 100% of traffic.
+
+## Errors and traces
+
+Every error report made inside a request — the automatic filter's reports as
+well as your own `captureException` / `captureMessage` calls — carries that
+request's trace, so the issue page shows the waterfall inline with the
+failing query highlighted. An error reported outside any request (a job, a
+startup check) records as before, with no trace attached.
+
+## Client addresses
+
+Each request span carries the client's address, resolved the way the project
+asks under **Project settings → Tracing**: in the default `masked` mode the
+SDK zeroes the last IPv4 octet or truncates IPv6 to its /64 before anything
+is sent; in `hashed` and `full` modes the address is handled on the Lerix
+side. The trusted-proxy depth and header decide how it is read from
+`X-Forwarded-For`; the whole chain is never trusted.
+
+## Exporter options
+
+| Option | Default | Description |
+|---|---|---|
+| `flushIntervalMs` | `5000` | How often queued spans are sent when the batch is not full |
+| `maxQueueSize` | `2048` | Spans held in memory before new ones are dropped |
+| `maxBatchSize` | `512` | Spans per export request |
+| `requestTimeoutMs` | `10000` | Timeout of one export request |
+
+Spans leave as OTLP/HTTP JSON. If the Lerix API is unreachable the batch is
+counted and dropped; nothing is retried, nothing blocks a request, nothing
+throws into your code. Counters are on `LerixService.tracing?.stats()`.
+
+## Overhead
+
+Measured on a trivial route with 20 000 sequential requests: about
+**+30 µs mean per request** (p50 +20 µs), plus about 5 µs per query and
+8 µs per outbound call for the hooks.

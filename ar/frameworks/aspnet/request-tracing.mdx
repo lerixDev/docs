@@ -1,0 +1,117 @@
+---
+title: "ASP.NET — تتبّع الطلبات"
+description: "نطاق واحد لكل طلب من نشاط ASP.NET Core نفسه، ونطاقات HttpClient وقاعدة البيانات، وأخذ العينات، والتتبّع خلف كل خطأ."
+---
+
+## مقدمة
+
+بعد [التثبيت](/ar/frameworks/aspnet/installation)، فعّل تتبّع الطلبات لترى
+ضمن **الطلبات** في لوحة التحكم كل طلب عالجته خدمتك مع مساره ومدته وأوامر
+قاعدة البيانات واستدعاءاته الخارجية — ولتفتح الطلب الذي تسبّب في أي خطأ.
+راجع [تتبّع الطلبات](/ar/modules/request-tracing) لما تعرضه لوحة التحكم.
+
+## التفعيل
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    o.ApiKey = "...";
+    o.ProjectId = "...";
+    o.Tracing.Enabled = true;
+});
+
+var app = builder.Build();
+app.UseExceptionHandler("/error");
+app.UseLerix();
+```
+
+أو من الإعدادات:
+
+```json appsettings.json
+{ "Lerix": { "ApiKey": "...", "ProjectId": "...", "Tracing": { "Enabled": true } } }
+```
+
+التتبّع معطَّل افتراضياً؛ وعندما يكون معطَّلاً لا يُسجَّل أي مستمع أنشطة
+ولا يتغيّر شيء في التطبيق. مبني على `System.Diagnostics.Activity`، فلا يحتاج
+إلى حزم إضافية.
+
+## ما الذي يُسجَّل
+
+- **نطاق خادم واحد لكل طلب**، مأخوذ من نشاط الطلب الخاص بـ ASP.NET Core
+  نفسه ومُسمّى بحسب **قالب المسار** (`GET /users/{id:int}`) لا المسار الخام.
+  يواصل الإطار ترويسة `traceparent` الواردة؛ ويُكمل `UseLerix()` النطاق
+  بالمسار والحالة وعنوان العميل. تُتتبَّع فقط الطلبات التي تمر عبر
+  `UseLerix()`.
+- **استدعاءات `HttpClient`** تصبح نطاقات `client` باسم `METHOD host` وتحمل
+  `traceparent` إلى الخدمة التالية. تُتجاهل الاستدعاءات إلى Lerix API نفسها.
+- **أوامر قاعدة البيانات** من المشغّلات التي تنشر أنشطة — Npgsql
+  وMicrosoft.Data.SqlClient وMySqlConnector وEF Core فوقها — تصبح نطاقات
+  `client` مع اختزال SQL إلى قالب (`SELECT * FROM users WHERE id = ?`)؛ لا
+  تُسجَّل المعاملات ولا الصفوف أبداً.
+
+يمكن تعطيل كل مصدر، وإضافة مصادر `ActivitySource` الخاصة بك:
+
+```csharp
+o.Tracing.Instrumentations.HttpClient = true;
+o.Tracing.Instrumentations.Database = true;
+o.Tracing.Instrumentations.AdditionalActivitySources = new[] { "MyCompany.Cache" };
+```
+
+وأي شيء آخر يدوياً:
+
+```csharp
+using (LerixTracing.StartChild("cache get", ActivityKind.Client, new Dictionary<string, object?> { ["server.address"] = "redis" }))
+{
+    await cache.GetAsync(key);
+}
+```
+
+خارج الطلب يعيد `StartChild` القيمة `null`، و`using` على `null` لا يفعل شيئاً.
+
+## التتبّع الحالي
+
+معرّف التتبّع هو معرّف `Activity.Current`، مثلاً لسجلاتك:
+
+```csharp
+logger.LogInformation("handling order, trace {Trace}", Activity.Current?.TraceId.ToHexString());
+```
+
+## أخذ العينات
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `Tracing.SampleRate` | `0.1` | نسبة الطلبات الناجحة المحفوظة كاملةً. تُقرَّر مرة عند الجذر وتُحمل في علامات تتبّع W3C. |
+| `Tracing.SlowThreshold` | `2 s` | الطلب الأبطأ من هذا يُحفظ كاملاً دائماً. |
+| `Tracing.MaxSpansPerRequest` | `1000` | النطاقات الفرعية المحتفَظ بها لكل طلب حتى ينتهي. |
+
+الطلبات الفاشلة والطلبات التي أبلغت عن خطأ تُحفظ كاملةً دائماً. ويُرسل
+النطاق الجذر لكل طلب مهما كان، فتغطي أعداد المسارات ونسبها المئوية في لوحة
+التحكم 100% من الحركة.
+
+## الأخطاء والتتبّعات
+
+كل تقرير خطأ يُرسل داخل طلب — تقارير البرمجية الوسيطة التلقائية وكذلك
+استدعاءاتك لـ `CaptureException` / `CaptureMessage` — يحمل تتبّع ذلك
+الطلب، فتعرض صفحة المشكلة الشلال مضمَّناً مع تمييز الأمر الفاشل. أما الخطأ
+المُبلَّغ عنه خارج أي طلب فيُسجَّل كالسابق دون تتبّع مرفق.
+
+## عناوين العملاء
+
+يحمل كل نطاق طلب عنوان عميله، مُحدَّداً وفق ما يطلبه المشروع ضمن **إعدادات
+المشروع ← التتبّع**: في الوضع الافتراضي `masked` تصفّر حزمة SDK آخر خانة من
+IPv4 أو تقتطع IPv6 إلى /64 قبل إرسال أي شيء؛ وفي وضعَي `hashed` و`full`
+يُعالَج العنوان في جانب Lerix. يحدد عدد الوكلاء الموثوقين والترويسة كيفية
+قراءته من `X-Forwarded-For`؛ ولا تُوثَق السلسلة كاملةً أبداً.
+
+## خيارات المصدّر
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `Tracing.FlushInterval` | `5 s` | كم مرة تُرسل النطاقات المصفوفة عندما لا تكتمل الدفعة |
+| `Tracing.MaxQueueSize` | `2048` | النطاقات المحتفَظ بها في الذاكرة قبل إسقاط الجديدة |
+| `Tracing.MaxBatchSize` | `512` | النطاقات لكل طلب تصدير |
+| `Tracing.RequestTimeout` | `10 s` | مهلة طلب التصدير الواحد |
+
+تغادر النطاقات بصيغة OTLP/HTTP JSON من مجمّع الخيوط. إذا تعذّر الوصول إلى
+Lerix API تُحسب الدفعة وتُسقط؛ لا إعادة محاولة، ولا حجب لأي طلب، ولا
+استثناء يصل إلى كودك. العدّادات في `lerixClient.Tracing?.Stats()`.

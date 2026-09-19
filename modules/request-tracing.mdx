@@ -1,0 +1,82 @@
+---
+title: "Request Tracing"
+description: "See every request your backend handled — its route, duration, database queries and outbound calls — and open the exact request behind any error."
+icon: "route"
+---
+
+## What it does
+
+Request Tracing captures the journey of an HTTP request through your backend
+service: the request itself and every operation it triggered (database
+queries, outbound HTTP calls, anything you trace by hand), each with its
+timing and status. It is available for the backend SDKs:
+[NestJS](/frameworks/nestjs/request-tracing), [Python](/frameworks/python/request-tracing)
+and [ASP.NET](/frameworks/aspnet/request-tracing).
+
+The point is not the timing data on its own. It is opening an error in the
+dashboard and immediately seeing the request that produced it — which query
+was slow, which external call failed.
+
+- **Route templates, never raw paths.** A request to `/users/42` is recorded
+  as `GET /users/:id` (`/users/{user_id}` in Python, `/users/{id:int}` in
+  ASP.NET). Ten thousand different ids are one route, not ten thousand.
+- **Database queries as spans.** The SQL is reduced to a template
+  (`SELECT * FROM users WHERE id = ?`) before it becomes a span name; query
+  parameters and rows are never recorded.
+- **Outbound calls carry the trace.** HTTP calls to another service get a
+  W3C `traceparent` header; a downstream service running Lerix continues the
+  same trace, so one request spanning two services is one waterfall.
+- **Errors link to their request.** Every error report made inside a request
+  carries the request's trace, and the request's trace links back to the
+  error.
+
+## In the dashboard
+
+Under a backend project, **Requests** shows:
+
+| Panel | What it's for |
+|---|---|
+| **Routes** | Per-route request count, error count and p50 / p95 / p99 latency over the last hour, day or week. Counted for **every** request, whatever the sample rate. |
+| **Top client addresses** | Requests per client address (masked or hashed, see below), for spotting abuse. |
+| **Sampled traces** | The most recent kept requests. Open one for its **waterfall**: the span tree in start order with duration bars; click a span for its attributes. |
+
+On an **issue** page, the request's waterfall is shown inline, with the span
+the error was reported from highlighted and any span that failed in red.
+
+## Sampling
+
+Keeping every span of every request is not survivable at volume, so by
+default the SDK keeps **10% of successful requests** in full and **always**
+keeps a request that failed, took longer than the slow threshold (2 s by
+default) or reported an error. The decision is made once, when the request
+starts, and inherited by every child span and downstream service — a trace is
+either whole or absent, never half missing.
+
+Whatever the rate, the root span of every request is still sent, flagged
+not-sampled, so the Routes panel counts 100% of traffic.
+
+## Retention
+
+Raw spans are kept for 7 days, the per-route aggregates for 90 days.
+
+## Client addresses
+
+The address of each request's client is personal data, so what Lerix keeps of
+it is a per-project choice under **Project settings → Tracing**:
+
+| Mode | What is stored |
+|---|---|
+| **Masked** (default) | The SDK zeroes the last IPv4 octet (`203.0.113.0`) or truncates IPv6 to its /64 **before sending**. The real address never leaves your service. |
+| **Hashed** | A salted hash whose salt rotates daily: the same client is recognisable within a day, never across days, and never reversible. |
+| **Full** | The real address, kept for 72 hours. Turning this on is an explicit action, recorded in your organization's audit log with who did it and when. |
+
+How the address is read is also configured there: the **trusted proxy depth**
+(how many proxies sit between the internet and your service; 0 means the
+direct peer is the client) and the **header** they write (`X-Forwarded-For`
+by default). The whole chain is never trusted — the leftmost entries are
+whatever the client chose to send.
+
+<Note>
+  Tracing is **off by default** in every SDK and activates only with an explicit
+  option. Upgrading an SDK changes nothing for a service that does not turn it on.
+</Note>

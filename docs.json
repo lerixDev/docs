@@ -126,7 +126,8 @@
                     "pages": [
                       "frameworks/nestjs/installation",
                       "frameworks/nestjs/error-tracking",
-                      "frameworks/nestjs/push-notifications"
+                      "frameworks/nestjs/push-notifications",
+                      "frameworks/nestjs/request-tracing"
                     ]
                   },
                   {
@@ -135,7 +136,8 @@
                     "pages": [
                       "frameworks/python/installation",
                       "frameworks/python/error-tracking",
-                      "frameworks/python/push-notifications"
+                      "frameworks/python/push-notifications",
+                      "frameworks/python/request-tracing"
                     ]
                   },
                   {
@@ -144,7 +146,8 @@
                     "pages": [
                       "frameworks/aspnet/installation",
                       "frameworks/aspnet/error-tracking",
-                      "frameworks/aspnet/push-notifications"
+                      "frameworks/aspnet/push-notifications",
+                      "frameworks/aspnet/request-tracing"
                     ]
                   },
                   {
@@ -164,6 +167,7 @@
             "pages": [
               "modules/error-tracking",
               "modules/push-notifications",
+              "modules/request-tracing",
               "modules/analytics",
               "modules/in-app-messages",
               "modules/feedback",
@@ -307,7 +311,8 @@
                     "pages": [
                       "ar/frameworks/nestjs/installation",
                       "ar/frameworks/nestjs/error-tracking",
-                      "ar/frameworks/nestjs/push-notifications"
+                      "ar/frameworks/nestjs/push-notifications",
+                      "ar/frameworks/nestjs/request-tracing"
                     ]
                   },
                   {
@@ -316,7 +321,8 @@
                     "pages": [
                       "ar/frameworks/python/installation",
                       "ar/frameworks/python/error-tracking",
-                      "ar/frameworks/python/push-notifications"
+                      "ar/frameworks/python/push-notifications",
+                      "ar/frameworks/python/request-tracing"
                     ]
                   },
                   {
@@ -325,7 +331,8 @@
                     "pages": [
                       "ar/frameworks/aspnet/installation",
                       "ar/frameworks/aspnet/error-tracking",
-                      "ar/frameworks/aspnet/push-notifications"
+                      "ar/frameworks/aspnet/push-notifications",
+                      "ar/frameworks/aspnet/request-tracing"
                     ]
                   },
                   {
@@ -345,6 +352,7 @@
             "pages": [
               "ar/modules/error-tracking",
               "ar/modules/push-notifications",
+              "ar/modules/request-tracing",
               "ar/modules/analytics",
               "ar/modules/in-app-messages",
               "ar/modules/feedback",
