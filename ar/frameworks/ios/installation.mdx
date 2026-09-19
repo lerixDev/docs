@@ -7,7 +7,7 @@ description: "أضف Lerix إلى تطبيق iOS الأصلي (native) الخا�
 
 - iOS 13+‎
 - Xcode 15+‎، Swift 5.9+‎
-- Swift Package Manager
+- Swift Package Manager أو CocoaPods
 
 <Note>
   هذه هي حزمة Swift الأصلية (native) للتطبيقات التي لا تستخدم Flutter إطلاقاً. إذا كان تطبيقك مبنياً بـ Flutter، استخدم [Flutter SDK](/ar/frameworks/flutter/installation) بدلاً من ذلك — فهو يغطّي iOS وAndroid وWeb من حزمة واحدة.
@@ -19,11 +19,19 @@ description: "أضف Lerix إلى تطبيق iOS الأصلي (native) الخا�
 
 ```swift Package.swift
 dependencies: [
-    .package(url: "https://github.com/lerixDev/lerix-ios", from: "1.0.0")
+    .package(url: "https://github.com/lerixDev/lerix_ios", from: "1.0.0")
 ]
 ```
 
 ثم أضف `Lerix` كاعتمادية (dependency) لهدف تطبيقك (app target).
+
+### أو عبر CocoaPods
+
+```ruby Podfile
+pod 'Lerix', '~> 1.0'
+```
+
+شغّل `pod install` وافتح ملف `.xcworkspace` الناتج.
 
 ## 2. هيّئ الـ SDK
 

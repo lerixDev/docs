@@ -7,7 +7,7 @@ description: "Add Lerix to your native iOS app in a few steps — no Flutter req
 
 - iOS 13+
 - Xcode 15+, Swift 5.9+
-- Swift Package Manager
+- Swift Package Manager or CocoaPods
 
 <Note>
   This is the native Swift package for apps with no Flutter involved. If your app is built with Flutter, use the [Flutter SDK](/frameworks/flutter/installation) instead — it already covers iOS, Android, and Web from one package.
@@ -19,11 +19,19 @@ In Xcode: **File → Add Package Dependencies…** and enter the package's Git U
 
 ```swift Package.swift
 dependencies: [
-    .package(url: "https://github.com/lerixDev/lerix-ios", from: "1.0.0")
+    .package(url: "https://github.com/lerixDev/lerix_ios", from: "1.0.0")
 ]
 ```
 
 Then add `Lerix` as a dependency of your app target.
+
+### Or with CocoaPods
+
+```ruby Podfile
+pod 'Lerix', '~> 1.0'
+```
+
+Run `pod install` and open the generated `.xcworkspace`.
 
 ## 2. Initialize the SDK
 
