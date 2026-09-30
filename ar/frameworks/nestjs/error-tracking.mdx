@@ -142,6 +142,29 @@ await this.lerix.captureMessage('Inventory drift detected', {
 | التطبيق | اسم الخدمة ومعرّفها من `package.json` (أو الخيار `app`)، الإصدار ورقم البناء |
 | البيانات الوصفية | `environment`، إصدار Node.js ومعرّف العملية، إضافة إلى ما تمرّره في `metadata` |
 
+<a id="typescript-file-and-line-numbers"></a>
+
+## ملفات TypeScript وأرقام الأسطر
+
+تُعاد تتبّعات المكدس (stack traces) إلى كود TypeScript المصدري تلقائياً. عند
+الإبلاغ عن خطأ، يقرأ الـ SDK ملفات `.js.map` التي يكتبها `nest build` بجانب
+الكود المُترجَم، فيُبلَّغ عن إطار مثل `dist/src/orders/orders.service.js:58`
+على أنه `src/orders/orders.service.ts:42`.
+
+لا شيء لرفعه، ولا خيار (flag) لـ Node.js، ولا شيء لإعداده. يفعّل Nest الخيار
+`"sourceMap": true` في `tsconfig.json` افتراضياً. تعمل أيضاً خرائط المصدر
+المضمّنة (inline) وحزم `nest build --webpack`.
+
+تُجعل المسارات نسبية إلى مجلد العمل (working directory) للتطبيق (وهو عادةً جذر
+المستودع)، فتُقرأ كمسارات داخل المستودع. تظهر إطارات الاعتماديات
+(dependencies) بصيغة `node_modules/...`.
+
+<Warning>
+  إذا لم تُنشر ملفات `.js.map`، تحتفظ الإطارات بموضعها في الكود المُترجَم. يحدث
+  هذا مثلاً مع صورة Docker تنسخ ملفات `.js` فقط. أبقِ ملفات `.js.map` بجانب
+  `dist/**/*.js` داخل الصورة.
+</Warning>
+
 ## دوال `LerixService` الأخرى
 
 | الدالة | الوصف |

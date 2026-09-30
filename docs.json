@@ -71,7 +71,8 @@
                     "pages": [
                       "frameworks/flutter/installation",
                       "frameworks/flutter/push-notifications",
-                      "frameworks/flutter/error-tracking"
+                      "frameworks/flutter/error-tracking",
+                      "frameworks/flutter/source-maps"
                     ]
                   }
                 ]
@@ -86,7 +87,8 @@
                     "pages": [
                       "frameworks/react/installation",
                       "frameworks/react/push-notifications",
-                      "frameworks/react/error-tracking"
+                      "frameworks/react/error-tracking",
+                      "frameworks/react/source-maps"
                     ]
                   },
                   {
@@ -95,7 +97,8 @@
                     "pages": [
                       "frameworks/nextjs/installation",
                       "frameworks/nextjs/push-notifications",
-                      "frameworks/nextjs/error-tracking"
+                      "frameworks/nextjs/error-tracking",
+                      "frameworks/nextjs/source-maps"
                     ]
                   },
                   {
@@ -104,7 +107,8 @@
                     "pages": [
                       "frameworks/angular/installation",
                       "frameworks/angular/push-notifications",
-                      "frameworks/angular/error-tracking"
+                      "frameworks/angular/error-tracking",
+                      "frameworks/angular/source-maps"
                     ]
                   },
                   {
@@ -256,7 +260,8 @@
                     "pages": [
                       "ar/frameworks/flutter/installation",
                       "ar/frameworks/flutter/push-notifications",
-                      "ar/frameworks/flutter/error-tracking"
+                      "ar/frameworks/flutter/error-tracking",
+                      "ar/frameworks/flutter/source-maps"
                     ]
                   }
                 ]
@@ -271,7 +276,8 @@
                     "pages": [
                       "ar/frameworks/react/installation",
                       "ar/frameworks/react/push-notifications",
-                      "ar/frameworks/react/error-tracking"
+                      "ar/frameworks/react/error-tracking",
+                      "ar/frameworks/react/source-maps"
                     ]
                   },
                   {
@@ -280,7 +286,8 @@
                     "pages": [
                       "ar/frameworks/nextjs/installation",
                       "ar/frameworks/nextjs/push-notifications",
-                      "ar/frameworks/nextjs/error-tracking"
+                      "ar/frameworks/nextjs/error-tracking",
+                      "ar/frameworks/nextjs/source-maps"
                     ]
                   },
                   {
@@ -289,7 +296,8 @@
                     "pages": [
                       "ar/frameworks/angular/installation",
                       "ar/frameworks/angular/push-notifications",
-                      "ar/frameworks/angular/error-tracking"
+                      "ar/frameworks/angular/error-tracking",
+                      "ar/frameworks/angular/source-maps"
                     ]
                   },
                   {

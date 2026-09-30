@@ -149,6 +149,35 @@ await lerix.CaptureMessage("Inventory drift detected", new CaptureOptions
 Stack traces include inner exceptions, each introduced by a
 `--- caused by ... ---` line.
 
+## File and line numbers
+
+.NET only puts file and line numbers in stack traces when your app's `.pdb`
+files are available at runtime. Add a `Directory.Build.props` file at the
+root of your repository:
+
+```xml Directory.Build.props
+<Project>
+  <PropertyGroup>
+    <!-- Ship debug info inside the .dll so line numbers survive publish and Docker -->
+    <DebugType>embedded</DebugType>
+    <!-- Report paths relative to the repository instead of the build machine -->
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+  </PropertyGroup>
+</Project>
+```
+
+The SDK strips the deterministic `/_/` root, so this frame:
+
+```text
+at Api.Orders.Find() in /_/src/Api/Orders.cs:line 42
+```
+
+is reported as `src/Api/Orders.cs:line 42`. A `ContinuousIntegrationBuild`
+build produces the same `/_/` root.
+
+If stack traces arrive with no file or line at all, the SDK logs one warning
+per process that points to this page.
+
 ## Other `LerixClient` members
 
 | Member | Description |

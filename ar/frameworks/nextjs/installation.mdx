@@ -78,6 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 | `options.apiKey` | `string` | لا | يتجاوز `NEXT_PUBLIC_LERIX_API_KEY` |
 | `options.projectId` | `string` | لا | يتجاوز `NEXT_PUBLIC_LERIX_PROJECT_ID` |
 | `options.url` | `string` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.lerix.dev/v1` |
+| `options.release` | `string` | لا | يتجاوز `NEXT_PUBLIC_LERIX_RELEASE`. الإصدار الذي يُنشر به هذا البناء؛ مرّر القيمة نفسها عند رفع خرائط المصدر: راجع [خرائط المصدر](/ar/frameworks/nextjs/source-maps) |
 | `options.debugMode` | `boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
 | `options.enableCrashReporting` | `boolean` | لا | تثبيت معالج الأخطاء التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/nextjs/error-tracking) |
 

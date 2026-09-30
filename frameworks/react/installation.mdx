@@ -63,6 +63,7 @@ in development, since initialization is re-entrant-safe.
 | `apiKey` | `string` | Yes | Your project API key from the dashboard |
 | `projectId` | `string` | Yes | Your project ID (slug) from the dashboard |
 | `url` | `string` | No | Backend base URL. Defaults to `https://api.lerix.dev/v1` — only change this if you're pointing at a self-hosted backend |
+| `release` | `string` | No | The version this build ships as (e.g. `1.4.0` or a commit SHA). Pass the same value when uploading source maps so production stack traces show your original files: see [Source maps](/frameworks/react/source-maps) |
 | `debugMode` | `boolean` | No | Print SDK request/response logs to the console (default: `false`) |
 | `enableCrashReporting` | `boolean` | No | Install the automatic crash handler (default: `true`) — see [Error Tracking](/frameworks/react/error-tracking) |
 | `onError` | `(error: unknown) => void` | No | Called if initialization itself fails (e.g. network unreachable) |

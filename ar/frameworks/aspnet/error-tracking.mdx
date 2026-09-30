@@ -144,6 +144,37 @@ await lerix.CaptureMessage("Inventory drift detected", new CaptureOptions
 تتضمن تتبّعات المكدس الاستثناءات الداخلية، يسبق كلاً منها سطر
 `--- caused by ... ---`.
 
+<a id="file-and-line-numbers"></a>
+
+## الملفات وأرقام الأسطر
+
+لا تضع .NET الملف ورقم السطر في تتبّعات المكدس إلا عندما تكون ملفات `.pdb`
+الخاصة بتطبيقك متاحة وقت التشغيل. أضِف ملف `Directory.Build.props` في جذر
+مستودعك:
+
+```xml Directory.Build.props
+<Project>
+  <PropertyGroup>
+    <!-- Ship debug info inside the .dll so line numbers survive publish and Docker -->
+    <DebugType>embedded</DebugType>
+    <!-- Report paths relative to the repository instead of the build machine -->
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+  </PropertyGroup>
+</Project>
+```
+
+يحذف الـ SDK الجذر الحتمي (deterministic) `/_/`، فهذا الإطار:
+
+```text
+at Api.Orders.Find() in /_/src/Api/Orders.cs:line 42
+```
+
+يُبلَّغ عنه على أنه `src/Api/Orders.cs:line 42`. وينتج بناء
+`ContinuousIntegrationBuild` الجذر `/_/` نفسه.
+
+إذا وصلت تتبّعات المكدس دون ملف أو سطر على الإطلاق، يسجّل الـ SDK تحذيراً
+واحداً لكل عملية يشير إلى هذه الصفحة.
+
 ## أعضاء `LerixClient` الأخرى
 
 | العضو | الوصف |

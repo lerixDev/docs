@@ -29,6 +29,40 @@ icon: "bug"
 `performance`) و`bugSeverity` (من `critical` إلى `low`) لتتمكّن من الفرز حسب
 الأولوية. راجع دليل منصتك لمعرفة القائمة الكاملة للقيم.
 
+<a id="source-maps"></a>
+
+## خرائط المصدر (Source maps)
+
+تكون بناءات الويب للإنتاج مُصغَّرة (minified)، لذا يشير تتبّع المكدس في
+المتصفح إلى مواضع داخل الأجزاء المُجمَّعة (bundled chunks)، مثل
+`onConnMessage@https://app.com/chunk-Cr8GYWvZ.js:10:14780`، بدلاً من كودك.
+
+ارفع خرائط المصدر الخاصة ببنائك عبر أداة Lerix CLI، وستعرض الأخطاء الجديدة
+الملف والسطر والدالة الأصلية (مثل `src/app/chat/chat.page.ts:142`) مع الكود
+المحيط. تُرفَع الخرائط بشكل خاص وتُزال من مخرجات البناء قبل النشر، فلا يُقدَّم
+كودك المصدري علناً أبداً. ويرى المساعد الذكي وقضايا GitHub وخادم MCP المكدس
+المقروء أيضاً.
+
+<CardGroup cols={2}>
+  <Card title="Angular" icon="angular" href="/ar/frameworks/angular/source-maps">
+    خرائط مصدر مخفية في `angular.json`، ثم الرفع.
+  </Card>
+  <Card title="React" icon="react" href="/ar/frameworks/react/source-maps">
+    خرائط المصدر مع Vite أو Create React App، ثم الرفع.
+  </Card>
+  <Card title="Next.js" icon="n" href="/ar/frameworks/nextjs/source-maps">
+    `productionBrowserSourceMaps`، ثم الرفع.
+  </Card>
+  <Card title="Flutter" icon="flutter" href="/ar/frameworks/flutter/source-maps">
+    `flutter build web --source-maps`، ثم الرفع.
+  </Card>
+</CardGroup>
+
+لا تحتاج حزم SDK الخاصة بالخادم إلى أي رفع. يقرأ NestJS ملفات `.js.map` التي
+يكتبها `nest build` (راجع [ملفات TypeScript وأرقام الأسطر](/ar/frameworks/nestjs/error-tracking#typescript-file-and-line-numbers))،
+ويقرأ ASP.NET Core معلومات التصحيح (debug info) في بنائك (راجع
+[الملفات وأرقام الأسطر](/ar/frameworks/aspnet/error-tracking#file-and-line-numbers)).
+
 ## ابدأ الآن
 
 <CardGroup cols={2}>

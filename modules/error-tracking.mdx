@@ -30,6 +30,40 @@ Reports carry a `bugType` (e.g. `crash`, `networkError`, `uiBug`,
 triage what matters first. See your framework's guide for the full list of
 values.
 
+## Source maps
+
+Production web builds are minified, so a browser stack trace points at
+positions in bundled chunks, like
+`onConnMessage@https://app.com/chunk-Cr8GYWvZ.js:10:14780`, instead of your
+code.
+
+Upload your build's source maps with the Lerix CLI and new errors show the
+original file, line and function (for example
+`src/app/chat/chat.page.ts:142`) with the surrounding code. The maps are
+uploaded privately and removed from your build output before you deploy, so
+your source is never served publicly. The AI assistant, GitHub issues and the
+MCP server all see the readable stack too.
+
+<CardGroup cols={2}>
+  <Card title="Angular" icon="angular" href="/frameworks/angular/source-maps">
+    Hidden source maps in `angular.json`, then upload.
+  </Card>
+  <Card title="React" icon="react" href="/frameworks/react/source-maps">
+    Source maps with Vite or Create React App, then upload.
+  </Card>
+  <Card title="Next.js" icon="n" href="/frameworks/nextjs/source-maps">
+    `productionBrowserSourceMaps`, then upload.
+  </Card>
+  <Card title="Flutter" icon="flutter" href="/frameworks/flutter/source-maps">
+    `flutter build web --source-maps`, then upload.
+  </Card>
+</CardGroup>
+
+Backend SDKs need no upload. NestJS reads the `.js.map` files that
+`nest build` writes (see [TypeScript file and line numbers](/frameworks/nestjs/error-tracking#typescript-file-and-line-numbers)),
+and ASP.NET Core reads the debug info in your build (see
+[File and line numbers](/frameworks/aspnet/error-tracking#file-and-line-numbers)).
+
 ## Get started
 
 <CardGroup cols={2}>

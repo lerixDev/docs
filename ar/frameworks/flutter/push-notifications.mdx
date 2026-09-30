@@ -58,10 +58,14 @@ override func application(
 
 ## إعداد الويب
 
-Flutter Web مدعوم من نفس حزمة `lerix` — بدون JS SDK منفصل، وبدون مشروع Firebase. خطوتان فقط بدلاً من إعداد Xcode:
+Flutter Web مدعوم من نفس حزمة `lerix_flutter` — بدون JS SDK منفصل، وبدون مشروع Firebase. خطوتان فقط بدلاً من إعداد Xcode:
 
-1. **انسخ عامل الخدمة (service worker).** لا يمكن لحزمة Flutter إضافة ملف إلى مجلد `web/` في تطبيقك تلقائياً — انسخ ملف `web_sw/atelerix-sw.js` من حزمة `lerix` إلى `web/atelerix-sw.js` في تطبيقك، بحيث يُقدَّم من جذر موقعك (مثال: `https://yoursite.com/atelerix-sw.js`).
+1. **انسخ عامل الخدمة (service worker).** لا يمكن لحزمة Flutter إضافة ملف إلى مجلد `web/` في تطبيقك تلقائياً — انسخ ملف `web_sw/lerix-sw.js` من حزمة `lerix_flutter` إلى `web/lerix-sw.js` في تطبيقك، بحيث يُقدَّم من جذر موقعك (مثال: `https://yoursite.com/lerix-sw.js`).
 2. **أنشئ مفتاح Web Push** من لوحة التحكم: **الإشعارات ← الإعدادات ← Web Push ← إنشاء المفاتيح**. نقرة واحدة — ينشئ Lerix زوج مفاتيح VAPID ويخزّنه لك؛ لا حاجة لنسخ أي شيء في كودك.
+
+<Note>
+  يسجّل Lerix عامل الخدمة الخاص به في نطاق مستقل (`/lerix/`)، لذا يعمل بجانب `flutter_service_worker.js` الخاص بـ Flutter، ويعمل الأمر الافتراضي `flutter build web` دون تغيير. في الإصدار 0.0.1 من `lerix_flutter` كان العاملان يتنافسان على النطاق الجذري فيحلّ عامل Flutter محل عامل Lerix، فتظهر الإشعارات كمُرسَلة لكنها لا تصل. إن كنت لا تزال على 0.0.1 فحدّث الحزمة، أو ابنِ التطبيق باستخدام `flutter build web --pwa-strategy=none`.
+</Note>
 
 <Note>
   على الويب، تفعل `requestPermissions()` أكثر مما تفعله على الجوال — راجع [الفروقات بين المنصات على الويب](#الفروقات-بين-المنصات-على-الويب) أدناه.

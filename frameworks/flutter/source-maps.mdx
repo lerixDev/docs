@@ -1,0 +1,158 @@
+---
+title: "Flutter — Source Maps"
+description: "Upload your Flutter Web source maps privately so Lerix shows web errors at the original Dart file and line."
+---
+
+## Introduction
+
+Flutter Web release builds are compiled to minified JavaScript, so a stack
+trace from a real user looks like this:
+
+```text
+main.dart.js:64858
+```
+
+When you upload your build's source maps to Lerix, the dashboard maps each
+frame back to your Dart code, for example `lib/chat/chat_store.dart:15`, with
+the Dart member name.
+
+The maps are uploaded privately and deleted from your build output before you
+deploy. They are never served publicly, so your source code stays private.
+
+<Note>
+  Complete the [Flutter installation](/frameworks/flutter/installation) first.
+  Web stack traces require `lerix_flutter` 0.0.2 or newer.
+</Note>
+
+<Info>
+  Source maps are only needed for Flutter Web. Android and iOS release builds
+  already report Dart file and line numbers, see
+  [Mobile builds](#mobile-builds).
+</Info>
+
+## 1. Build with source maps
+
+Add `--source-maps` to your web build:
+
+```bash
+flutter build web --source-maps
+```
+
+Check that `main.dart.js.map` appears next to `main.dart.js` in `build/web`.
+
+## 2. Create a private API key
+
+Uploading source maps needs a private key, separate from the public project
+key your app uses.
+
+1. Open your project in the [Lerix Dashboard](https://app.lerix.dev).
+2. Go to **Project settings** → **API keys**.
+3. Create a key with the **Upload source maps** permission (or **Full access**).
+
+<Warning>
+  This key is secret. Store it as a CI secret and never put it in client code
+  or commit it to your repository.
+</Warning>
+
+## 3. Upload the maps after each build
+
+After `flutter build web --source-maps` and before you deploy, run the Lerix
+CLI:
+
+```bash
+npx @lerix-dev/lerix-cli upload
+```
+
+Run it from your Flutter project folder. It finds `build/web` on its own and
+uses the `version` from `pubspec.yaml`, without the `+build` number, as the
+release. For `version: 1.4.0+12`, the release is `1.4.0`.
+
+The CLI uploads the `.map` files, then deletes them from `build/web` so they
+are never deployed. If any upload fails, it keeps the maps and exits with
+code 1, so you can retry the step. The CLI requires Node.js 18.17 or newer.
+
+<Warning>
+  Upload after every build. `main.dart.js` keeps the same name across builds,
+  so the release is what tells builds apart. Bump `version` in `pubspec.yaml`
+  for each release.
+</Warning>
+
+### Options
+
+Each option can also be set with an environment variable.
+
+| Option | Environment variable | Description |
+|--------|----------------------|-------------|
+| `--release` | `LERIX_RELEASE` | The version this build ships as. Defaults to `version` in `pubspec.yaml`, without the `+build` number |
+| `--api-key` | `LERIX_API_KEY` | Your normal public project API key |
+| `--project-id` | `LERIX_PROJECT_ID` | Your project ID |
+| `--secret-key` | `LERIX_SECRET_KEY` | The private key from step 2 |
+| `--url` | `LERIX_URL` | Lerix API URL. Defaults to `https://api.lerix.dev/v1` |
+| `--keep-maps` | | Keep the `.map` files in the build output instead of deleting them |
+| `--dry-run` | | List the maps that would be uploaded, without uploading anything |
+| `--optional` | | Skip the upload instead of failing when the keys aren't set (local builds). The `.map` files are still deleted |
+
+## 4. Nothing to pass to the SDK
+
+The Flutter SDK reports the same release on its own: the `version` from
+`pubspec.yaml`, without the `+build` number. You don't need to set a release
+in `Lerix.init()`.
+
+## Example: GitHub Actions
+
+This workflow builds the web app, uploads the maps, then deploys. Add
+`LERIX_API_KEY`, `LERIX_PROJECT_ID` and `LERIX_SECRET_KEY` as repository
+secrets.
+
+```yaml .github/workflows/deploy.yml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: flutter pub get
+
+      - run: flutter build web --source-maps
+
+      - run: npx @lerix-dev/lerix-cli upload
+        env:
+          LERIX_API_KEY: ${{ secrets.LERIX_API_KEY }}
+          LERIX_PROJECT_ID: ${{ secrets.LERIX_PROJECT_ID }}
+          LERIX_SECRET_KEY: ${{ secrets.LERIX_SECRET_KEY }}
+
+      # Deploy build/web here. It no longer contains .map files.
+```
+
+## What you see in the dashboard
+
+New web errors show the original Dart file, line and member name. Flutter
+framework frames appear as `package:flutter/...` and are dimmed as library
+code. The AI assistant, GitHub issues and the MCP server all receive the
+readable stack too.
+
+- dart2js source maps don't embed your source code, so web errors show the
+  file and line without a code snippet.
+- Only errors reported after the maps are uploaded are mapped. Earlier errors
+  keep their minified stack.
+
+## Mobile builds
+
+Android and iOS release builds already report Dart file and line numbers. No
+setup is needed.
+
+Builds made with `--obfuscate --split-debug-info` are not symbolicated yet.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `no .js.map files found` | The build has no source maps. Run `flutter build web --source-maps` and run the CLI from your Flutter project folder. |
+| `Uploading source maps needs a private API key...` (`SOURCE_MAP_SECRET_KEY_MISSING`) | `--secret-key` is missing or invalid. Create a private key as described in step 2. |
+| `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | The private key lacks the **Upload source maps** permission. Edit the key or create a new one with that permission. |
+| The stack is still minified | Check that you uploaded the maps from this exact build, that `version` in `pubspec.yaml` changed since the previous release, and that the error is new. |

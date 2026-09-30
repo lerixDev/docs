@@ -71,6 +71,12 @@ try {
 
 Once `Lerix.init()` has run, uncaught Flutter framework errors (via `FlutterError.onError`) and uncaught Dart errors (via `PlatformDispatcher.instance.onError`) are captured and sent automatically — you don't need to wrap your whole app in a `try`/`catch` to get baseline coverage. `Lerix.throwError` is for cases you catch yourself and want to add classification or metadata to.
 
+Uncaught errors are reported as critical crashes on every platform, including Flutter Web.
+
+<Tip>
+  Flutter Web release builds are minified. To see Dart file and line numbers for web errors, upload your source maps as described in [Flutter source maps](/frameworks/flutter/source-maps). Android and iOS release builds report them without any setup.
+</Tip>
+
 ### Verify the integration
 
 Throw a test error to confirm everything is working:

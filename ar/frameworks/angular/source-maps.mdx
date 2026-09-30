@@ -1,0 +1,210 @@
+---
+title: "Angular — خرائط المصدر"
+description: "ارفع خرائط المصدر لبناء الإنتاج بشكل خاص ليعرض Lerix أخطاء Angular في الملف والسطر الأصليين."
+---
+
+## مقدمة
+
+تكون بناءات Angular للإنتاج مُصغَّرة (minified)، لذا يبدو تتبّع المكدس
+(stack trace) القادم من مستخدم حقيقي هكذا:
+
+```text
+onConnMessage@https://app.example.com/chunk-Cr8GYWvZ.js:10:14780
+```
+
+عندما ترفع خرائط المصدر (source maps) الخاصة ببنائك إلى Lerix، تعيد لوحة
+التحكم كل إطار إلى كودك الأصلي، مثل `src/app/chat/chat.page.ts:142`، وتعرض
+الأسطر المحيطة به.
+
+تُرفَع الخرائط بشكل خاص وتُحذف من مخرجات البناء قبل النشر. لا تُقدَّم علناً
+أبداً، لذا يبقى كودك المصدري خاصاً.
+
+<Note>
+  أكمِل [تثبيت Angular](/ar/frameworks/angular/installation) أولاً. يتطلّب
+  تعيين الإصدار (release) الحزمة `@lerix-dev/lerix-core` بالإصدار 1.1.0 أو أحدث.
+</Note>
+
+## 1. فعّل خرائط المصدر المخفية
+
+في `angular.json`، فعّل خرائط المصدر لإعداد الإنتاج ضمن
+`projects.<your-app>.architect.build.configurations.production`:
+
+```json angular.json
+"production": {
+  "sourceMap": {
+    "scripts": true,
+    "styles": false,
+    "hidden": true,
+    "vendor": false
+  }
+}
+```
+
+يولّد الخيار `"hidden": true` ملفات `.map` دون إضافة تعليق
+`//# sourceMappingURL` إلى ملفات JavaScript المنشورة، فلا يحاول المتصفح
+تحميلها أبداً.
+
+شغّل `ng build` وتأكّد من ظهور ملفات `.js.map` بجانب الحزم. يكون مجلد
+المخرجات عادةً `dist/<your-app>/browser`.
+
+## 2. أنشئ مفتاح API خاصاً
+
+يحتاج رفع خرائط المصدر إلى مفتاح خاص، منفصل عن مفتاح المشروع العام الذي
+يستخدمه تطبيقك.
+
+1. افتح مشروعك في [لوحة تحكم Lerix](https://app.lerix.dev).
+2. اذهب إلى **Project settings** ← **API keys**.
+3. أنشئ مفتاحاً بصلاحية **Upload source maps** (أو **Full access**).
+
+<Warning>
+  هذا المفتاح سرّي. خزّنه كسرّ (secret) في نظام CI ولا تضعه أبداً في كود
+  العميل ولا ترفعه إلى مستودعك.
+</Warning>
+
+## 3. ارفع الخرائط بعد كل بناء
+
+بعد `ng build` وقبل النشر، شغّل أداة Lerix CLI على مخرجات البناء:
+
+```bash
+npx @lerix-dev/lerix-cli upload
+```
+
+شغّلها من مجلد مشروعك. تجد الأداة مخرجات البناء تلقائياً
+(`angular.json` (`outputPath`)) وتستخدم `version` من `package.json` كإصدار. ولتحديدهما بنفسك:
+`npx @lerix-dev/lerix-cli upload dist/my-app/browser --release 1.4.0`.
+
+ترفع الأداة كل ملف `*.js.map` في المجلد (وتتجاهل `node_modules` وخرائط CSS)،
+ثم تحذف ملفات `.map` من مخرجات البناء كي لا تُنشر أبداً. إذا فشل أي رفع،
+تُبقي الأداة الخرائط وتخرج بالرمز 1، لتتمكّن من إعادة الخطوة. تتطلّب الأداة
+Node.js بالإصدار 18.17 أو أحدث.
+
+### الرفع مع كل بناء
+
+بدلاً من تشغيل الأمر بنفسك، ثبّت الأداة في مشروعك واجعل npm يشغّلها بعد كل
+بناء:
+
+```bash
+npm install --save-dev @lerix-dev/lerix-cli
+```
+
+```json package.json
+"scripts": {
+  "build": "ng build",
+  "postbuild": "lerix upload --optional"
+}
+```
+
+الآن كل `npm run build` يرفع الخرائط. الخيار `--optional` يُبقي البناء المحلي
+يعمل: على جهاز لا يحوي `LERIX_SECRET_KEY` (جهاز المطوّر)، يُتخطّى الرفع بدلاً
+من إفشال البناء، مع حذف ملفات `.map` كالمعتاد. عيّن المفاتيح في نظام الـ CI أو
+خادم البناء حيث يُنفَّذ بناء الإنتاج.
+
+<Note>
+  لا يشغّل pnpm ولا Yarn 2+ سكربتات `postbuild`. اربط الأمر بدلاً من ذلك:
+  `"build": "ng build && lerix upload --optional"`.
+</Note>
+
+### الخيارات
+
+يمكن تعيين كل خيار أيضاً عبر متغير بيئة.
+
+| الخيار | متغير البيئة | الوصف |
+|--------|----------------------|-------------|
+| `--release` | `LERIX_RELEASE` | الإصدار الذي يُنشر به هذا البناء. الافتراضي هو `version` في `package.json`. مرّر القيمة نفسها إلى الـ SDK (راجع الخطوة 4) |
+| `--api-key` | `LERIX_API_KEY` | مفتاح API العام المعتاد لمشروعك |
+| `--project-id` | `LERIX_PROJECT_ID` | معرّف مشروعك |
+| `--secret-key` | `LERIX_SECRET_KEY` | المفتاح الخاص من الخطوة 2 |
+| `--url` | `LERIX_URL` | رابط Lerix API. القيمة الافتراضية `https://api.lerix.dev/v1` |
+| `--keep-maps` | | إبقاء ملفات `.map` في مخرجات البناء بدلاً من حذفها |
+| `--dry-run` | | عرض الخرائط التي سترفع دون رفع أي شيء |
+| `--optional` | | تخطّي الرفع بدلاً من الفشل عند عدم تعيين المفاتيح (البناء المحلي). تُحذف ملفات `.map` مع ذلك |
+
+## 4. مرّر الإصدار نفسه إلى الـ SDK
+
+عيّن `release` في `provideLerix()` إلى القيمة التي مرّرتها إلى `--release`:
+
+```ts app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideLerix } from '@lerix-dev/lerix-angular';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideLerix({
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      release: '1.4.0',
+    }),
+  ],
+};
+```
+
+يطابق Lerix الخرائط حسب اسم ملف السكربت. أسماء أجزاء (chunks) Angular
+مشتقّة من محتواها (content-hashed)، لذا فهي فريدة لكل بناء، ويفضّل Lerix
+الخرائط من الإصدار نفسه. تظل المطابقة تعمل إذا حذفت `release`، لكن يُنصح
+بتعيينه. كما يحلّ الإصدار محلّ رقم الإصدار `0.0.0` الذي كان يظهر سابقاً
+لتطبيقات الويب.
+
+<Tip>
+  استخدم القيمة نفسها في الموضعين دون تعديلها يدوياً: معرّف commit في git أو
+  قيمة `version` من `package.json` كلاهما خيار جيد.
+</Tip>
+
+## مثال: GitHub Actions
+
+يبني سير العمل هذا التطبيق، ثم يرفع الخرائط، ثم ينشر. أضِف `LERIX_API_KEY`
+و`LERIX_PROJECT_ID` و`LERIX_SECRET_KEY` كأسرار (secrets) في المستودع.
+
+```yaml .github/workflows/deploy.yml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      LERIX_RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+
+      # Make the same release available to the app at build time
+      - run: echo "export const release = '$LERIX_RELEASE';" > src/environments/release.ts
+
+      - run: npx ng build
+
+      - run: npx @lerix-dev/lerix-cli upload
+        env:
+          LERIX_API_KEY: ${{ secrets.LERIX_API_KEY }}
+          LERIX_PROJECT_ID: ${{ secrets.LERIX_PROJECT_ID }}
+          LERIX_SECRET_KEY: ${{ secrets.LERIX_SECRET_KEY }}
+
+      # Deploy dist/my-app/browser here. It no longer contains .map files.
+```
+
+ثم استورد القيمة المولَّدة في إعداداتك:
+
+```ts app.config.ts
+import { release } from '../environments/release';
+
+provideLerix({ apiKey: 'your-api-key', projectId: 'your-project-id', release })
+```
+
+## ما تراه في لوحة التحكم
+
+تعرض الأخطاء الجديدة الملف والسطر والدالة الأصلية، مع الكود المحيط. انقر
+**Show minified** لرؤية المكدس كما أرسله المتصفح تماماً. يتلقّى المساعد الذكي
+وقضايا GitHub وخادم MCP جميعهم المكدس المقروء أيضاً.
+
+- لا تُحوَّل إلا الأخطاء المُبلَّغ عنها بعد رفع الخرائط. تبقى الأخطاء الأقدم
+  بمكدسها المُصغَّر.
+- يحتفظ Lerix بأحدث 5,000 خريطة لكل مشروع.
+- الحد الأقصى لحجم الخريطة الواحدة 50 MB.
+
+## استكشاف الأخطاء وإصلاحها
+
+| المشكلة | الحل |
+|---------|-----|
+| `no .js.map files found` | خرائط المصدر غير مفعّلة لبناء الإنتاج. راجع إعداد `sourceMap` في الخطوة 1 وتأكّد من توجيه الأداة إلى مجلد المخرجات الصحيح. |
+| `Uploading source maps needs a private API key...` (`SOURCE_MAP_SECRET_KEY_MISSING`) | الخيار `--secret-key` مفقود أو غير صالح. أنشئ مفتاحاً خاصاً كما في الخطوة 2. |
+| `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | المفتاح الخاص لا يملك صلاحية **Upload source maps**. عدّل المفتاح أو أنشئ مفتاحاً جديداً بهذه الصلاحية. |
+| لا يزال المكدس مُصغَّراً | تأكّد من تطابق `release` في الـ SDK مع `--release`، ومن رفع خرائط هذا البناء بالتحديد، ومن أن الخطأ جديد. كل إعادة بناء تغيّر بصمات الأجزاء (chunk hashes)، لذا ارفع الخرائط مجدداً بعد كل بناء. |

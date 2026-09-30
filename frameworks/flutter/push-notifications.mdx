@@ -58,10 +58,14 @@ override func application(
 
 ## Web configuration
 
-Flutter Web is supported by the same `lerix` package — no separate JS SDK, no Firebase project. Two steps instead of Xcode's:
+Flutter Web is supported by the same `lerix_flutter` package — no separate JS SDK, no Firebase project. Two steps instead of Xcode's:
 
-1. **Copy the service worker.** A Flutter package can't add a file to your app's `web/` folder for you — copy the `lerix` package's `web_sw/atelerix-sw.js` into your app's `web/atelerix-sw.js`, so it's served at your site's root (e.g. `https://yoursite.com/atelerix-sw.js`).
+1. **Copy the service worker.** A Flutter package can't add a file to your app's `web/` folder for you — copy the `lerix_flutter` package's `web_sw/lerix-sw.js` into your app's `web/lerix-sw.js`, so it's served at your site's root (e.g. `https://yoursite.com/lerix-sw.js`).
 2. **Generate a Web Push key** from the dashboard: **Notifications → Settings → Web Push → Generate keys**. One click — Lerix generates and stores the VAPID key pair for you; there's nothing to copy into your code.
+
+<Note>
+  Lerix registers its worker on its own scope (`/lerix/`), so it runs alongside Flutter's `flutter_service_worker.js` and a default `flutter build web` works as is. With `lerix_flutter` 0.0.1, the two workers competed for the root scope and Flutter's replaced Lerix's, so pushes were reported as sent but never shown. If you are still on 0.0.1, upgrade, or build with `flutter build web --pwa-strategy=none`.
+</Note>
 
 <Note>
   On web, `requestPermissions()` does more than it does on mobile — see [Platform differences](#platform-differences-on-web) below.

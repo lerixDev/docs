@@ -1,0 +1,157 @@
+---
+title: "Flutter — خرائط المصدر"
+description: "ارفع خرائط المصدر لـ Flutter Web بشكل خاص ليعرض Lerix أخطاء الويب في ملف Dart والسطر الأصليين."
+---
+
+## مقدمة
+
+تُترجَم بناءات Flutter Web للإصدار (release) إلى JavaScript مُصغَّرة
+(minified)، لذا يبدو تتبّع المكدس (stack trace) القادم من مستخدم حقيقي هكذا:
+
+```text
+main.dart.js:64858
+```
+
+عندما ترفع خرائط المصدر (source maps) الخاصة ببنائك إلى Lerix، تعيد لوحة
+التحكم كل إطار إلى كود Dart الخاص بك، مثل `lib/chat/chat_store.dart:15`، مع
+اسم العضو (member) في Dart.
+
+تُرفَع الخرائط بشكل خاص وتُحذف من مخرجات البناء قبل النشر. لا تُقدَّم علناً
+أبداً، لذا يبقى كودك المصدري خاصاً.
+
+<Note>
+  أكمِل [تثبيت Flutter](/ar/frameworks/flutter/installation) أولاً. تتطلّب
+  تتبّعات المكدس على الويب الحزمة `lerix_flutter` بالإصدار 0.0.2 أو أحدث.
+</Note>
+
+<Info>
+  لا تحتاج خرائط المصدر إلا لـ Flutter Web. بناءات الإصدار على Android وiOS
+  تُبلغ أصلاً عن ملف Dart ورقم السطر، راجع
+  [بناءات الأجهزة المحمولة](#mobile-builds).
+</Info>
+
+## 1. ابنِ مع خرائط المصدر
+
+أضِف `--source-maps` إلى بناء الويب:
+
+```bash
+flutter build web --source-maps
+```
+
+تأكّد من ظهور `main.dart.js.map` بجانب `main.dart.js` في `build/web`.
+
+## 2. أنشئ مفتاح API خاصاً
+
+يحتاج رفع خرائط المصدر إلى مفتاح خاص، منفصل عن مفتاح المشروع العام الذي
+يستخدمه تطبيقك.
+
+1. افتح مشروعك في [لوحة تحكم Lerix](https://app.lerix.dev).
+2. اذهب إلى **Project settings** ← **API keys**.
+3. أنشئ مفتاحاً بصلاحية **Upload source maps** (أو **Full access**).
+
+<Warning>
+  هذا المفتاح سرّي. خزّنه كسرّ (secret) في نظام CI ولا تضعه أبداً في كود
+  العميل ولا ترفعه إلى مستودعك.
+</Warning>
+
+## 3. ارفع الخرائط بعد كل بناء
+
+بعد `flutter build web --source-maps` وقبل النشر، شغّل أداة Lerix CLI:
+
+```bash
+npx @lerix-dev/lerix-cli upload
+```
+
+شغّلها من مجلد مشروع Flutter. تجد الأداة `build/web` تلقائياً وتستخدم
+`version` من `pubspec.yaml`، دون رقم `+build`، كإصدار. فمع
+`version: 1.4.0+12` يكون الإصدار `1.4.0`.
+
+ترفع الأداة ملفات `.map`، ثم تحذفها من `build/web` كي لا تُنشر أبداً. إذا فشل
+أي رفع، تُبقي الأداة الخرائط وتخرج بالرمز 1، لتتمكّن من إعادة الخطوة. تتطلّب
+الأداة Node.js بالإصدار 18.17 أو أحدث.
+
+<Warning>
+  ارفع الخرائط بعد كل بناء. يحتفظ `main.dart.js` بالاسم نفسه في كل البناءات،
+  لذا فالإصدار هو ما يميّز بناءً عن آخر. ارفع قيمة `version` في `pubspec.yaml`
+  مع كل إصدار.
+</Warning>
+
+### الخيارات
+
+يمكن تعيين كل خيار أيضاً عبر متغير بيئة.
+
+| الخيار | متغير البيئة | الوصف |
+|--------|----------------------|-------------|
+| `--release` | `LERIX_RELEASE` | الإصدار الذي يُنشر به هذا البناء. الافتراضي هو `version` في `pubspec.yaml`، دون رقم `+build` |
+| `--api-key` | `LERIX_API_KEY` | مفتاح API العام المعتاد لمشروعك |
+| `--project-id` | `LERIX_PROJECT_ID` | معرّف مشروعك |
+| `--secret-key` | `LERIX_SECRET_KEY` | المفتاح الخاص من الخطوة 2 |
+| `--url` | `LERIX_URL` | رابط Lerix API. القيمة الافتراضية `https://api.lerix.dev/v1` |
+| `--keep-maps` | | إبقاء ملفات `.map` في مخرجات البناء بدلاً من حذفها |
+| `--dry-run` | | عرض الخرائط التي سترفع دون رفع أي شيء |
+| `--optional` | | تخطّي الرفع بدلاً من الفشل عند عدم تعيين المفاتيح (البناء المحلي). تُحذف ملفات `.map` مع ذلك |
+
+## 4. لا شيء لتمرّره إلى الـ SDK
+
+يُبلغ Flutter SDK عن الإصدار نفسه تلقائياً: قيمة `version` من `pubspec.yaml`،
+دون رقم `+build`. لا حاجة لتعيين إصدار في `Lerix.init()`.
+
+## مثال: GitHub Actions
+
+يبني سير العمل هذا تطبيق الويب، ثم يرفع الخرائط، ثم ينشر. أضِف `LERIX_API_KEY`
+و`LERIX_PROJECT_ID` و`LERIX_SECRET_KEY` كأسرار (secrets) في المستودع.
+
+```yaml .github/workflows/deploy.yml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: flutter pub get
+
+      - run: flutter build web --source-maps
+
+      - run: npx @lerix-dev/lerix-cli upload
+        env:
+          LERIX_API_KEY: ${{ secrets.LERIX_API_KEY }}
+          LERIX_PROJECT_ID: ${{ secrets.LERIX_PROJECT_ID }}
+          LERIX_SECRET_KEY: ${{ secrets.LERIX_SECRET_KEY }}
+
+      # Deploy build/web here. It no longer contains .map files.
+```
+
+## ما تراه في لوحة التحكم
+
+تعرض أخطاء الويب الجديدة ملف Dart والسطر واسم العضو الأصلي. تظهر إطارات
+إطار عمل Flutter بصيغة `package:flutter/...` وتُعرض باهتة ككود مكتبة. يتلقّى
+المساعد الذكي وقضايا GitHub وخادم MCP جميعهم المكدس المقروء أيضاً.
+
+- لا تتضمّن خرائط المصدر التي يولّدها dart2js كودك المصدري، لذا تعرض أخطاء
+  الويب الملف والسطر دون مقتطف من الكود.
+- لا تُحوَّل إلا الأخطاء المُبلَّغ عنها بعد رفع الخرائط. تبقى الأخطاء الأقدم
+  بمكدسها المُصغَّر.
+
+<a id="mobile-builds"></a>
+
+## بناءات الأجهزة المحمولة
+
+تُبلغ بناءات الإصدار على Android وiOS أصلاً عن ملف Dart ورقم السطر. لا حاجة
+لأي إعداد.
+
+البناءات المصنوعة باستخدام `--obfuscate --split-debug-info` لا تُفكّ رموزها
+(symbolicated) بعد.
+
+## استكشاف الأخطاء وإصلاحها
+
+| المشكلة | الحل |
+|---------|-----|
+| `no .js.map files found` | لا يحتوي البناء على خرائط مصدر. شغّل `flutter build web --source-maps` وشغّل الأداة من مجلد مشروع Flutter. |
+| `Uploading source maps needs a private API key...` (`SOURCE_MAP_SECRET_KEY_MISSING`) | الخيار `--secret-key` مفقود أو غير صالح. أنشئ مفتاحاً خاصاً كما في الخطوة 2. |
+| `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | المفتاح الخاص لا يملك صلاحية **Upload source maps**. عدّل المفتاح أو أنشئ مفتاحاً جديداً بهذه الصلاحية. |
+| لا يزال المكدس مُصغَّراً | تأكّد من رفع خرائط هذا البناء بالتحديد، ومن تغيّر `version` في `pubspec.yaml` منذ الإصدار السابق، ومن أن الخطأ جديد. |

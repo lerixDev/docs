@@ -1,0 +1,206 @@
+---
+title: "Next.js — Source Maps"
+description: "Upload your production source maps privately so Lerix shows Next.js errors at the original file and line."
+---
+
+## Introduction
+
+Production Next.js builds are minified, so a stack trace from a real user
+looks like this:
+
+```text
+onConnMessage@https://app.example.com/_next/static/chunks/app/page-Cr8GYWvZ.js:10:14780
+```
+
+When you upload your build's source maps to Lerix, the dashboard maps each
+frame back to your original code, for example `app/chat/page.tsx:142`, and
+shows the surrounding lines.
+
+The maps are uploaded privately and deleted from your build output before you
+deploy. They are never served publicly, so your source code stays private.
+
+<Note>
+  Complete the [Next.js installation](/frameworks/nextjs/installation) first.
+  Setting a release requires `@lerix-dev/lerix-core` 1.1.0 or newer.
+</Note>
+
+## 1. Enable browser source maps
+
+Turn on production browser source maps in your Next.js config:
+
+```ts next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  productionBrowserSourceMaps: true,
+};
+
+export default nextConfig;
+```
+
+Run `next build` and check that `.js.map` files appear under
+`.next/static/chunks`.
+
+<Note>
+  Next.js adds a `//# sourceMappingURL` comment to the shipped JavaScript.
+  That is harmless: the CLI deletes the maps before you deploy, so the comment
+  just points to a file that returns 404.
+</Note>
+
+## 2. Create a private API key
+
+Uploading source maps needs a private key, separate from the public project
+key your app uses.
+
+1. Open your project in the [Lerix Dashboard](https://app.lerix.dev).
+2. Go to **Project settings** → **API keys**.
+3. Create a key with the **Upload source maps** permission (or **Full access**).
+
+<Warning>
+  This key is secret. Store it as a CI secret and never put it in client code,
+  a `NEXT_PUBLIC_` variable, or your repository.
+</Warning>
+
+## 3. Upload the maps after each build
+
+After `next build` and before you deploy, run the Lerix CLI on the `.next`
+folder:
+
+```bash
+npx @lerix-dev/lerix-cli upload
+```
+
+Run it from your project folder. It finds the build output on its own
+(`.next`) and uses the `version` from `package.json` as the release. To set
+them yourself: `npx @lerix-dev/lerix-cli upload .next --release 1.4.0`.
+
+The CLI finds the maps under `.next/static/chunks`, uploads every `*.js.map`
+file (it skips `node_modules` and CSS maps), then deletes the `.map` files
+from the build output so they are never deployed. If any upload fails, it
+keeps the maps and exits with code 1, so you can retry the step. The CLI
+requires Node.js 18.17 or newer.
+
+If your hosting provider runs the build for you, run the upload in the same
+build command so it happens before the output is deployed, for example
+`next build && npx @lerix-dev/lerix-cli upload`.
+
+### Upload on every build
+
+Instead of running the command yourself, install the CLI in your project and
+let npm run it after each build:
+
+```bash
+npm install --save-dev @lerix-dev/lerix-cli
+```
+
+```json package.json
+"scripts": {
+  "build": "next build",
+  "postbuild": "lerix upload --optional"
+}
+```
+
+Now every `npm run build` uploads the maps. `--optional` keeps local builds
+working: on a machine without `LERIX_SECRET_KEY` (a developer's laptop), the
+upload is skipped instead of failing the build, and the `.map` files are still
+deleted. Set the keys in your CI or build server, where the release build runs.
+
+<Note>
+  pnpm and Yarn 2+ don't run `postbuild` scripts. Chain the command instead:
+  `"build": "next build && lerix upload --optional"`.
+</Note>
+
+### Options
+
+Each option can also be set with an environment variable.
+
+| Option | Environment variable | Description |
+|--------|----------------------|-------------|
+| `--release` | `LERIX_RELEASE` | The version this build ships as. Defaults to `version` in `package.json`. Pass the same value to the SDK (see step 4) |
+| `--api-key` | `LERIX_API_KEY` | Your normal public project API key |
+| `--project-id` | `LERIX_PROJECT_ID` | Your project ID |
+| `--secret-key` | `LERIX_SECRET_KEY` | The private key from step 2 |
+| `--url` | `LERIX_URL` | Lerix API URL. Defaults to `https://api.lerix.dev/v1` |
+| `--keep-maps` | | Keep the `.map` files in the build output instead of deleting them |
+| `--dry-run` | | List the maps that would be uploaded, without uploading anything |
+| `--optional` | | Skip the upload instead of failing when the keys aren't set (local builds). The `.map` files are still deleted |
+
+## 4. Pass the same release to the SDK
+
+Set `NEXT_PUBLIC_LERIX_RELEASE` to the value you passed to `--release`.
+`LerixNextProvider` reads it automatically:
+
+```bash .env.local
+NEXT_PUBLIC_LERIX_RELEASE=1.4.0
+```
+
+Or pass `release` in `options` explicitly:
+
+```tsx
+<LerixNextProvider options={{ release: '1.4.0' }}>
+```
+
+Lerix matches maps by the script's file name. Next.js chunk names are
+content-hashed, so they are unique per build, and Lerix prefers maps from the
+same release. Matching still works if you omit `release`, but setting it is
+recommended. The release also replaces the `0.0.0` app version previously
+shown for web apps.
+
+<Tip>
+  Use the same value in both places without editing it by hand: your git
+  commit SHA or the `version` from `package.json` both work well.
+</Tip>
+
+## Example: GitHub Actions
+
+This workflow builds the app, uploads the maps, then deploys. Add
+`LERIX_API_KEY`, `LERIX_PROJECT_ID` and `LERIX_SECRET_KEY` as repository
+secrets.
+
+```yaml .github/workflows/deploy.yml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      LERIX_RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+
+      # Make the same release available to the app at build time
+      - run: npx next build
+        env:
+          NEXT_PUBLIC_LERIX_RELEASE: ${{ github.sha }}
+
+      - run: npx @lerix-dev/lerix-cli upload
+        env:
+          LERIX_API_KEY: ${{ secrets.LERIX_API_KEY }}
+          LERIX_PROJECT_ID: ${{ secrets.LERIX_PROJECT_ID }}
+          LERIX_SECRET_KEY: ${{ secrets.LERIX_SECRET_KEY }}
+
+      # Deploy the build here. .next no longer contains .map files.
+```
+
+## What you see in the dashboard
+
+New errors show the original file, line and function, with the surrounding
+code. Click **Show minified** to see the stack exactly as the browser sent it.
+The AI assistant, GitHub issues and the MCP server all receive the readable
+stack too.
+
+- Only errors reported after the maps are uploaded are mapped. Earlier errors
+  keep their minified stack.
+- Lerix keeps the newest 5,000 maps per project.
+- Each map can be up to 50 MB.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `no .js.map files found` | Browser source maps are not enabled. Check `productionBrowserSourceMaps` in step 1 and that you point the CLI at the `.next` folder. |
+| `Uploading source maps needs a private API key...` (`SOURCE_MAP_SECRET_KEY_MISSING`) | `--secret-key` is missing or invalid. Create a private key as described in step 2. |
+| `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | The private key lacks the **Upload source maps** permission. Edit the key or create a new one with that permission. |
+| The stack is still minified | Check that the SDK `release` matches `--release`, that you uploaded maps from this exact build, and that the error is new. Every rebuild changes chunk hashes, so upload the maps again after each build. |

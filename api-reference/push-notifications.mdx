@@ -100,12 +100,12 @@ device subscribed to a topic.
   `setOnNotificationReceived`/`setOnNotificationTapped`.
 </ParamField>
 
-<ParamField body="projectSlug" type="string" required placeholder="my-project-slug">
-  Your project slug from **Project Settings**.
+<ParamField body="projectSlug" type="string" placeholder="my-project-slug">
+  Defaults to the project in the URL (`/v1/:project-id/...`); only needed for older integrations.
 </ParamField>
 
-<ParamField body="apiKey" type="string" required placeholder="your-private-key">
-  Your private key from **Project Settings**.
+<ParamField body="apiKey" type="string" placeholder="your-private-key">
+  Deprecated alternative to the `lerix-key` header, still accepted.
 </ParamField>
 
 <ParamField body="source" type="string" default="API">

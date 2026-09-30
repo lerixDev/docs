@@ -147,6 +147,27 @@ await this.lerix.captureMessage('Inventory drift detected', {
 | App | Service name and id from `package.json` (or the `app` option), version and build number |
 | Metadata | `environment`, Node.js version and process id, plus anything you pass in `metadata` |
 
+## TypeScript file and line numbers
+
+Stack traces are mapped back to your TypeScript source automatically. When it
+reports an error, the SDK reads the `.js.map` files that `nest build` writes
+next to the compiled code, so a frame like `dist/src/orders/orders.service.js:58`
+is reported as `src/orders/orders.service.ts:42`.
+
+There is nothing to upload, no Node.js flag and nothing to configure. Nest
+enables `"sourceMap": true` in `tsconfig.json` by default. Inline source maps
+and `nest build --webpack` bundles work too.
+
+Paths are made relative to the app's working directory (normally the
+repository root), so they read like repository paths. Frames from
+dependencies show as `node_modules/...`.
+
+<Warning>
+  If the `.js.map` files are not deployed, frames keep their compiled
+  position. This happens, for example, with a Docker image that copies only
+  `.js` files. Keep the `.js.map` files next to `dist/**/*.js` in the image.
+</Warning>
+
 ## Other `LerixService` methods
 
 | Method | Description |

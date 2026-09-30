@@ -56,6 +56,7 @@ export const appConfig: ApplicationConfig = {
 | `apiKey` | `string` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
 | `projectId` | `string` | نعم | معرّف مشروعك (slug) من لوحة التحكم |
 | `url` | `string` | لا | رابط الخادم الأساسي. الافتراضي هو `https://api.lerix.dev/v1` — غيّره فقط إذا كنت تستضيف الخادم بنفسك |
+| `release` | `string` | لا | الإصدار الذي يُنشر به هذا البناء (مثل `1.4.0` أو معرّف commit). مرّر القيمة نفسها عند رفع خرائط المصدر لتظهر تتبّعات الإنتاج بملفاتك الأصلية: راجع [خرائط المصدر](/ar/frameworks/angular/source-maps) |
 | `debugMode` | `boolean` | لا | طباعة سجلّات طلبات/استجابات الـ SDK في الـ console (الافتراضي: `false`) |
 | `enableCrashReporting` | `boolean` | لا | تثبيت معالج الأخطاء التلقائي (الافتراضي: `true`) — راجع [تتبع الأخطاء](/ar/frameworks/angular/error-tracking) |
 | `onError` | `(error: unknown) => void` | لا | يُستدعى إذا فشلت التهيئة نفسها (مثلاً تعذّر الوصول للشبكة) |
