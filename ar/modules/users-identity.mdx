@@ -1,0 +1,246 @@
+---
+title: "تعريف المستخدمين"
+description: "اربط كل تثبيت بمعرّف المستخدم الخاص بك، ليصل إرسال واحد إلى الشخص على كل أجهزته."
+icon: "user-check"
+---
+
+## لماذا تعرّف المستخدمين
+
+معظم المنتجات تعمل على أكثر من منصة: تطبيق للجوال، وموقع ويب، وربما تطبيق
+لسطح المكتب. في Lerix تنتمي كلها إلى **مشروع واحد** بمفتاح API واحد.
+
+افتراضياً، كل تثبيت مجهول الهوية: الشخص الذي يستخدم تطبيقك على iOS وتطبيقك
+على جهاز Android اللوحي وموقعك يُحسب كثلاثة أجهزة لا علاقة بينها. عندما تخبر
+تطبيقاتك Lerix بمن سجّل الدخول، ترتبط هذه الأجهزة بمعرّف المستخدم الخاص بك،
+ويستطيع الباك إند الخاص بك الإرسال إلى هذا المعرّف بدلاً من جمع رموز الأجهزة:
+
+```json
+{ "title": "Your order shipped", "body": "It arrives Thursday.", "externalUserIds": ["user_123"] }
+```
+
+طلب واحد يصل إلى `user_123` على كل جهاز سجّل فيه دخوله، وعلى كل منصة (iOS
+وAndroid والويب وmacOS)، كلٌّ عبر مزوّد الإشعارات الخاص به.
+
+- **سجلّ تثبيت واحد لكل جهاز.** تُربط الأجهزة بالمستخدم ولا تُدمج أبداً،
+  فيبقى السجل وحالة التسليم لكل جهاز على حدة.
+- **أي عدد من الأجهزة لكل مستخدم.** تسجيل الدخول على جهاز جديد يضيفه.
+- **معرّفك أنت، لا معرّفنا.** استخدم ما يعرّف المستخدم في نظامك: معرّف
+  قاعدة بيانات، أو UUID، أو بريد إلكتروني (من 1 إلى 255 حرفاً). معرّف
+  التثبيت الذي تُرجعه `getUserId()` قيمة مختلفة يولّدها Lerix ولا تتغير.
+
+## حدّد المستخدم بعد تسجيل الدخول
+
+استدعِ `setUser` بمجرد تسجيل المستخدم دخوله، و`clearUser` عند تسجيل خروجه.
+يُحفظ المعرّف محلياً ويُرسَل مجدداً تلقائياً إذا أُعيد تسجيل التثبيت، لذا
+يكفي استدعاؤه مرة واحدة لكل تسجيل دخول. ويمكن استدعاؤه بأمان قبل أن تكتمل
+تهيئة الـ SDK.
+
+المعامل الثاني، `identityHash`، مطلوب فقط عند تفعيل
+[التحقق من الهوية](#التحقق-من-الهوية). اتركه حتى ذلك الحين.
+
+<CodeGroup>
+
+```dart Flutter
+import 'package:lerix/lerix.dart';
+
+// After login
+await Lerix.setUser('user_123', identityHash: hashFromYourServer);
+
+// On logout
+await Lerix.clearUser();
+```
+
+```swift Swift (iOS / macOS)
+import Lerix
+
+// After login
+try await Lerix.setUser("user_123", identityHash: hashFromYourServer)
+
+// On logout
+try await Lerix.clearUser()
+```
+
+```kotlin Kotlin (Android)
+import com.lerix.sdk.Lerix
+
+// After login (inside a coroutine)
+Lerix.setUser("user_123", identityHash = hashFromYourServer)
+
+// On logout
+Lerix.clearUser()
+```
+
+```tsx React / Next.js
+import { useEffect } from 'react';
+import { useLerix } from '@lerix-dev/lerix-react'; // or '@lerix-dev/lerix-nextjs'
+
+function useSyncLerixUser(user: { id: string; lerixHash?: string } | null) {
+  const lerix = useLerix();
+
+  useEffect(() => {
+    if (user) lerix.setUser(user.id, { identityHash: user.lerixHash });
+    else lerix.clearUser();
+  }, [user?.id]);
+}
+```
+
+```ts Angular
+import { inject } from '@angular/core';
+import { LerixService } from '@lerix-dev/lerix-angular';
+
+export class AuthService {
+  private readonly lerix = inject(LerixService);
+
+  async onLogin(userId: string, lerixHash?: string) {
+    await this.lerix.setUser(userId, { identityHash: lerixHash });
+  }
+
+  async onLogout() {
+    await this.lerix.clearUser();
+  }
+}
+```
+
+```js Web (lerix-js)
+// After login
+await Lerix.setUser('user_123', { identityHash: hashFromYourServer });
+
+// On logout
+await Lerix.clearUser();
+```
+
+</CodeGroup>
+
+لكل SDK نفس الاستدعاءين: `setUser(externalId, identityHash?)` و`clearUser()`.
+تأخذ حزم JavaScript قيمة الـ hash ككائن خيارات (`{ identityHash }`)، بينما
+تأخذها البقية كمعامل مسمّى.
+
+<Warning>
+  استدعِ `clearUser()` دائماً عند تسجيل الخروج. وإلا سيستمر الجهاز المشترك في
+  تلقي إشعارات المستخدم السابق.
+</Warning>
+
+## التحقق من الهوية
+
+لا تحمل تطبيقاتك إلا مفتاح المشروع العام، لذا بدون التحقق يستطيع أي عميل
+استدعاء `setUser` بمعرّف شخص آخر وتلقي إشعاراته. التحقق من الهوية يسدّ هذه
+الثغرة: الباك إند الخاص بك، الذي يعرف أصلاً من سجّل الدخول، يوقّع المعرّف
+بسرّ لا يُضمَّن أبداً في أي تطبيق، ويرفض Lerix أي معرّف غير موقَّع.
+
+التحقق معطّل افتراضياً ليعمل `setUser` مباشرة. فعّله قبل الإطلاق في بيئة
+الإنتاج.
+
+<Steps>
+  <Step title="أنشئ سرّاً">
+    في [لوحة التحكم](https://app.lerix.dev)، افتح مشروعك ثم
+    **الإشعارات ← الإعدادات ← التحقق من الهوية**، وأنشئ سرّاً. يُعرض السرّ
+    **مرة واحدة فقط**: احفظه في مدير الأسرار في الباك إند الخاص بك (مثلاً
+    باسم `LERIX_IDENTITY_SECRET`). إنشاء سرّ جديد لاحقاً يستبدل القديم، فتتوقف
+    قيم الـ hash المحسوبة بالسرّ القديم عن العمل.
+  </Step>
+  <Step title="احسب الـ hash على خادمك">
+    الـ hash هو HMAC-SHA256 لمعرّف المستخدم بصيغة hex بأحرف صغيرة، ومفتاحه هو
+    السرّ كما هو تماماً (نص السرّ، وليس البايتات بعد فكّ ترميزها). أعِده إلى
+    تطبيقك مع استجابة تسجيل الدخول، بجانب معرّف المستخدم.
+
+    <CodeGroup>
+
+    ```ts Node.js
+    import { createHmac } from 'node:crypto';
+
+    export function lerixIdentityHash(externalId: string): string {
+      return createHmac('sha256', process.env.LERIX_IDENTITY_SECRET!)
+        .update(externalId, 'utf8')
+        .digest('hex');
+    }
+    ```
+
+    ```python Python
+    import hashlib
+    import hmac
+    import os
+
+    def lerix_identity_hash(external_id: str) -> str:
+        return hmac.new(
+            os.environ["LERIX_IDENTITY_SECRET"].encode("utf-8"),
+            external_id.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+    ```
+
+    ```csharp C#
+    using System.Security.Cryptography;
+    using System.Text;
+
+    static string LerixIdentityHash(string externalId)
+    {
+        var secret = Environment.GetEnvironmentVariable("LERIX_IDENTITY_SECRET")!;
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(externalId));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="مرّر الـ hash إلى setUser">
+    حدّث تطبيقاتك لتمرّر الـ hash في `identityHash`. بمجرد وجود سرّ، يجب أن
+    يكون أي hash مُرسَل صحيحاً حتى لو كان التحقق اختيارياً، فيظهر أي خطأ في
+    إعداد الباك إند مبكراً.
+  </Step>
+  <Step title="اشترط الهوية الموثّقة">
+    عندما ترسل كل إصدارات تطبيقاتك المستخدمة الـ hash، فعّل خيار
+    **Require verified identity** (اشتراط الهوية الموثّقة) في نفس لوحة
+    الإعدادات. بعدها يُرفض أي استدعاء لـ `setUser` بدون hash صالح.
+  </Step>
+</Steps>
+
+لا تحسب الـ hash داخل تطبيقك أبداً، ولا تضمّن السرّ في تطبيق أو صفحة ويب:
+من يملكه يستطيع توقيع أي معرّف.
+
+### أخطاء setUser
+
+| حالة HTTP | `error` | المعنى |
+|---|---|---|
+| 401 | `IDENTITY_VERIFICATION_REQUIRED` | خيار **Require verified identity** مفعّل ولم يُرسَل `identityHash` |
+| 401 | `IDENTITY_HASH_INVALID` | الـ hash لا يطابق معرّف المستخدم هذا. تأكد أنه محسوب من نفس المعرّف تماماً وبالسرّ الحالي |
+
+## أرسل إلى مستخدم
+
+من الباك إند الخاص بك، أرسل باستخدام `externalUserIds` ومفتاح خاص في ترويسة
+`lerix-key` (راجع [مقدمة الـ API](/ar/api-reference/introduction)):
+
+```bash
+curl -X POST https://api.lerix.dev/v1/my-project-id/notifications/send \
+  -H "lerix-key: <your-private-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Your order shipped",
+    "body": "It arrives Thursday.",
+    "externalUserIds": ["user_123", "user_456"],
+    "metadata": { "orderId": "A-1042" }
+  }'
+```
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Notification sent successfully",
+  "notificationId": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e",
+  "matchedUsers": 1,
+  "matchedDevices": 3,
+  "unknownUserIds": ["user_456"]
+}
+```
+
+- تحتوي `unknownUserIds` على المعرّفات التي لا يرتبط بها أي جهاز (مثلاً
+  مستخدم لم يثبّت التطبيق بعد). وهذا ليس خطأ.
+- لا تجمع `externalUserIds` مع `deviceTokens` أو `sendByTopic` في نفس
+  الطلب، فهذا يُرجع `NOTIFICATION_TARGET_INVALID`.
+- إذا جدولت الإرسال عبر `sentAt`، يُعاد البحث عن الأجهزة وقت الإرسال، فيصل
+  الإشعار أيضاً إلى جهاز سجّل المستخدم دخوله عليه بعد الجدولة.
+- إذا لم تكن لإحدى المنصات مفاتيح إشعارات بعد (مثلاً لا يوجد مفتاح APNs)،
+  تتلقى بقية الأجهزة الإشعار، ويظهر تسليم ذلك الجهاز بالرمز
+  `PLATFORM_NOT_CONFIGURED` في [حالة التسليم](/ar/api-reference/notification-deliveries).
+
+راجع [إرسال إشعار](/ar/api-reference/push-notifications) لكل الحقول.

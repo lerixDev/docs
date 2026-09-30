@@ -1,13 +1,21 @@
 ---
 title: "الإشعارات"
-description: "أرسل إشعارات لجهاز واحد أو أكثر عبر REST API الخاص بـ Lerix."
+description: "أرسل إشعارات إلى أجهزة محددة، أو إلى مستخدميك على كل أجهزتهم، أو إلى موضوع عبر REST API الخاص بـ Lerix."
 api: "POST https://api.lerix.dev/v1/{project-id}/notifications/send"
 authMethod: "key"
 playground: "interactive"
 ---
 
-أرسل إشعاراً لواحد أو أكثر من رموز الأجهزة المسجّلة، أو لكل جهاز مشترك في
-موضوع (topic).
+أرسل إشعاراً إلى واحد من ثلاثة أهداف:
+
+- **`deviceTokens`**: أجهزة مسجّلة محددة.
+- **`externalUserIds`**: معرّفات المستخدمين الخاصة بك. يسلّم Lerix الإشعار
+  إلى كل جهاز سجّل فيه كل مستخدم دخوله (iOS وAndroid والويب وmacOS) في طلب
+  واحد. تربط تطبيقاتك الجهاز بالمستخدم عبر `setUser`؛ راجع [تعريف المستخدمين](/ar/modules/users-identity).
+- **`topic`** (مع `sendByTopic: true`): كل جهاز مشترك في موضوع.
+
+استخدم هدفاً واحداً في كل طلب. لا يمكن الجمع بين `externalUserIds` و
+`deviceTokens` أو `sendByTopic`، ويُرفَض هذا الطلب بالرمز `NOTIFICATION_TARGET_INVALID`.
 
 <Note>
   راجع [مقدمة الـ API](/ar/api-reference/introduction) لإعداد الرابط الأساسي ومفتاحك الخاص قبل إرسال الطلبات.
@@ -28,13 +36,26 @@ playground: "interactive"
 </ParamField>
 
 <ParamField body="deviceTokens" type="string[]" placeholder='["device-token-1"]'>
-  رمز جهاز واحد أو أكثر لتسليم الإشعار إليه. مطلوب ما لم يكن `sendByTopic`
-  بقيمة `true`.
+  رمز جهاز واحد أو أكثر لتسليم الإشعار إليه. أحد الأهداف الثلاثة: لا تجمعه
+  مع `externalUserIds` أو `sendByTopic`.
+</ParamField>
+
+<ParamField body="externalUserIds" type="string[]" placeholder='["user_123"]'>
+  معرّفات المستخدمين الخاصة بك، وهي نفس القيم التي تمرّرها تطبيقاتك إلى
+  `setUser` بعد تسجيل الدخول. يجد Lerix كل جهاز مرتبط حالياً بكل معرّف، عبر
+  كل المنصات في هذا المشروع، ويسلّم الإشعار إليها جميعاً. حتى 1000 معرّف في
+  الطلب الواحد، وطول كل معرّف من 1 إلى 255 حرفاً. أحد الأهداف الثلاثة: لا
+  تجمعه مع `deviceTokens` أو `sendByTopic`.
+
+  المعرّف الذي لا يرتبط به أي جهاز لا يُعدّ خطأ (ربما لم يثبّت المستخدم
+  التطبيق بعد)، ويظهر في `unknownUserIds` في الاستجابة. عند جدولة الإشعار
+  عبر `sentAt`، يُعاد البحث عن الأجهزة وقت الإرسال، فيصل الإشعار أيضاً إلى
+  جهاز سجّل الدخول بعد الجدولة.
 </ParamField>
 
 <ParamField body="sendByTopic" type="boolean" default="false">
-  اضبطه على `true` للتسليم لكل جهاز مشترك في `topic` بدلاً من `deviceTokens`
-  محددة — عند `true` يتم تجاهل `deviceTokens` حتى لو كانت موجودة. تشترك
+  اضبطه على `true` للتسليم لكل جهاز مشترك في `topic`. أحد الأهداف الثلاثة:
+  لا تجمعه مع `deviceTokens` أو `externalUserIds`. تشترك
   الأجهزة في موضوع من تطبيقك عبر الـ SDK؛ يُنشأ الموضوع تلقائياً أول مرة يشترك
   فيها جهاز، أو يمكنك إنشاء واحد يدوياً من تبويب **المواضيع** في لوحة
   التحكم.
@@ -107,7 +128,42 @@ playground: "interactive"
 }
 ```
 
-احتفظ بـ `notificationId` — فهو ما تمرّره إلى نقاط النهاية الأخرى الخاصة
+احتفظ بـ `notificationId`، فهو ما تمرّره إلى نقاط النهاية الأخرى الخاصة
 بالإشعارات (التحديث، إلغاء الإرسال، الإلغاء، وحالة التسليم).
 
-عند الفشل، تتبع الاستجابة الشكل الموثّق في [رموز الأخطاء والنجاح](/ar/developers/errors-responses).
+عند الإرسال إلى `externalUserIds`، تبيّن الاستجابة أيضاً من وصل إليه الإشعار:
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Notification sent successfully",
+  "notificationId": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e",
+  "matchedUsers": 1,
+  "matchedDevices": 3,
+  "unknownUserIds": ["user_456"]
+}
+```
+
+<ResponseField name="matchedUsers" type="number">
+  عدد المعرّفات المطلوبة التي يرتبط بها جهاز واحد على الأقل.
+</ResponseField>
+
+<ResponseField name="matchedDevices" type="number">
+  عدد الأجهزة التي أُرسل إليها الإشعار، عبر كل المنصات.
+</ResponseField>
+
+<ResponseField name="unknownUserIds" type="string[]">
+  المعرّفات المطلوبة التي لا يرتبط بها أي جهاز. لم يُرسَل لها شيء.
+</ResponseField>
+
+الجهاز الموجود على منصة لم تُعدّ مفاتيح الإشعارات الخاصة بها بعد لا يمنع
+بقية الأجهزة: يُسجَّل له تسليم فاشل بالرمز `PLATFORM_NOT_CONFIGURED`، ويظهر في
+[حالة التسليم](/ar/api-reference/notification-deliveries).
+
+## الأخطاء
+
+| حالة HTTP | `error` | المعنى |
+|---|---|---|
+| 400 | `NOTIFICATION_TARGET_INVALID` | جمع الطلب بين `externalUserIds` و`deviceTokens` أو `sendByTopic` |
+
+أي فشل آخر يتبع الشكل والرموز الموثّقة في [رموز الأخطاء والنجاح](/ar/developers/errors-responses).

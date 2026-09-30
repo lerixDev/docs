@@ -53,7 +53,8 @@ individual delivery failed.
 ```
 
 <ResponseField name="platform" type="string">
-  `ios` or `android`.
+  `ios`, `android`, `web` or `macos`. A device registered from a platform
+  Lerix can't deliver to yet (for example Windows) keeps its own value here.
 </ResponseField>
 
 <ResponseField name="status" type="string">
@@ -61,7 +62,16 @@ individual delivery failed.
 </ResponseField>
 
 <ResponseField name="error" type="string | null">
-  The provider's failure reason when `status` is `failed`; `null` otherwise.
+  The failure reason when `status` is `failed`; `null` otherwise. This is
+  either the provider's own reason, or one of these Lerix codes in brackets
+  followed by a message:
+
+  | Code | Meaning |
+  |---|---|
+  | `PLATFORM_NOT_CONFIGURED` | The device's platform has no push keys in this project yet (for example an iOS device but no APNs key). Add them in **Notifications → Settings**. Other devices in the same send are unaffected. |
+  | `UNSUPPORTED_PLATFORM` | Lerix has no push provider for this device's platform (for example Windows). |
+
+  Example: `[PLATFORM_NOT_CONFIGURED] Apple keys not configured`.
 </ResponseField>
 
 <ResponseField name="deviceToken" type="string | null">

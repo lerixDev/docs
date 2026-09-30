@@ -1,0 +1,252 @@
+---
+title: "Identify users"
+description: "Link each install to your own user ID, so one send reaches a person on every device they use."
+icon: "user-check"
+---
+
+## Why identify users
+
+Most products ship on more than one platform: a mobile app, a website, maybe
+a desktop app. In Lerix they all belong to **one project**, with one API key.
+
+By default every install is anonymous: one person using your iOS app, your
+Android tablet app and your website counts as three unrelated devices. When
+your apps tell Lerix who is signed in, those devices are linked to your own
+user ID, and your backend can send to that ID instead of collecting device
+tokens:
+
+```json
+{ "title": "Your order shipped", "body": "It arrives Thursday.", "externalUserIds": ["user_123"] }
+```
+
+One request reaches `user_123` on every device where they are signed in, on
+every platform (iOS, Android, web and macOS), each through its own push
+provider.
+
+- **One install row per device.** Devices are linked to a user, never merged,
+  so history and delivery status stay per device.
+- **Any number of devices per user.** Signing in on a new device adds it.
+- **Your ID, not ours.** Use whatever identifies the user in your own
+  system: a database ID, a UUID, or an email address (1 to 255 characters).
+  The install ID returned by `getUserId()` is a different, Lerix-generated
+  value and doesn't change.
+
+## Set the user after login
+
+Call `setUser` as soon as the user signs in, and `clearUser` when they sign
+out. The ID is stored locally and sent again automatically if the install is
+ever re-registered, so you only need to call it once per login. It's safe to
+call before the SDK has finished initializing.
+
+The second argument, `identityHash`, is only needed when you turn on
+[identity verification](#identity-verification). Leave it out until then.
+
+<CodeGroup>
+
+```dart Flutter
+import 'package:lerix/lerix.dart';
+
+// After login
+await Lerix.setUser('user_123', identityHash: hashFromYourServer);
+
+// On logout
+await Lerix.clearUser();
+```
+
+```swift Swift (iOS / macOS)
+import Lerix
+
+// After login
+try await Lerix.setUser("user_123", identityHash: hashFromYourServer)
+
+// On logout
+try await Lerix.clearUser()
+```
+
+```kotlin Kotlin (Android)
+import com.lerix.sdk.Lerix
+
+// After login (inside a coroutine)
+Lerix.setUser("user_123", identityHash = hashFromYourServer)
+
+// On logout
+Lerix.clearUser()
+```
+
+```tsx React / Next.js
+import { useEffect } from 'react';
+import { useLerix } from '@lerix-dev/lerix-react'; // or '@lerix-dev/lerix-nextjs'
+
+function useSyncLerixUser(user: { id: string; lerixHash?: string } | null) {
+  const lerix = useLerix();
+
+  useEffect(() => {
+    if (user) lerix.setUser(user.id, { identityHash: user.lerixHash });
+    else lerix.clearUser();
+  }, [user?.id]);
+}
+```
+
+```ts Angular
+import { inject } from '@angular/core';
+import { LerixService } from '@lerix-dev/lerix-angular';
+
+export class AuthService {
+  private readonly lerix = inject(LerixService);
+
+  async onLogin(userId: string, lerixHash?: string) {
+    await this.lerix.setUser(userId, { identityHash: lerixHash });
+  }
+
+  async onLogout() {
+    await this.lerix.clearUser();
+  }
+}
+```
+
+```js Web (lerix-js)
+// After login
+await Lerix.setUser('user_123', { identityHash: hashFromYourServer });
+
+// On logout
+await Lerix.clearUser();
+```
+
+</CodeGroup>
+
+Every SDK has the same two calls: `setUser(externalId, identityHash?)` and
+`clearUser()`. The JavaScript SDKs take the hash as an options object
+(`{ identityHash }`); the others take it as a named argument.
+
+<Warning>
+  Always call `clearUser()` on sign-out. Otherwise a shared device keeps
+  receiving the previous user's notifications.
+</Warning>
+
+## Identity verification
+
+Your apps hold only the public project key, so without verification any
+client could call `setUser` with someone else's ID and receive their
+notifications. Identity verification closes that gap: your own backend,
+which already knows who is signed in, signs the ID with a secret that never
+ships in an app, and Lerix rejects any ID that isn't signed.
+
+It's off by default so that `setUser` works out of the box. Turn it on before
+you go to production.
+
+<Steps>
+  <Step title="Generate a secret">
+    In the [dashboard](https://app.lerix.dev), open your project, then
+    **Notifications → Settings → Identity verification**, and generate a
+    secret. It's shown **once**: store it in your backend's secret manager
+    (for example as `LERIX_IDENTITY_SECRET`). Generating a new one later
+    replaces the old one, so hashes computed with the old secret stop
+    working.
+  </Step>
+  <Step title="Compute the hash on your server">
+    The hash is the lowercase hex HMAC-SHA256 of the user ID, keyed with the
+    secret exactly as shown (the secret's text, not decoded bytes). Return it
+    to your app with the login response, next to the user ID.
+
+    <CodeGroup>
+
+    ```ts Node.js
+    import { createHmac } from 'node:crypto';
+
+    export function lerixIdentityHash(externalId: string): string {
+      return createHmac('sha256', process.env.LERIX_IDENTITY_SECRET!)
+        .update(externalId, 'utf8')
+        .digest('hex');
+    }
+    ```
+
+    ```python Python
+    import hashlib
+    import hmac
+    import os
+
+    def lerix_identity_hash(external_id: str) -> str:
+        return hmac.new(
+            os.environ["LERIX_IDENTITY_SECRET"].encode("utf-8"),
+            external_id.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+    ```
+
+    ```csharp C#
+    using System.Security.Cryptography;
+    using System.Text;
+
+    static string LerixIdentityHash(string externalId)
+    {
+        var secret = Environment.GetEnvironmentVariable("LERIX_IDENTITY_SECRET")!;
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(externalId));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Pass the hash to setUser">
+    Update your apps to pass the hash as `identityHash`. Once a secret exists,
+    a hash that *is* sent must be correct even while verification is
+    optional, so a misconfigured backend shows up early.
+  </Step>
+  <Step title="Require verified identity">
+    When every app version in use sends the hash, turn on **Require verified
+    identity** in the same settings panel. From then on, `setUser` without a
+    valid hash is rejected.
+  </Step>
+</Steps>
+
+Never compute the hash inside your app, and never ship the secret in an app
+or a web page: anyone who has it can sign any ID.
+
+### Errors from setUser
+
+| HTTP status | `error` | Meaning |
+|---|---|---|
+| 401 | `IDENTITY_VERIFICATION_REQUIRED` | **Require verified identity** is on and no `identityHash` was sent |
+| 401 | `IDENTITY_HASH_INVALID` | The hash doesn't match this user ID. Check that it was computed from the exact same ID with the current secret |
+
+## Send to a user
+
+From your backend, send with `externalUserIds` and a private key in the
+`lerix-key` header (see the [API introduction](/api-reference/introduction)):
+
+```bash
+curl -X POST https://api.lerix.dev/v1/my-project-id/notifications/send \
+  -H "lerix-key: <your-private-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Your order shipped",
+    "body": "It arrives Thursday.",
+    "externalUserIds": ["user_123", "user_456"],
+    "metadata": { "orderId": "A-1042" }
+  }'
+```
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Notification sent successfully",
+  "notificationId": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e",
+  "matchedUsers": 1,
+  "matchedDevices": 3,
+  "unknownUserIds": ["user_456"]
+}
+```
+
+- `unknownUserIds` lists IDs with no linked device (for example, a user who
+  hasn't installed the app yet). That isn't an error.
+- Don't combine `externalUserIds` with `deviceTokens` or `sendByTopic` in the
+  same request; that returns `NOTIFICATION_TARGET_INVALID`.
+- If you schedule the send with `sentAt`, devices are looked up again at send
+  time, so a device the user signs in on after you schedule still gets it.
+- If one platform has no push keys yet (say, no APNs key), the other devices
+  still receive the notification, and that device's delivery shows
+  `PLATFORM_NOT_CONFIGURED` in [delivery status](/api-reference/notification-deliveries).
+
+See [Send a push notification](/api-reference/push-notifications) for every
+field.

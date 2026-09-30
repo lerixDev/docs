@@ -5,14 +5,18 @@ description: "Create an account, add Lerix to your app, and see your first event
 
 ## 1. Create an account and a project
 
-<a href="https://app.lerix.dev">Create an account</a> on the Lerix dashboard, then create a project. In **Project Settings** you'll find the two values every SDK needs:
+<a href="https://app.lerix.dev">Create an account</a> on the Lerix dashboard, then create a project.
+
+When you create it, pick every framework card your product ships on. A product with a Flutter app and a Next.js site is **one project** with both platforms, not two projects: every app shares one API key, and one push send reaches a user on all their devices (see [Identify users](/modules/users-identity)). The first card you pick is the primary one. You can add more platforms later in **Project Settings → General**.
+
+In **Project Settings** you'll find the two values every SDK needs:
 
 - **API key** (`apiKey`)
 - **Project ID** (`projectId`)
 
 ## 2. Pick your platform
 
-Each guide installs the SDK, initialises it, and sends a test error, in under five minutes.
+Each guide installs the SDK, initialises it, and sends a test error, in under five minutes. If your project has several platforms, follow the guide for each app, using the same API key and project ID in all of them.
 
 <CardGroup cols={3}>
   <Card title="Flutter" icon="flutter" href="/frameworks/flutter/installation">

@@ -45,6 +45,7 @@ a human-readable description and may change wording over time — don't parse it
 | 400 | `DONT_HAVE_ACCSESS_PROJECT` | The authenticated identity doesn't have access to this project |
 | 404 | `API_KEY_NOT_VALID` | `apiKey` doesn't match any key on this project |
 | 400 | `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | The API key exists but isn't granted the permission this endpoint needs (e.g. Send Push Notifications) |
+| 400 | `NOTIFICATION_TARGET_INVALID` | A send combined `externalUserIds` with `deviceTokens` or `sendByTopic`. Use one target per request |
 | 404 | `TOPIC_NOT_FOUND` | `sendByTopic` was `true` but no topic matches `topic` for this project |
 | 400 | *(generic — "Bad Request")* | Notification limit reached for your plan |
 | 404 | *(generic — "Not Found")* | None of the given `deviceTokens` matched a registered device |

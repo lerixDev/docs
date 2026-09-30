@@ -124,6 +124,21 @@ for the full parameter details (identical across every platform).
   it only applies to iOS and Android.
 </Note>
 
+## Target a user on every device
+
+If your product also ships on other platforms (web, mobile or desktop), add
+them to the same project and link each install to your own user ID after
+login. Your backend can then send to `externalUserIds` and reach that person
+on every device in one request.
+
+```js
+await Lerix.setUser('user_123'); // after login
+await Lerix.clearUser();         // on logout
+```
+
+See [Identify users](/modules/users-identity) for identity verification and a
+sending example.
+
 ## Browser support
 
 Chrome, Firefox, and Edge support Web Push fully. Safari requires macOS 13+

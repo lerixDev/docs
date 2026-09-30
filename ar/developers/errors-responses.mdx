@@ -46,6 +46,7 @@ description: "أشكال الاستجابة ورموز الأخطاء في REST 
 | 400 | `DONT_HAVE_ACCSESS_PROJECT` | الهوية المصادَق عليها لا تملك وصولاً لهذا المشروع |
 | 404 | `API_KEY_NOT_VALID` | لا يطابق `apiKey` أي مفتاح لهذا المشروع |
 | 400 | `PROJECT_API_KEY_DONT_HAVE_PERMISSION` | مفتاح الـ API موجود لكن لم يُمنَح الصلاحية التي تحتاجها هذه النقطة (مثل إرسال إشعارات) |
+| 400 | `NOTIFICATION_TARGET_INVALID` | جمع طلب الإرسال بين `externalUserIds` و`deviceTokens` أو `sendByTopic`. استخدم هدفاً واحداً في كل طلب |
 | 404 | `TOPIC_NOT_FOUND` | كان `sendByTopic` بقيمة `true` لكن لا يوجد موضوع يطابق `topic` لهذا المشروع |
 | 400 | *(عام — "Bad Request")* | تم بلوغ حد الإشعارات في خطتك |
 | 404 | *(عام — "Not Found")* | لم يطابق أيٌّ من `deviceTokens` المُرسَلة جهازاً مسجّلاً |

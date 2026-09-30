@@ -223,6 +223,21 @@ Flutter Web uses the same `Lerix.notifications.*` calls as mobile, with a few re
 - **Custom sound isn't supported** — see [Sending a custom sound](#sending-a-custom-sound) above.
 - **Browser support**: Chrome, Firefox, and Edge fully; Safari requires macOS 13+ or iOS 16.4+ — older Safari doesn't support standard Web Push at all.
 
+## Target a user on every device
+
+If your product also ships on other platforms (web, mobile or desktop), add
+them to the same project and link each install to your own user ID after
+login. Your backend can then send to `externalUserIds` and reach that person
+on every device in one request.
+
+```dart
+await Lerix.setUser('user_123'); // after login
+await Lerix.clearUser();         // on logout
+```
+
+See [Identify users](/modules/users-identity) for identity verification and a
+sending example.
+
 ## Topics
 
 Instead of targeting specific device tokens, a device can subscribe to a named topic — send one notification to the topic and every subscriber receives it. A topic doesn't need to be created ahead of time; it's created automatically the first time any device subscribes to it. You can also view, create, and delete topics from the **Notifications → Topics** tab in the dashboard.

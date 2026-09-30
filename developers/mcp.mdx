@@ -68,7 +68,7 @@ no API key to generate or paste in.
 | Tool | What it does |
 |---|---|
 | `list_organizations` | Organizations you belong to |
-| `list_projects` | Projects in an organization |
+| `list_projects` | Projects in an organization, with the platforms each one ships on |
 | `list_issues` | Deduplicated, filterable issue list for a project |
 | `get_issue_details` | Stack trace, occurrences, affected devices for one issue |
 | `search_events` | Raw occurrence counts grouped by type/severity/day |
@@ -81,7 +81,7 @@ no API key to generate or paste in.
 | Tool | What it does |
 |---|---|
 | `create_organization` | Create a brand-new organization, owned by you |
-| `link_project` | Find or create a project, and return a real SDK init snippet for the detected framework |
+| `link_project` | Find or create a project, and return a real SDK init snippet for each platform. Pass every framework your product ships on in `platforms` (for example `["flutter", "nextjs"]`) so all your apps share one project; calling it again with a new platform adds it to the existing project |
 | `create_topic` | Create a push-notification topic |
 | `provision_web_push` | Generate VAPID keys for web push — no credential needed from you. Regenerates (and invalidates existing subscribers) if already configured |
 | `configure_android_push` | Store a Firebase service-account JSON you paste in, for Android/FCM |

@@ -171,6 +171,7 @@
             "pages": [
               "modules/error-tracking",
               "modules/push-notifications",
+              "modules/users-identity",
               "modules/request-tracing",
               "modules/analytics",
               "modules/in-app-messages",
@@ -360,6 +361,7 @@
             "pages": [
               "ar/modules/error-tracking",
               "ar/modules/push-notifications",
+              "ar/modules/users-identity",
               "ar/modules/request-tracing",
               "ar/modules/analytics",
               "ar/modules/in-app-messages",

@@ -128,6 +128,21 @@ it directly as the notification's icon/image.
   recipients — it only applies to iOS and Android.
 </Note>
 
+## Target a user on every device
+
+If your product also ships on other platforms (web, mobile or desktop), add
+them to the same project and link each install to your own user ID after
+login. Your backend can then send to `externalUserIds` and reach that person
+on every device in one request.
+
+```ts
+await this.lerix.setUser('user_123'); // after login
+await this.lerix.clearUser();         // on logout
+```
+
+See [Identify users](/modules/users-identity) for identity verification and a
+sending example.
+
 ## Topics
 
 Instead of targeting specific device tokens, a device can subscribe to a

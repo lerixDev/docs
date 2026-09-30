@@ -30,13 +30,19 @@ organization you manage:
 
 ## Projects
 
-A project is a single app you're monitoring — most teams create one project
-per app (or per app per environment). Each project has its own **API key**,
-so data from different apps never mixes.
+A project is one product you're monitoring. It can include several
+platforms: when you create it, pick more than one framework card (for example
+Flutter and Next.js) and every app of that product shares the project. Each
+project has its own **API key**, so data from different products never mixes,
+and one push send can reach a user on every device they use (see
+[Identify users](/modules/users-identity)). Some teams also create one project
+per environment.
 
 ### Project settings
 
-- **General** — the project's name and basic configuration.
+- **General**: the project's name and its platforms. Add a platform here
+  when you ship the product somewhere new (the first one is the primary
+  platform).
 - **API** — your project's API key and slug, used to initialize the SDK
   (`apiKey`, `projectId`) and to authenticate REST API requests.
 - **Members** — who on your organization has access to this specific
@@ -69,11 +75,11 @@ Everything related to push notifications for this project:
 |---|---|
 | **Overview** | Total notifications sent, delivery rate, pending count, registered devices, and which platforms (iOS/Android) are configured |
 | **History** | Every notification ever sent, searchable and filterable by status |
-| **Send notification** | Compose and send to specific devices or a topic |
+| **Send notification** | Compose and send to specific devices, your own user IDs, or a topic |
 | **Topics** | Create, view subscriber counts for, and delete topics |
 | **Devices** | Registered device tokens for this project |
 | **Apps** | The platform apps (iOS/Android) registered under this project |
-| **Settings** | Upload your Apple `.p8` key and Android `google-services.json` — a platform shows a **Configured** badge once it has credentials |
+| **Settings** | Upload your Apple `.p8` key and Android `google-services.json` (a platform shows a **Configured** badge once it has credentials), and set up [identity verification](/modules/users-identity#identity-verification) |
 
 See [Push Notifications](/modules/push-notifications) for the full picture.
 

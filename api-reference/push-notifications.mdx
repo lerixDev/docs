@@ -1,13 +1,22 @@
 ---
 title: "Push Notifications"
-description: "Send push notifications to one or more devices through the Lerix REST API."
+description: "Send push notifications to devices, to your own users on every device they use, or to a topic through the Lerix REST API."
 api: "POST https://api.lerix.dev/v1/{project-id}/notifications/send"
 authMethod: "key"
 playground: "interactive"
 ---
 
-Send a push notification to one or more registered device tokens, or to every
-device subscribed to a topic.
+Send a push notification to one of three targets:
+
+- **`deviceTokens`**: specific registered devices.
+- **`externalUserIds`**: your own user IDs. Lerix delivers to every device each
+  user signed in on (iOS, Android, web and macOS) in one request. Your apps
+  link a device to a user with `setUser`; see [Identify users](/modules/users-identity).
+- **`topic`** (with `sendByTopic: true`): every device subscribed to a topic.
+
+Use one target per request. `externalUserIds` can't be combined with
+`deviceTokens` or `sendByTopic`: that request is rejected with
+`NOTIFICATION_TARGET_INVALID`.
 
 <Note>
   See the [API introduction](/api-reference/introduction) to set up your base URL and private key before making requests.
@@ -28,16 +37,29 @@ device subscribed to a topic.
 </ParamField>
 
 <ParamField body="deviceTokens" type="string[]" placeholder='["device-token-1"]'>
-  One or more device tokens to deliver the notification to. Required unless
-  `sendByTopic` is `true`.
+  One or more device tokens to deliver the notification to. One of the three
+  targets: don't combine it with `externalUserIds` or `sendByTopic`.
+</ParamField>
+
+<ParamField body="externalUserIds" type="string[]" placeholder='["user_123"]'>
+  Your own user IDs, the same values your apps pass to `setUser` after login.
+  Lerix finds every device currently linked to each ID, across all the
+  platforms in this project, and delivers to all of them. Up to 1000 IDs per
+  request, each 1 to 255 characters. One of the three targets: don't combine
+  it with `deviceTokens` or `sendByTopic`.
+
+  An ID with no linked device isn't an error (the user may not have installed
+  the app yet). It comes back in `unknownUserIds` in the response. When the
+  notification is scheduled with `sentAt`, devices are looked up again at send
+  time, so a device that signs in after you schedule still receives it.
 </ParamField>
 
 <ParamField body="sendByTopic" type="boolean" default="false">
-  Set to `true` to deliver to every device subscribed to `topic` instead of
-  specific `deviceTokens` — when `true`, `deviceTokens` is ignored even if
-  present. Devices subscribe to a topic from your app using the SDK; a topic
-  is created automatically the first time a device subscribes to it, or you
-  can create one manually from the **Topics** tab in the dashboard.
+  Set to `true` to deliver to every device subscribed to `topic`. One of the
+  three targets: don't combine it with `deviceTokens` or `externalUserIds`.
+  Devices subscribe to a topic from your app using the SDK. A topic is
+  created automatically the first time a device subscribes to it, or you can
+  create one manually from the **Topics** tab in the dashboard.
 </ParamField>
 
 <ParamField body="topic" type="string" placeholder="promotions">
@@ -134,7 +156,42 @@ device subscribed to a topic.
 }
 ```
 
-Save `notificationId` — it's what you pass to the other notification endpoints
+Save `notificationId`. It's what you pass to the other notification endpoints
 (update, unsend, cancel, and delivery status).
 
-On failure, the response follows the shape documented in [Error & success codes](/developers/errors-responses).
+When you send to `externalUserIds`, the response also says who was reached:
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Notification sent successfully",
+  "notificationId": "b6b1a2b0-9c3f-4b3e-9c3f-4b3e9c3f4b3e",
+  "matchedUsers": 1,
+  "matchedDevices": 3,
+  "unknownUserIds": ["user_456"]
+}
+```
+
+<ResponseField name="matchedUsers" type="number">
+  How many of the requested IDs have at least one linked device.
+</ResponseField>
+
+<ResponseField name="matchedDevices" type="number">
+  How many devices the notification was sent to, across every platform.
+</ResponseField>
+
+<ResponseField name="unknownUserIds" type="string[]">
+  Requested IDs with no linked device. Nothing was sent for them.
+</ResponseField>
+
+A device on a platform whose push keys aren't configured yet doesn't block
+the others: it gets a failed delivery with the `PLATFORM_NOT_CONFIGURED` code,
+visible in [Get delivery status](/api-reference/notification-deliveries).
+
+## Errors
+
+| HTTP status | `error` | Meaning |
+|---|---|---|
+| 400 | `NOTIFICATION_TARGET_INVALID` | The request combined `externalUserIds` with `deviceTokens` or `sendByTopic` |
+
+Every other failure follows the shape and codes documented in [Error & success codes](/developers/errors-responses).

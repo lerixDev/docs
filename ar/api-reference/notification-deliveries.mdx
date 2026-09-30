@@ -52,7 +52,8 @@ playground: "interactive"
 ```
 
 <ResponseField name="platform" type="string">
-  `ios` أو `android`.
+  `ios` أو `android` أو `web` أو `macos`. الجهاز المسجّل من منصة لا يستطيع
+  Lerix التسليم إليها بعد (مثل Windows) يحتفظ بقيمته الخاصة هنا.
 </ResponseField>
 
 <ResponseField name="status" type="string">
@@ -61,8 +62,16 @@ playground: "interactive"
 </ResponseField>
 
 <ResponseField name="error" type="string | null">
-  سبب الفشل من مزوّد الخدمة عندما تكون `status` بقيمة `failed`؛ `null` خلاف
-  ذلك.
+  سبب الفشل عندما تكون `status` بقيمة `failed`؛ `null` خلاف ذلك. يكون إما
+  السبب الذي أرسله مزوّد الخدمة، أو أحد رموز Lerix التالية بين قوسين متبوعاً
+  برسالة:
+
+  | الرمز | المعنى |
+  |---|---|
+  | `PLATFORM_NOT_CONFIGURED` | لا توجد مفاتيح إشعارات لمنصة الجهاز في هذا المشروع بعد (مثلاً جهاز iOS دون مفتاح APNs). أضفها من **الإشعارات ← الإعدادات**. لا يتأثر باقي الأجهزة في نفس الإرسال. |
+  | `UNSUPPORTED_PLATFORM` | لا يملك Lerix مزوّد إشعارات لمنصة هذا الجهاز (مثل Windows). |
+
+  مثال: `[PLATFORM_NOT_CONFIGURED] Apple keys not configured`.
 </ResponseField>
 
 <ResponseField name="deviceToken" type="string | null">

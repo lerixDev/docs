@@ -19,6 +19,10 @@ REST API.
   registered device tokens, or to every device subscribed to a topic (a
   topic is created automatically the first time a device subscribes to it —
   no dashboard setup required to start using one).
+- **Target a user on every device.** Call `setUser` in each of your apps
+  after login, then send to your own user IDs with `externalUserIds`: one
+  request reaches that person on iOS, Android, web and macOS. See
+  [Identify users](/modules/users-identity).
 - **Custom sound.** Set a custom notification sound per send, so long as the
   sound file is already bundled inside your app.
 - **Rich images.** Attach an `imageUrl` to show a rich image in the

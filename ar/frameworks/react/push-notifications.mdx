@@ -129,6 +129,25 @@ notifications.setOnNotificationTapped((payload) => {
   فقط على iOS وAndroid.
 </Note>
 
+## استهدف مستخدماً على كل أجهزته
+
+إذا كان منتجك يعمل أيضاً على منصات أخرى (الويب أو الجوال أو سطح المكتب)،
+فأضِفها إلى نفس المشروع واربط كل تثبيت بمعرّف المستخدم الخاص بك بعد تسجيل
+الدخول. عندها يستطيع الباك إند الخاص بك الإرسال إلى `externalUserIds` والوصول
+إلى هذا الشخص على كل أجهزته في طلب واحد.
+
+```tsx
+import { useLerix } from '@lerix-dev/lerix-react';
+
+const lerix = useLerix(); // inside a component
+
+await lerix.setUser('user_123'); // after login
+await lerix.clearUser();         // on logout
+```
+
+راجع [تعريف المستخدمين](/ar/modules/users-identity) للتحقق من الهوية ومثال
+على الإرسال.
+
 ## المواضيع (Topics)
 
 بدلاً من استهداف رموز أجهزة محددة، يمكن للجهاز الاشتراك في موضوع (topic)
