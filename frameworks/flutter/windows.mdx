@@ -92,7 +92,7 @@ These codes appear in a notification's [delivery report](/api-reference/notifica
 |---|---|
 | `PLATFORM_NOT_CONFIGURED` | No Windows credentials in this project yet. Complete step 2. |
 | `WINDOWS_CREDENTIALS_INVALID` | Microsoft no longer accepts the saved credentials, for example an expired client secret. Create a new secret and save it again. |
-| `WNS_FORBIDDEN` | The credentials are valid but can't send to this app. For packaged installs, the package isn't mapped to your Entra ID app yet. |
+| `WNS_FORBIDDEN` | The credentials are valid but WNS won't accept them for this device. Check that the **Object ID** is the one under **Managed application in local directory** of the **same** app registration as the client ID, and that the registration is **multi-tenant**. For packaged installs, also check that the package is mapped to your Entra ID app. |
 | `WNS_CHANNEL_GONE` | The device's channel expired or the app was uninstalled. Lerix deletes the device; it registers again on the next launch. |
 | `WNS_THROTTLED` | WNS is rate-limiting your sends. Retry later. |
 | `PAYLOAD_TOO_LARGE` | Over the 5000-byte limit. Shorten the body or metadata. |
