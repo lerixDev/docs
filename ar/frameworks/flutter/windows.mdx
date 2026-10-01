@@ -1,0 +1,98 @@
+---
+title: "Flutter: إشعارات Windows"
+description: "أرسل الإشعارات إلى تطبيقات Flutter على Windows عبر WNS باستخدام تسجيل تطبيق في Microsoft Entra ID."
+---
+
+<Warning>
+  إشعارات Windows في مرحلة **المعاينة (preview)**. جانب Lerix (لوحة التحكم والـ API والإرسال) جاهز، وجزء Windows في Flutter SDK ما زال قيد الاختبار. توقّع تغييرات قبل الإصدار المستقر.
+</Warning>
+
+## كيف تعمل
+
+يرسل Lerix إشعارات Windows عبر **خدمة إشعارات Windows (WNS)** باستخدام واجهات الإشعارات في [Windows App SDK](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/). تستخدم هذه الواجهات تسجيل تطبيق في **Microsoft Entra ID** كهوية لتطبيقك، وليس حساب متجر Microsoft (Partner Center).
+
+1. عند تشغيل تطبيقك، يطلب الـ SDK من Windows **قناة** إشعارات ويسجّلها في Lerix كرمز الجهاز. تنتهي صلاحية القنوات بعد 30 يوماً، لذلك يطلب الـ SDK قناة جديدة مع كل تشغيل.
+2. عند الإرسال، يحصل Lerix على رمز وصول من Microsoft ببيانات Entra ID الخاصة بك، ويرسل الإشعار إلى WNS كـ **toast**.
+3. يعرض Windows الإشعار بنفسه. وعندما يضغط المستخدم عليه، يستقبله تطبيقك في `setOnNotificationTapped`.
+
+واجهة Dart هي نفسها على كل المنصات، ولا يحتاج تطبيقك أي كود خاص بـ Windows.
+
+## المتطلبات
+
+- Windows 10 الإصدار 2004 أو أحدث، أو Windows 11.
+- **Windows App Runtime 1.7** على جهاز المستخدم. أرفق مثبّت Microsoft `WindowsAppRuntimeInstall-x64.exe` مع مثبّت تطبيقك.
+- تسجيل تطبيق في Microsoft Entra ID (مجاني).
+- لاستقبال الإشعارات **والتطبيق مغلق**: هوية حزمة (package identity) عبر sparse package (انظر قسم «الاستلام والتطبيق مغلق» أدناه).
+
+<Note>
+  التطبيق المثبّت من ملف `.exe` عادي بدون هوية حزمة يستقبل الإشعارات **فقط أثناء تشغيله**، بما في ذلك عندما يكون مصغّراً في شريط النظام.
+</Note>
+
+## الخطوة 1: أنشئ تسجيل تطبيق في Microsoft Entra ID
+
+1. في [Azure portal](https://portal.azure.com)، افتح **Microsoft Entra ID ← App registrations ← New registration**.
+2. في **Supported account types**، اختر **Accounts in any organizational directory** (متعدد المستأجرين). إشعارات Windows App SDK تتطلب ذلك.
+3. بعد الإنشاء، انسخ **Application (client) ID** و**Directory (tenant) ID**.
+4. افتح **Certificates & secrets ← New client secret** وانسخ **قيمة** الـ secret فوراً، فهي تظهر مرة واحدة فقط.
+5. في صفحة **Overview**، اضغط الرابط بجانب **Managed application in local directory** وانسخ **Object ID** الظاهر هناك. لا تستخدم الـ Object ID الموجود في صفحة التسجيل نفسها، فهو مختلف.
+
+## الخطوة 2: أضف البيانات في Lerix
+
+في لوحة التحكم، افتح مشروعك واذهب إلى **Notifications ← Settings ← Windows Configuration**. أدخل tenant ID وclient ID وclient secret وobject ID، ثم اضغط **Save**.
+
+يتحقق Lerix من البيانات مع Microsoft قبل حفظها. إذا رفضتها Microsoft يظهر `WINDOWS_CREDENTIALS_INVALID` ولا يُحفظ شيء. يُخزَّن الـ client secret مشفّراً ولا يُعرض مرة أخرى.
+
+<Note>
+  يحتاج مشروعك منصة **Flutter** حتى تظهر شاشات الإشعارات. أضفها من **Settings ← General ← Platforms** إذا لزم.
+</Note>
+
+## الخطوة 3: هيّئ الـ SDK
+
+لا يتغيّر شيء في كود Dart. هيّئ Lerix والإشعارات كما في المنصات الأخرى:
+
+```dart
+await Lerix.notifications.init();
+```
+
+على Windows، ينشئ `init()` قناة الإشعارات ويسجّل الجهاز في Lerix. لا يوجد طلب صلاحية في Windows؛ يُرجع `requestPermissions()` القيمة `false` فقط إذا أوقف المستخدم إشعارات تطبيقك من **Settings** في Windows.
+
+للوصول إلى نفس الشخص على Windows وعلى أجهزته الأخرى، اربط التثبيت بمعرّف المستخدم بعد تسجيل الدخول. انظر [تعريف المستخدمين](/ar/modules/users-identity).
+
+## الاستلام والتطبيق مغلق
+
+حتى يعرض Windows إشعاراتك والتطبيق غير مشغّل، يحتاج التطبيق **هوية حزمة**. يمكنك الإبقاء على مثبّت `.exe` العادي وإضافة **sparse package** (حزمة بموقع خارجي) تعطي التطبيق هذه الهوية.
+
+1. احصل على **شهادة توقيع كود**، فالـ sparse package يجب أن تكون موقّعة.
+2. أنشئ الـ sparse package وسجّلها من مثبّت تطبيقك. دليل Microsoft: [Grant package identity by packaging with external location](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/grant-identity-to-nonpackaged-apps).
+3. اطلب من Microsoft ربط الحزمة بتطبيق Entra ID. أرسل بريداً إلى `Win_App_SDK_Push@microsoft.com` بعنوان **Windows App SDK Push Notifications Mapping Request**، وضمّنه **Package Family Name** و**Application (client) ID** و**Object ID**.
+
+<Warning>
+  تعالج Microsoft طلبات الربط **مرة في الأسبوع**. إلى أن يتم الربط، يفشل الإرسال إلى التثبيتات التي لها هوية حزمة بالرمز `WNS_FORBIDDEN`. خطّط لهذه المدة قبل الإطلاق.
+</Warning>
+
+## ما يعمل على Windows
+
+| الميزة | Windows |
+|---|---|
+| الإرسال للأجهزة والمواضيع و[المستخدمين](/ar/modules/users-identity) | ✅ |
+| العنوان والنص والبيانات الوصفية | ✅ |
+| الصور | ✅ روابط HTTPS فقط |
+| `setOnNotificationTapped`، بما فيه الضغط الذي يفتح التطبيق | ✅ |
+| `setOnNotificationReceived` والتطبيق مفتوح | ❌ يعرض Windows الإشعار بنفسه |
+| إلغاء الإرسال (حذف إشعار وصل) | ❌ لا يستطيع WNS حذف إشعار من جهاز Windows |
+| الأصوات المخصّصة | ❌ |
+
+لا يمكن أن يتجاوز إشعار Windows حجم 5000 بايت بما فيها البيانات الوصفية. الإرسال الأكبر يفشل بالرمز `PAYLOAD_TOO_LARGE`.
+
+## حل المشكلات
+
+تظهر هذه الرموز في [تقرير التسليم](/ar/api-reference/notification-deliveries) للإشعار:
+
+| الرمز | المعنى |
+|---|---|
+| `PLATFORM_NOT_CONFIGURED` | لا توجد بيانات Windows في هذا المشروع بعد. أكمل الخطوة 2. |
+| `WINDOWS_CREDENTIALS_INVALID` | لم تعد Microsoft تقبل البيانات المحفوظة، مثلاً انتهت صلاحية الـ client secret. أنشئ secret جديداً واحفظه مرة أخرى. |
+| `WNS_FORBIDDEN` | البيانات صحيحة لكنها لا تستطيع الإرسال لهذا التطبيق. في التثبيتات ذات هوية الحزمة، الحزمة غير مربوطة بتطبيق Entra ID بعد. |
+| `WNS_CHANNEL_GONE` | انتهت قناة الجهاز أو أُزيل التطبيق. يحذف Lerix الجهاز، ويُسجَّل من جديد عند التشغيل التالي. |
+| `WNS_THROTTLED` | يحدّ WNS من معدل إرسالك. أعد المحاولة لاحقاً. |
+| `PAYLOAD_TOO_LARGE` | تجاوز حد 5000 بايت. اختصر النص أو البيانات الوصفية. |

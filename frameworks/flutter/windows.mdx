@@ -1,0 +1,98 @@
+---
+title: "Flutter: Windows push notifications"
+description: "Send push notifications to Flutter apps on Windows through WNS, using a Microsoft Entra ID app registration."
+---
+
+<Warning>
+  Windows push is in **preview**. The Lerix side (dashboard, API and delivery) is ready; the Windows part of the Flutter SDK is still being tested. Expect changes before the stable release.
+</Warning>
+
+## How it works
+
+Lerix sends Windows notifications through the **Windows Push Notification Service (WNS)**, using the [Windows App SDK](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/) push APIs. These use a **Microsoft Entra ID** app registration as your app's identity, not a Microsoft Store (Partner Center) account.
+
+1. When your app starts, the SDK asks Windows for a push **channel** and registers it with Lerix as the device's token. Channels expire after 30 days, so the SDK requests a fresh one on every launch.
+2. When you send, Lerix gets an access token from Microsoft with your Entra ID credentials and sends the notification to WNS as a **toast**.
+3. Windows displays the toast itself. When the user clicks it, your app receives the notification in `setOnNotificationTapped`.
+
+The Dart API is the same as on every other platform; there is no Windows-specific code in your app.
+
+## Requirements
+
+- Windows 10 version 2004 or later, or Windows 11.
+- The **Windows App Runtime 1.7** on the user's machine. Bundle Microsoft's `WindowsAppRuntimeInstall-x64.exe` with your installer.
+- A Microsoft Entra ID app registration (free).
+- To receive notifications **while the app is closed**: package identity, through a sparse package (see [Delivery when the app is closed](#delivery-when-the-app-is-closed)).
+
+<Note>
+  An app installed from a plain `.exe` without package identity can receive notifications **only while it's running**, including when it's minimized to the tray.
+</Note>
+
+## Step 1: Create a Microsoft Entra ID app registration
+
+1. In the [Azure portal](https://portal.azure.com), open **Microsoft Entra ID → App registrations → New registration**.
+2. Under **Supported account types**, choose **Accounts in any organizational directory** (multi-tenant). Windows App SDK push requires it.
+3. After creating it, copy the **Application (client) ID** and the **Directory (tenant) ID**.
+4. Open **Certificates & secrets → New client secret** and copy the secret's **value** right away. It's shown only once.
+5. Back on the **Overview** page, click the link next to **Managed application in local directory** and copy the **Object ID** shown there. Don't use the object ID on the registration's own overview page; it's a different one.
+
+## Step 2: Add the credentials in Lerix
+
+In the dashboard, open your project and go to **Notifications → Settings → Windows Configuration**. Enter the tenant ID, client ID, client secret and object ID, then click **Save**.
+
+Lerix checks the credentials with Microsoft before saving them. If Microsoft rejects them, you see `WINDOWS_CREDENTIALS_INVALID` and nothing is saved. The client secret is stored encrypted and never shown again.
+
+<Note>
+  Your project needs the **Flutter** platform for the Notifications screens to appear. Add it in **Settings → General → Platforms** if needed.
+</Note>
+
+## Step 3: Initialize the SDK
+
+Nothing changes in your Dart code. Initialize Lerix and notifications as on other platforms:
+
+```dart
+await Lerix.notifications.init();
+```
+
+On Windows, `init()` creates the push channel and registers the device with Lerix. Windows has no permission prompt; `requestPermissions()` returns `false` only if the user turned notifications off for your app in Windows **Settings**.
+
+To reach the same person on Windows and their other devices, link the install to your user ID after login. See [Identify users](/modules/users-identity).
+
+## Delivery when the app is closed
+
+For Windows to show your notifications while the app isn't running, the app needs **package identity**. You can keep your normal `.exe` installer and add a **sparse package** ("packaged with external location") that gives the app that identity.
+
+1. Get a **code-signing certificate**. The sparse package must be signed.
+2. Create and register the sparse package from your installer. Microsoft's guide: [Grant package identity by packaging with external location](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/grant-identity-to-nonpackaged-apps).
+3. Ask Microsoft to map your package to your Entra ID app. Email `Win_App_SDK_Push@microsoft.com` with the subject **Windows App SDK Push Notifications Mapping Request** and include your **Package Family Name**, **Application (client) ID** and **Object ID**.
+
+<Warning>
+  Microsoft processes mapping requests **once a week**. Until the mapping is done, sends to packaged installs fail with `WNS_FORBIDDEN`. Plan for this lead time before your launch.
+</Warning>
+
+## What works on Windows
+
+| Feature | Windows |
+|---|---|
+| Send to devices, topics and [users](/modules/users-identity) | ✅ |
+| Title, body, metadata | ✅ |
+| Images | ✅ HTTPS URLs only |
+| `setOnNotificationTapped`, including a click that launches the app | ✅ |
+| `setOnNotificationReceived` while the app is open | ❌ Windows shows the toast itself |
+| Unsend (remove a delivered notification) | ❌ WNS can't remove a toast from a Windows device |
+| Custom sounds | ❌ |
+
+A Windows notification can't be larger than 5000 bytes, including metadata. Larger sends fail with `PAYLOAD_TOO_LARGE`.
+
+## Troubleshooting
+
+These codes appear in a notification's [delivery report](/api-reference/notification-deliveries):
+
+| Code | Meaning |
+|---|---|
+| `PLATFORM_NOT_CONFIGURED` | No Windows credentials in this project yet. Complete step 2. |
+| `WINDOWS_CREDENTIALS_INVALID` | Microsoft no longer accepts the saved credentials, for example an expired client secret. Create a new secret and save it again. |
+| `WNS_FORBIDDEN` | The credentials are valid but can't send to this app. For packaged installs, the package isn't mapped to your Entra ID app yet. |
+| `WNS_CHANNEL_GONE` | The device's channel expired or the app was uninstalled. Lerix deletes the device; it registers again on the next launch. |
+| `WNS_THROTTLED` | WNS is rate-limiting your sends. Retry later. |
+| `PAYLOAD_TOO_LARGE` | Over the 5000-byte limit. Shorten the body or metadata. |

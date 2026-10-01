@@ -53,8 +53,8 @@ individual delivery failed.
 ```
 
 <ResponseField name="platform" type="string">
-  `ios`, `android`, `web` or `macos`. A device registered from a platform
-  Lerix can't deliver to yet (for example Windows) keeps its own value here.
+  `ios`, `android`, `web`, `macos` or `windows`. A device registered from a
+  platform Lerix can't deliver to yet (for example Linux) keeps its own value here.
 </ResponseField>
 
 <ResponseField name="status" type="string">
@@ -69,7 +69,9 @@ individual delivery failed.
   | Code | Meaning |
   |---|---|
   | `PLATFORM_NOT_CONFIGURED` | The device's platform has no push keys in this project yet (for example an iOS device but no APNs key). Add them in **Notifications → Settings**. Other devices in the same send are unaffected. |
-  | `UNSUPPORTED_PLATFORM` | Lerix has no push provider for this device's platform (for example Windows). |
+  | `UNSUPPORTED_PLATFORM` | Lerix has no push provider for this device's platform (for example Linux). |
+
+  Windows deliveries can also report the WNS codes listed in [Windows troubleshooting](/frameworks/flutter/windows#troubleshooting).
 
   Example: `[PLATFORM_NOT_CONFIGURED] Apple keys not configured`.
 </ResponseField>

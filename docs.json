@@ -71,6 +71,7 @@
                     "pages": [
                       "frameworks/flutter/installation",
                       "frameworks/flutter/push-notifications",
+                      "frameworks/flutter/windows",
                       "frameworks/flutter/error-tracking",
                       "frameworks/flutter/source-maps"
                     ]
@@ -261,6 +262,7 @@
                     "pages": [
                       "ar/frameworks/flutter/installation",
                       "ar/frameworks/flutter/push-notifications",
+                      "ar/frameworks/flutter/windows",
                       "ar/frameworks/flutter/error-tracking",
                       "ar/frameworks/flutter/source-maps"
                     ]
