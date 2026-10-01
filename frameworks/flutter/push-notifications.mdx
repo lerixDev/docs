@@ -56,6 +56,35 @@ override func application(
 }
 ```
 
+## macOS configuration
+
+macOS uses APNs with the same key you uploaded for iOS; no extra dashboard setup is needed. In Xcode, open `macos/Runner`:
+
+1. **Signing & Capabilities:** sign with your Apple team and add **Push Notifications**. An app signed "to run locally" can't receive pushes.
+2. **App Sandbox:** allow **Outgoing Connections (Client)** so the SDK can reach Lerix.
+3. **AppDelegate:** forward the APNs callbacks in `macos/Runner/AppDelegate.swift`:
+
+```swift
+import lerix_flutter
+
+override func application(_ application: NSApplication,
+                          didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+  lerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+}
+
+override func application(_ application: NSApplication,
+                          didFailToRegisterForRemoteNotificationsWithError error: Error) {
+  lerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
+}
+
+override func application(_ application: NSApplication,
+                          didReceiveRemoteNotification userInfo: [String: Any]) {
+  lerix_didReceiveRemoteNotification(application, didReceiveRemoteNotification: userInfo)
+}
+```
+
+<Note>Windows and Linux push aren't supported yet.</Note>
+
 ## Web configuration
 
 Flutter Web is supported by the same `lerix_flutter` package — no separate JS SDK, no Firebase project. Two steps instead of Xcode's:

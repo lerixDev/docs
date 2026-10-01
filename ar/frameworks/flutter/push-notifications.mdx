@@ -56,6 +56,35 @@ override func application(
 }
 ```
 
+## إعداد macOS
+
+يستخدم macOS خدمة APNs بنفس المفتاح الذي رفعته لـ iOS، ولا يحتاج أي إعداد إضافي في لوحة التحكم. افتح `macos/Runner` في Xcode:
+
+1. **Signing & Capabilities:** وقّع التطبيق بحساب فريقك في Apple وأضف **Push Notifications**. التطبيق الموقّع للتشغيل المحلي فقط لا يستقبل الإشعارات.
+2. **App Sandbox:** فعّل **Outgoing Connections (Client)** حتى يتمكن الـ SDK من الاتصال بـ Lerix.
+3. **AppDelegate:** مرّر استدعاءات APNs في `macos/Runner/AppDelegate.swift`:
+
+```swift
+import lerix_flutter
+
+override func application(_ application: NSApplication,
+                          didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+  lerix_didRegisterForRemoteNotifications(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+}
+
+override func application(_ application: NSApplication,
+                          didFailToRegisterForRemoteNotificationsWithError error: Error) {
+  lerix_didFailToRegisterForRemoteNotifications(application, didFailToRegisterForRemoteNotificationsWithError: error)
+}
+
+override func application(_ application: NSApplication,
+                          didReceiveRemoteNotification userInfo: [String: Any]) {
+  lerix_didReceiveRemoteNotification(application, didReceiveRemoteNotification: userInfo)
+}
+```
+
+<Note>إشعارات Windows وLinux غير مدعومة بعد.</Note>
+
 ## إعداد الويب
 
 Flutter Web مدعوم من نفس حزمة `lerix_flutter` — بدون JS SDK منفصل، وبدون مشروع Firebase. خطوتان فقط بدلاً من إعداد Xcode:
