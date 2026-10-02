@@ -229,7 +229,7 @@ Lerix.notifications.setOnNotificationTapped((payload) {
 - **الويب**: يعمل تلقائياً أيضاً، بدون إعداد إضافي — يعرضها عامل الخدمة (service worker) مباشرة كأيقونة/صورة الإشعار.
 - **iOS**: يتطلّب أن يملك تطبيقك **Notification Service Extension** — لا تملك APNs حقل "صورة" أصلياً، لذا يحتاج النظام إلى امتداد صغير لتنزيل الصورة وإرفاقها قبل عرض الإشعار. هذه خطوة إعداد لمرة واحدة لكل تطبيق:
   1. في Xcode: **File → New → Target… → Notification Service Extension**. سمِّه (مثلاً `NotificationServiceExtension`).
-  2. استبدل ملف `NotificationService.swift` المُولَّد بالملف الموجود في حزمة `lerix` عند `ios/NotificationServiceExtension/NotificationService.swift`.
+  2. استبدل ملف `NotificationService.swift` المُولَّد بالملف الموجود في حزمة `lerix_flutter` عند `ios/NotificationServiceExtension/NotificationService.swift`.
   3. ابنِ التطبيق وشغّله — لا حاجة لأي إعداد آخر. يضبط الباك إند تلقائياً علم `mutable-content` الخاص بـ APNs كلما حمل الإشعار قيمة `imageUrl`، وهذا ما يُشغّل الامتداد.
 
 <Note>

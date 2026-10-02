@@ -232,7 +232,7 @@ Set `imageUrl` when sending a notification — from the dashboard's **Send notif
 - **Web**: works automatically, no extra setup — the service worker renders it as the notification's icon/image directly.
 - **iOS**: requires your app to have a **Notification Service Extension** — APNs has no native "image" field, so the OS needs a small extension to download and attach the image before displaying the notification. This is a one-time setup step per app:
   1. In Xcode: **File → New → Target… → Notification Service Extension**. Name it (e.g. `NotificationServiceExtension`).
-  2. Replace the generated `NotificationService.swift` with the one from the `lerix` package at `ios/NotificationServiceExtension/NotificationService.swift`.
+  2. Replace the generated `NotificationService.swift` with the one from the `lerix_flutter` package at `ios/NotificationServiceExtension/NotificationService.swift`.
   3. Build and run — no other configuration needed. The backend automatically sets APNs' `mutable-content` flag whenever a notification carries an `imageUrl`, which is what triggers your extension to run.
 
 <Note>

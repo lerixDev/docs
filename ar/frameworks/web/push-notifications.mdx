@@ -14,7 +14,7 @@ description: "إشعارات المتصفح لـ Lerix — Web Push القياس
   هذه حزمة منفصلة عن SDK الخاص بـ Flutter — `@lerix-dev/lerix-js` مكتبة
   JS/TS صغيرة ومستقلة عن أي إطار عمل، مخصّصة لتطبيقات الويب **غير المبنية
   بـ Flutter** (React، Vue، HTML عادي، إلخ). إذا كان تطبيقك مبنياً بـ
-  Flutter — بما في ذلك Flutter Web — لا تستخدم هذه الحزمة؛ حزمة `lerix`
+  Flutter — بما في ذلك Flutter Web — لا تستخدم هذه الحزمة؛ حزمة `lerix_flutter`
   الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة وبـ API
   واحد. راجع [Flutter — الإشعارات](/ar/frameworks/flutter/push-notifications)
   بدلاً من ذلك.
@@ -155,7 +155,7 @@ await Lerix.clearUser();         // on logout
 على كل منصة:
 
 ```dart
-import 'package:lerix/lerix.dart';
+import 'package:lerix_flutter/lerix_flutter.dart';
 
 void main() {
   Lerix.init(

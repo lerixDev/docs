@@ -23,7 +23,7 @@ description: "أضف Lerix إلى تطبيق Flutter الخاص بك في خطو
 
 ```yaml pubspec.yaml
 dependencies:
-  lerix: ^0.0.1
+  lerix_flutter: ^0.2.0
 ```
 
 ثم نفّذ:
@@ -37,11 +37,11 @@ flutter pub get
 استدعِ `Lerix.init()` في أقرب وقت ممكن — يُفضّل في بداية `main()` داخل `main.dart`. التهيئة تُعِدّ مراقبة الأخطاء والإبلاغ عنها فقط. هي **لا** تُهيّئ الإشعارات؛ استدعِ `Lerix.notifications.init()` بشكل منفصل عند الحاجة لتلك الوحدة.
 
 ```dart main.dart
-import 'package:lerix/lerix.dart';
+import 'package:lerix_flutter/lerix_flutter.dart';
 
 void main() {
   Lerix.init(
-    url: 'https://api.lerix.dev',
+    url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () => runApp(const MyApp()),
@@ -57,7 +57,7 @@ void main() {
 
 | المعامل | النوع | مطلوب | الوصف |
 |-----------|------|----------|-------------|
-| `url` | `String` | نعم | رابط مشروعك (مثال: `https://api.lerix.dev`) |
+| `url` | `String` | نعم | رابط Lerix API لمشروعك: `https://api.lerix.dev/v1/` متبوعاً بمعرّف مشروعك |
 | `apiKey` | `String` | نعم | مفتاح API الخاص بمشروعك من لوحة التحكم |
 | `projectId` | `String` | نعم | معرّف مشروعك من لوحة التحكم |
 | `builder` | `Function` | نعم | دالة تستدعي `runApp()` لبدء تشغيل تطبيقك |
@@ -71,7 +71,7 @@ void main() {
 ```dart main.dart
 void main() {
   Lerix.init(
-    url: 'https://api.lerix.dev',
+    url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () async {
@@ -89,7 +89,7 @@ void main() {
 
 ```dart main.dart
 Lerix.init(
-  url: 'https://api.lerix.dev',
+  url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   debugMode: true,
@@ -103,7 +103,7 @@ Lerix.init(
 
 ```dart main.dart
 Lerix.init(
-  url: 'https://api.lerix.dev',
+  url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   builder: () => runApp(const MyApp()),

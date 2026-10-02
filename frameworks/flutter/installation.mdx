@@ -19,11 +19,11 @@ description: "Add Lerix to your Flutter app in a few steps."
 
 ## 1. Add the dependency
 
-Add `lerix` to your `pubspec.yaml`:
+Add `lerix_flutter` to your `pubspec.yaml`:
 
 ```yaml pubspec.yaml
 dependencies:
-  lerix: ^0.0.1
+  lerix_flutter: ^0.2.0
 ```
 
 Then run:
@@ -37,11 +37,11 @@ flutter pub get
 Call `Lerix.init()` as early as possible — ideally at the top of `main()` in `main.dart`. Initialization sets up error monitoring and reporting. It does **not** initialize push notifications; call `Lerix.notifications.init()` separately when you need that module.
 
 ```dart main.dart
-import 'package:lerix/lerix.dart';
+import 'package:lerix_flutter/lerix_flutter.dart';
 
 void main() {
   Lerix.init(
-    url: 'https://api.lerix.dev',
+    url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () => runApp(const MyApp()),
@@ -57,7 +57,7 @@ void main() {
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | `String` | Yes | Your project URL (e.g. `https://api.lerix.dev`) |
+| `url` | `String` | Yes | The Lerix API URL for your project: `https://api.lerix.dev/v1/` followed by your project ID |
 | `apiKey` | `String` | Yes | Your project API key from the dashboard |
 | `projectId` | `String` | Yes | Your project ID from the dashboard |
 | `builder` | `Function` | Yes | Function that calls `runApp()` to start your app |
@@ -71,7 +71,7 @@ If your `builder` needs async setup before `runApp()`, call `WidgetsFlutterBindi
 ```dart main.dart
 void main() {
   Lerix.init(
-    url: 'https://api.lerix.dev',
+    url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
     apiKey: 'your-api-key',
     projectId: 'your-project-id',
     builder: () async {
@@ -89,7 +89,7 @@ Set `debugMode: true` during development to print SDK logs to the console:
 
 ```dart main.dart
 Lerix.init(
-  url: 'https://api.lerix.dev',
+  url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   debugMode: true,
@@ -103,7 +103,7 @@ Use `onError` to run your own logic when the SDK captures an error — for examp
 
 ```dart main.dart
 Lerix.init(
-  url: 'https://api.lerix.dev',
+  url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
   apiKey: 'your-api-key',
   projectId: 'your-project-id',
   builder: () => runApp(const MyApp()),
