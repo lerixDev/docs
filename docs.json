@@ -156,6 +156,16 @@
                     ]
                   },
                   {
+                    "group": "Edge Functions",
+                    "icon": "bolt",
+                    "pages": [
+                      "frameworks/edge/installation",
+                      "frameworks/edge/error-tracking",
+                      "frameworks/edge/request-tracing",
+                      "frameworks/edge/push-notifications"
+                    ]
+                  },
+                  {
                     "group": "Laravel",
                     "icon": "laravel",
                     "pages": [
@@ -344,6 +354,16 @@
                       "ar/frameworks/aspnet/error-tracking",
                       "ar/frameworks/aspnet/push-notifications",
                       "ar/frameworks/aspnet/request-tracing"
+                    ]
+                  },
+                  {
+                    "group": "Edge Functions",
+                    "icon": "bolt",
+                    "pages": [
+                      "ar/frameworks/edge/installation",
+                      "ar/frameworks/edge/error-tracking",
+                      "ar/frameworks/edge/request-tracing",
+                      "ar/frameworks/edge/push-notifications"
                     ]
                   },
                   {

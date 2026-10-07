@@ -138,3 +138,39 @@ lerix.throwError('Test error');
 ```
 
 Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds, with a resolved stack trace pointing at this exact line.
+
+## Filtering errors
+
+Requires `@lerix-dev/lerix-react` 1.2.0 or later.
+
+Two optional `LerixProvider` options decide which errors are sent. They
+apply to every report: `LerixErrorBoundary`, the global handlers and
+`throwError()`.
+
+```tsx
+<LerixProvider
+  options={{
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    ignoreErrors: ['ResizeObserver loop', /^ChunkLoadError/],
+    beforeSend: (event) => (event.message.includes('extension://') ? null : event),
+  }}
+>
+```
+
+- `ignoreErrors` runs first. A string drops any error whose message contains
+  it, ignoring case. A `RegExp` drops any error whose message it matches.
+  Empty strings are skipped.
+- `beforeSend` then sees only what's left. Return the event (changed or not)
+  to send it, or `null` to drop it. If it throws, the original event is sent
+  and the exception never reaches your app.
+- The message you match against is the issue title, which includes the error
+  class, for example `TypeError: boom`.
+
+`beforeSend` receives a `LerixErrorEvent`:
+`{ message, stack, type, severity, metadata? }`. `stack` is an array of
+frames, already resolved through your source maps.
+
+Lerix also groups repeated errors into one issue and filters common noise on
+the server, for every SDK version. See
+[How errors are grouped into issues](/modules/error-tracking#how-errors-are-grouped-into-issues).

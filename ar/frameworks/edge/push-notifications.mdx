@@ -1,0 +1,104 @@
+---
+title: "Edge Functions — الإشعارات"
+description: "أرسل وجدوِل وحدّث وألغِ الإشعارات من دالة حافة، مثلاً عند webhook لقاعدة بيانات Supabase."
+---
+
+## مقدمة
+
+`lerix.notifications` عميل مُهيكل لـ
+[واجهة REST للإشعارات](/ar/api-reference/push-notifications). من الإعدادات
+الشائعة **Database Webhook** في Supabase يستدعي دالة حافة، فترسل الإشعارات
+إلى المستخدمين المتأثرين بالتغيير.
+
+<Warning>
+  يتطلّب الإرسال **مفتاحاً خاصاً** بصلاحية *إرسال الإشعارات*، يُنشأ من
+  **إعدادات المشروع** في المشروع الذي يستخدمه تطبيقك. وهو ليس مفتاح الـ SDK.
+  احفظه في سرّ (secret) للدالة، ولا تضعه أبداً في كود العميل.
+</Warning>
+
+## الإعداد
+
+```bash
+supabase secrets set LERIX_PUSH_KEY=...
+```
+
+```ts
+const lerix = Lerix.init({
+  apiKey: Deno.env.get('LERIX_KEY')!,
+  projectId: Deno.env.get('LERIX_PROJECT_ID')!,
+  app: { id: 'order-status-push' },
+  notifications: { apiKey: Deno.env.get('LERIX_PUSH_KEY')! },
+});
+```
+
+يأخذ `notifications.projectId` افتراضياً قيمة `projectId` الخاصة بالـ SDK.
+اضبطه عندما تبلّغ دوالك عن أخطائها إلى مشروع ويكون تطبيق الهاتف في مشروع آخر.
+
+## مثال: إشعار عند شحن طلب
+
+أنشئ Database Webhook على `UPDATE` في جدول `orders` يستدعي هذه الدالة:
+
+```ts supabase/functions/order-status-push/index.ts
+Deno.serve(lerix.wrap(async (req) => {
+  const { record, old_record } = await req.json();
+  if (record.status === old_record.status || record.status !== 'shipped') {
+    return new Response('ignored');
+  }
+
+  await lerix.notifications.send({
+    title: 'طلبك في الطريق إليك',
+    body: `تم شحن الطلب رقم ${record.number}.`,
+    externalUserIds: [record.user_id],
+    metadata: { orderId: record.id },
+  });
+  return new Response('sent');
+}));
+```
+
+`externalUserIds` هي معرّفات المستخدمين الخاصة بك، كما تمرّرها إلى `setUser()`
+في حزم SDK الخاصة بالعملاء. يصل إرسال واحد إلى كل جهاز سجّل فيه المستخدم
+دخوله، على كل منصة. راجع [تعريف المستخدمين](/ar/modules/users-identity).
+
+## الإرسال
+
+| الحقل | الوصف |
+|---|---|
+| `title`، `body` | مطلوبان |
+| `externalUserIds` | حتى 1000 من معرّفات مستخدميك؛ لا يمكن دمجه مع الأهداف الأخرى |
+| `deviceTokens` | معرّفات أجهزة Lerix |
+| `sendByTopic` + `topic` | البث إلى مشتركي موضوع |
+| `sound`، `imageUrl`، `metadata` | محتوى اختياري |
+| `sentAt` | سلسلة ISO أو `Date` للجدولة لوقت لاحق |
+
+تحتوي النتيجة على `notificationId`. وفي الإرسال عبر `externalUserIds` تحتوي
+أيضاً على `matchedUsers` و`matchedDevices` و`unknownUserIds` (مستخدمون ليس
+لديهم جهاز بعد، وهذا ليس خطأ).
+
+## التحديث وإلغاء الإرسال والإلغاء وحالة التسليم
+
+```ts
+await lerix.notifications.update(id, { title: 'تم التوصيل', body: 'بالهناء!' });
+await lerix.notifications.unsend(id);      // إزالته من الأجهزة مع الإبقاء على السجل
+await lerix.notifications.cancel(id);      // إيقاف إشعار مجدوَل
+const rows = await lerix.notifications.deliveries(id); // الحالة لكل مستلم
+```
+
+تُلقي أخطاء الواجهة `LerixApiException` مع `code` و`status` القادمين من
+الخادم.
+
+## التحقق من الهوية
+
+عندما يتطلّب المشروع [التحقق من الهوية](/ar/modules/users-identity)، يحتاج
+كل استدعاء لـ `setUser()` إلى `identityHash` يُحسب على خادمك. ودالة الحافة
+مكان مناسب لذلك:
+
+```ts
+import { identityHash } from 'npm:@lerix-dev/lerix-edge';
+
+const hash = await identityHash(Deno.env.get('LERIX_IDENTITY_SECRET')!, user.id);
+return Response.json({ identityHash: hash });
+```
+
+القيمة هي HMAC-SHA256 لمعرّف المستخدم بصيغة hex بأحرف صغيرة، وهي القيمة نفسها
+التي تحسبها حزم SDK الخاصة بـ NestJS وPython و.NET. وهي غير متزامنة (async) هنا
+لأن Web Crypto كذلك.

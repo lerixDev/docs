@@ -1,0 +1,130 @@
+---
+title: "Edge Functions — تتبع الأخطاء"
+description: "ما تبلّغ عنه lerix.wrap() من دالة الحافة، واستجابة الخطأ، والأخطاء غير المعالَجة، والإبلاغ اليدوي."
+---
+
+## مقدمة
+
+بعد [التثبيت](/ar/frameworks/edge/installation)، تصل الأخطاء إلى لوحة التحكم
+بثلاث طرق: يُلقيها معالج مغلَّف، أو تفلت من كل المعالجات فتصبح أخطاء غير
+معالَجة، أو تبلّغ عنها بنفسك.
+
+## الأخطاء التي يُلقيها المعالج
+
+تلتقط `lerix.wrap(handler)` ما يُلقيه المعالج، وتبلّغ عنه، وتجيب بدلاً منه:
+
+| المُلقى | الاستجابة | يُبلَّغ عنه بوصفه |
+|---|---|---|
+| خطأ عادي | `500` `{ "statusCode": 500, "message": "Internal server error" }` | `crash`، بخطورة حرجة |
+| خطأ يحمل `status` / `statusCode` / `getStatus()` من فئة `5xx` | تلك الحالة | `runtime_error`، بخطورة عالية |
+| خطأ بحالة من فئة `4xx` (مثل `HTTPException(404)` في Hono) | تلك الحالة، مع رسالة الخطأ | لا يُبلَّغ عنه |
+
+يحمل كل تقرير الطلب: الطريقة، والعنوان **دون سلسلة الاستعلام**، والمسار،
+والحالة، ومعرّف الطلب (`x-request-id` أو `x-correlation-id` أو `cf-ray` أو
+`x-vercel-id`). لا يوجد في دوال الحافة موجّه (router) يُسأل عن المسار، لذا
+تُستبدل مقاطع المسار التي تشبه القيم: يُبلَّغ عن `/orders/8812/items` بصيغة
+`/orders/:id/items`.
+
+يظل الخطأ يُطبع عبر `console.error`، فيبقى ظاهراً في سجلات منصتك. مرّر
+`logErrors: false` لإيقاف ذلك.
+
+### تخصيص الاستجابة
+
+```ts
+Deno.serve(lerix.wrap(handler, {
+  onError: (error, request) => Response.json({ error: 'Something went wrong' }, { status: 500 }),
+}));
+```
+
+### اختيار ما يُبلَّغ عنه
+
+```ts
+Lerix.init({
+  // ...
+  shouldCapture: (error, request) => request.route !== '/health',
+  captureServerErrors: true, // also report a 5xx the handler returns instead of throwing
+});
+```
+
+## الأخطاء غير المعالَجة
+
+الأخطاء التي تفلت من كل المعالجات، مثل وعد مرفوض لم ينتظره أحد، يُبلَّغ عنها
+بوصفها `crash` عبر حدثَي `error` و`unhandledrejection` في بيئة التشغيل
+(Supabase/Deno وCloudflare Workers وVercel Edge).
+
+ينهي Supabase العامل (worker) عند خطأ كهذا، وعادةً قبل أن يُرسَل أي تقرير.
+لذلك يؤجّل الـ SDK السلوك الافتراضي لبيئة التشغيل حتى يخرج التقرير، ثم يعيد
+رمي الخطأ فينتهي العامل كما كان سينتهي. مرّر `exitOnUnhandled: false` لإبقاء
+العامل يخدم الطلبات بدلاً من ذلك.
+
+في Supabase تُرسَل التقارير المصفوفة أيضاً عند `beforeunload`، قُبيل إيقاف
+العازل (isolate). اضبط `captureUnhandled: false` لتعطيل كل ذلك.
+
+## الإبلاغ عن الأخطاء بنفسك
+
+```ts
+try {
+  await chargeCard(order);
+} catch (error) {
+  lerix.captureException(error, { severity: BugSeverity.CRITICAL, metadata: { orderId: order.id } });
+  return Response.json({ error: 'payment failed' }, { status: 402 });
+}
+
+lerix.captureMessage('Stripe webhook arrived out of order', { type: BugType.LOGIC_BUG });
+```
+
+داخل معالج مغلَّف، يُرفق الطلب الحالي تلقائياً. يتطلّب ذلك
+`AsyncLocalStorage`: توفّره Supabase وDeno وBun وCloudflare مع `nodejs_compat`،
+وفي Vercel Edge يُستخدم إذا أتاحته بيئة التشغيل كمتغير عام. أما الأخطاء التي
+تُرمى من المعالج فتحمل الطلب في كل الأحوال.
+
+لا تُلقي أيٌّ من الدالتين استثناءً أبداً. وخارج `wrap()` (دالة بنمط cron، أو
+مستهلك لطابور)، سلّم عملية التفريغ (flush) إلى المنصة حتى لا يضيع التقرير عند
+توقف العازل:
+
+```ts
+EdgeRuntime.waitUntil(lerix.flush()); // Supabase
+ctx.waitUntil(lerix.flush());         // Cloudflare
+```
+
+<a id="filter-and-edit-reports"></a>
+
+## ترشيح التقارير وتعديلها
+
+تعمل `ignoreErrors` و`beforeSend` كما في كل حزم Lerix SDK الأخرى:
+
+```ts
+Lerix.init({
+  // ...
+  ignoreErrors: ['AbortError', /^NetworkError/],
+  beforeSend: (event) => {
+    if (event.message.includes('password')) return null; // drop
+    return { ...event, metadata: { ...event.metadata, region: Deno.env.get('SB_REGION') } };
+  },
+});
+```
+
+تتطابق السلسلة النصية إذا ظهرت في أي موضع من الرسالة (دون تمييز حالة
+الأحرف)؛ ويتطابق `RegExp` عندما يجد تطابقاً. تعمل `beforeSend` بعد
+`ignoreErrors`؛ أعِد `null` لإسقاط التقرير. وإذا رمت استثناءً، يُرسَل التقرير
+الأصلي.
+
+## متى تُرسَل التقارير
+
+تسلّم `wrap()` الإرسال إلى أول `waitUntil` تجدها، فلا تتأخر الاستجابة:
+
+| بيئة التشغيل | `waitUntil` |
+|---|---|
+| Supabase Edge Functions | `EdgeRuntime.waitUntil`، تلقائياً |
+| Cloudflare Workers | `ctx` الخاص بالمعالج، تلقائياً |
+| middleware في Next.js | `event` الخاص بالمعالج، تلقائياً |
+| مسارات edge في Vercel | مرّر `{ waitUntil }` من `@vercel/functions` |
+| خوادم Deno وBun | لا يوجد: تنتظر الاستجابة التقرير، بحدّ أقصى `flushTimeoutMs` |
+
+## القيود
+
+- الأخطاء التي تُلقى أثناء قراءة جسم استجابة **متدفّقة** (streamed) تحدث بعد
+  أن تكون `wrap()` قد أعادت، فلا تراها. التقطها داخل التدفق واستدعِ
+  `captureException`.
+- تشير تتبّعات المكدس من Deno إلى ملفات TypeScript مباشرة. أما Workers
+  المجمَّعة (bundled) وبُنى Vercel فتُظهر المواضع داخل الحزمة المجمَّعة.

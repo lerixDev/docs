@@ -29,6 +29,102 @@ icon: "bug"
 `performance`) و`bugSeverity` (من `critical` إلى `low`) لتتمكّن من الفرز حسب
 الأولوية. راجع دليل منصتك لمعرفة القائمة الكاملة للقيم.
 
+<a id="how-errors-are-grouped-into-issues"></a>
+
+## كيف تُجمَّع الأخطاء في مشكلات
+
+لا ينشئ Lerix مشكلة (issue) جديدة لكل تقرير. تُجمَّع التقارير المتكرّرة للخطأ
+نفسه في مشكلة واحدة، فالخطأ الذي يحدث 10,000 مرة يظهر مرة واحدة مع عدّاد.
+
+يحدّد أمران المشكلة التي ينتمي إليها التقرير:
+
+- **السطر الأول من رسالة الخطأ بعد إخفاء الأجزاء المتغيّرة.** تُستبدَل
+  الأرقام ومعرّفات UUID والمعرّفات الست عشرية (hex) وعناوين البريد
+  الإلكتروني والروابط قبل المقارنة. فرسالتا `Order 1234 not found` و
+  `Order 5678 not found` مشكلة واحدة. أما رموز الأخطاء مثل `#441` أو
+  `PGRST202` فتبقى كما هي، فتظلّ الرموز المختلفة مشكلات مختلفة.
+- **أول إطار في المكدس (stack frame) ينتمي إلى تطبيقك.** تُتجاوَز إطارات
+  الـ SDK الخاص بـ Lerix وبيئة التشغيل (runtime) والاعتماديات (مثل
+  `node_modules` أو `package:flutter` أو `System.*`). ويُستخدم اسم الدالة
+  واسم الملف فقط، مع تجاهل أرقام الأسطر والأعمدة وبصمات المحتوى التي يضيفها
+  المُجمِّع (bundler) إلى أسماء الملفات (مثل `chunk-Cr8GYWvZ.js`).
+
+ولأن أرقام الأسطر وبصمات الحزم لا تُحتسب، يبقى خطأ الويب المشكلةَ نفسها عبر
+عمليات النشر بدلاً من أن يبدأ من جديد مع كل بناء.
+
+يجري التجميع على خادم Lerix، لذا ينطبق تلقائياً على جميع إصدارات الـ SDK.
+
+### ما تعرضه لوحة التحكم لكل مشكلة
+
+| الحقل | المعنى |
+|-------|---------|
+| **Occurrences** (مرات الحدوث) | العدد الإجمالي للتقارير المجمَّعة في المشكلة |
+| **Affected users** (المستخدمون المتأثرون) | عدد المستخدمين المختلفين الذين واجهوا المشكلة |
+| **First seen** (أول ظهور) | وقت أول تقرير عن المشكلة |
+| **Last seen** (آخر ظهور) | وقت أحدث تقرير عن المشكلة |
+
+تُرتَّب قائمة المشكلات حسب **Last seen**، فيظهر ما يحدث الآن في الأعلى.
+
+### الحالة والانتكاسات والمشكلات المتجاهَلة
+
+تنطبق الحالة والخطورة والشخص المُسنَد إليه على المشكلة كلها، لا على تقرير
+واحد.
+
+- **الانتكاسات (regressions).** إذا تكرّرت مشكلة وضعتَ عليها حالة «تم الحل»
+  أو «مغلقة»، يُعاد فتحها تلقائياً ويتلقّى أعضاء المشروع بريد تغيّر الحالة.
+- **المشكلات المتجاهَلة.** تستمر المشكلة المتجاهَلة في عدّ مرات الحدوث، لكنها
+  تبقى متجاهَلة ولا ترسل أي إشعارات، وتُخفى من القائمة الافتراضية. استخدم
+  مرشّح **Ignored** لعرضها.
+
+### قواعد الضوضاء المدمجة
+
+يرشّح الخادم بضعة أنواع من التقارير لا تشير أبداً إلى خطأ في كودك. تنطبق هذه
+القواعد على كل مشروع وكل إصدار من الـ SDK:
+
+| التقرير | ما يحدث |
+|--------|--------------|
+| `ResizeObserver loop limit exceeded` و`ResizeObserver loop completed with undelivered notifications` | يُحذف |
+| `Script error.` (خطأ سكربت من أصل مختلف cross-origin، يخفي فيه المتصفح الرسالة والمكدس) | يُحذف |
+| الأخطاء التي تأتي كل إطارات مكدسها من إضافات المتصفح (`chrome-extension://`، `moz-extension://`، `safari-extension://`، ...) | يُحذف |
+| خطأ Flutter `A RenderFlex overflowed by ...` (أي `A Render... overflowed by`) | يُحتفَظ به، لكن كخطأ واجهة (UI bug) بخطورة **Low** بدلاً من انهيار حرج |
+
+كذلك لا تُبلغ حزم SDK الخاصة بالخادم (NestJS وPython وASP.NET Core) عن
+استثناءات HTTP من فئة 4xx افتراضياً، فهي أخطاء من جهة العميل وليست أخطاء في
+الخادم.
+
+<a id="filtering-errors-in-your-app"></a>
+
+## ترشيح الأخطاء في تطبيقك
+
+للضوضاء الخاصة بتطبيقك، تقبل كل حزمة SDK خيارين عند التهيئة:
+
+- **قائمة تجاهل.** النص (string) يحذف أي خطأ تحتوي رسالته عليه، دون تمييز
+  حالة الأحرف. والتعبير النمطي (regular expression) يحذف أي خطأ تطابقه
+  رسالته. تُتجاوَز النصوص الفارغة.
+- **دالة قبل الإرسال (before-send).** تستقبل حدث الخطأ، فتعيده كما هو
+  لإرساله، أو تعيد نسخة معدّلة منه (مثلاً بعد إخفاء رمز وصول)، أو لا تعيد شيئاً
+  (`null` أو `nil` أو `None`) لحذفه.
+
+تعمل قائمة التجاهل أولاً، ولا ترى الدالة إلا ما تبقّى. إذا رمت الدالة
+استثناءً، يُرسَل الحدث الأصلي ولا يصل الاستثناء إلى تطبيقك. وتجري المطابقة في
+الحالتين على عنوان المشكلة، الذي يتضمّن صنف الخطأ، مثل `TypeError: boom`.
+
+| الـ SDK | الخيارات | أدنى إصدار |
+|-----|---------|-----------------|
+| [React](/ar/frameworks/react/error-tracking#filtering-errors) | `ignoreErrors`، `beforeSend` | `@lerix-dev/lerix-react` 1.2.0 |
+| [Next.js](/ar/frameworks/nextjs/error-tracking#filtering-errors) | `ignoreErrors`، `beforeSend` | `@lerix-dev/lerix-nextjs` 1.3.0 |
+| [Angular](/ar/frameworks/angular/error-tracking#filtering-errors) | `ignoreErrors`، `beforeSend` | `@lerix-dev/lerix-angular` 1.2.0 |
+| [Flutter](/ar/frameworks/flutter/error-tracking#filtering-errors) | `ignoreErrors`، `beforeSend` | `lerix_flutter` 0.3.0 |
+| [Swift (iOS/macOS)](/ar/frameworks/ios/error-tracking#filtering-errors) | `ignoreErrors`، `ignoreErrorPatterns`، `beforeSend` | 1.2.0 |
+| [Kotlin (Android)](/ar/frameworks/android/error-tracking#filtering-errors) | `ignoreErrors`، `ignoreErrorPatterns`، `beforeSend` | 1.2.0 |
+| [NestJS](/ar/frameworks/nestjs/error-tracking#filtering-errors) | `ignoreErrors`، `beforeSend` | `@lerix-dev/lerix-nestjs` 1.4.0 |
+| [Python](/ar/frameworks/python/error-tracking#filtering-errors) | `ignore_errors`، `before_send` | `lerix` 0.4.0 |
+| [ASP.NET Core](/ar/frameworks/aspnet/error-tracking#filtering-errors) | `IgnoreErrors`، `IgnoreErrorPatterns`، `BeforeSend` | `Lerix` / `Lerix.AspNetCore` 0.4.0 |
+
+تحصل حزم React وNext.js وAngular على هذين الخيارين من
+`@lerix-dev/lerix-core` 1.3.0. لا تحتوي حزم SDK على أنماط تجاهل مدمجة خاصة
+بها، إذ تتولّى قواعد الخادم أعلاه الضوضاء الشائعة.
+
 <a id="source-maps"></a>
 
 ## خرائط المصدر (Source maps)

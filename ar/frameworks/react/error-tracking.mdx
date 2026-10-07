@@ -43,7 +43,7 @@ function MyComponent() {
 | المعامل | النوع | مطلوب | الوصف |
 |-----------|------|----------|-------------|
 | `issue` | `string` | نعم | رسالة الخطأ أو وصفه |
-| `stack` | `string[]` | لا | أطر تتبّع المكدس (Stack trace). إذا حُذف، يُلتقط تلقائياً من موضع الاستدعاء — راجع [الالتقاط التلقائي لتتبّع المكدس](#الالتقاط-التلقائي-لتتبع-المكدس) أدناه |
+| `stack` | `string[]` | لا | أطر تتبّع المكدس (Stack trace). إذا حُذف، يُلتقط تلقائياً من موضع الاستدعاء — راجع [الالتقاط التلقائي لتتبّع المكدس](#الالتقاط-التلقائي-لتتبّع-المكدس) أدناه |
 | `type` | `BugType` | لا | تصنيف نوع الخطأ (الافتراضي: `RUNTIME_ERROR`) |
 | `severity` | `BugSeverity` | لا | مستوى الخطورة (الافتراضي: `MEDIUM`) |
 | `metadata` | `Record<string, unknown>` | لا | سياق إضافي يُرفق بالتقرير |
@@ -143,3 +143,40 @@ lerix.throwError('Test error');
 ```
 
 ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ، مع تتبّع مكدس محلَّل يشير إلى هذا السطر بالتحديد.
+
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب `@lerix-dev/lerix-react` بالإصدار 1.2.0 أو أحدث.
+
+يحدّد خياران اختياريان في `LerixProvider` الأخطاء التي تُرسَل. ينطبقان على
+كل تقرير: `LerixErrorBoundary`، والمعالجات العامة، و`throwError()`.
+
+```tsx
+<LerixProvider
+  options={{
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    ignoreErrors: ['ResizeObserver loop', /^ChunkLoadError/],
+    beforeSend: (event) => (event.message.includes('extension://') ? null : event),
+  }}
+>
+```
+
+- تعمل `ignoreErrors` أولاً. النص (string) يحذف أي خطأ تحتوي رسالته عليه،
+  دون تمييز حالة الأحرف. والتعبير `RegExp` يحذف أي خطأ تطابقه رسالته.
+  تُتجاوَز النصوص الفارغة.
+- ثم لا ترى `beforeSend` إلا ما تبقّى. أعِد الحدث (معدّلاً أو كما هو)
+  لإرساله، أو أعِد `null` لحذفه. إذا رمت استثناءً، يُرسَل الحدث الأصلي ولا
+  يصل الاستثناء إلى تطبيقك.
+- الرسالة التي تطابقها هي عنوان المشكلة، وتتضمّن صنف الخطأ، مثل
+  `TypeError: boom`.
+
+تستقبل `beforeSend` كائن `LerixErrorEvent`:
+`{ message, stack, type, severity, metadata? }`. والحقل `stack` مصفوفة من
+الإطارات، محلَّلة مسبقاً عبر خرائط المصدر.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).

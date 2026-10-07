@@ -69,6 +69,50 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
 You can also extend `LerixExceptionFilter` and override `catch` to customise
 the response while keeping the reporting.
 
+## Filtering errors
+
+Requires `@lerix-dev/lerix-nestjs` 1.4.0 or later.
+
+Two options decide what leaves the process. They apply to every report,
+whatever its origin: the global filter, uncaught exceptions and unhandled
+rejections, and `captureException` / `captureMessage`. Use them for
+message-based filtering; use `shouldCapture` (above) to decide by
+exception or request.
+
+```ts app.module.ts
+import { LerixErrorEvent, LerixModule } from '@lerix-dev/lerix-nestjs';
+
+LerixModule.forRoot({
+  apiKey, projectId,
+  // A string matches when it appears anywhere in the message (case-insensitive);
+  // a RegExp matches when it finds a match in the message. Blank strings are skipped.
+  ignoreErrors: ['ECONNRESET', /^AbortError:/],
+  // Runs after ignoreErrors. Return the event (changed or not) to send it, or null to drop it.
+  beforeSend: (event: LerixErrorEvent) => {
+    if (event.metadata?.['tenant'] === 'load-test') return null;
+    return { ...event, message: event.message.replace(/\b\d{6,}\b/g, '<id>') };
+  },
+});
+```
+
+- `ignoreErrors` runs first, then `beforeSend` sees only what's left.
+- The message matched and passed to `beforeSend` is the issue title shown in
+  the dashboard, for example `TypeError: Cannot read properties of undefined`.
+- The event has `message`, `stack` (`at ...` lines), `type` (`BugType`),
+  `severity` (`BugSeverity`) and `metadata` (what you passed to the capture
+  call, or the request context from the filter). Device, app and runtime
+  details are added after the hook.
+- If `beforeSend` throws, the original event is sent and the error is only
+  logged. It is never reported or rethrown.
+- A dropped report does not pin its request's trace.
+
+`HttpException`s below 500 are already skipped by the default
+`shouldCapture`.
+
+Lerix also groups repeated errors into one issue and filters common noise on
+the server, for every SDK version. See
+[How errors are grouped into issues](/modules/error-tracking#how-errors-are-grouped-into-issues).
+
 ## Report an error manually
 
 ```ts orders.service.ts

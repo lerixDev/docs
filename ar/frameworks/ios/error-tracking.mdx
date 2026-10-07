@@ -96,3 +96,43 @@ Lerix.throwError("Test error", stack: Thread.callStackSymbols)
 ```
 
 ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب الـ SDK الخاص بـ iOS/macOS بالإصدار 1.2.0 أو أحدث.
+
+احذف تقارير الأخطاء أو أعِد كتابتها على الجهاز قبل إرسالها. يعمل الترشيح
+على كل تقرير: استدعاءات `throwError` اليدوية، وتقارير الأعطال التي يحفظها
+معالج الأعطال وتُرسَل عند التشغيل التالي.
+
+```swift
+Lerix.initialize(
+    apiKey: "<project api key>",
+    projectId: "<project slug>",
+    // Dropped if any entry is a case-insensitive substring of the message.
+    ignoreErrors: ["The network connection was lost"],
+    // Dropped if any regex matches anywhere in the message.
+    ignoreErrorPatterns: [try! NSRegularExpression(pattern: "^NSURLErrorDomain -10\\d{2}")],
+    // Runs after the ignore lists, right before sending. Return the
+    // (optionally modified) event to send it, or nil to drop it.
+    beforeSend: { event in
+        var event = event
+        event.message = event.message.replacingOccurrences(of: "secret", with: "[redacted]")
+        if event.severity == .low { return nil }
+        return event
+    }
+)
+```
+
+- تعمل `ignoreErrors` (`[String]`) و`ignoreErrorPatterns`
+  (`[NSRegularExpression]`) أولاً. تُتجاوَز النصوص الفارغة.
+- ثم تستقبل `beforeSend` كائن `LerixErrorEvent` بالحقول `message` و`stack`
+  و`type` و`severity` و`metadata`، وكلها قابلة للتعديل. أعِده (معدّلاً أو كما
+  هو) لإرساله، أو أعِد `nil` لحذفه.
+- الرسالة التي تطابقها هي عنوان المشكلة، وتتضمّن صنف الخطأ.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).

@@ -94,3 +94,44 @@ Lerix.throwError("Test error")
 ```
 
 ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب الـ SDK الخاص بـ Android بالإصدار 1.2.0 أو أحدث.
+
+احذف الأخطاء المزعجة أو نظّف البيانات قبل أن تغادر الجهاز. ينطبق الترشيح
+على كل خطأ يرسله الـ SDK: `Lerix.throwError` والأعطال غير الملتقطة (يُفحص
+العطل عند إرساله في التشغيل التالي).
+
+```kotlin
+Lerix.initialize(
+    context = this,
+    apiKey = "YOUR_PROJECT_API_KEY",
+    projectId = "YOUR_PROJECT_ID",
+    // Dropped when the message contains any of these (case-insensitive).
+    ignoreErrors = listOf("Read timed out", "Software caused connection abort"),
+    // Dropped when the message matches any of these regexes (containsMatchIn).
+    ignoreErrorPatterns = listOf(Regex("^java\\.net\\.\\w+Exception")),
+    // Runs after the ignore lists. Return the event (optionally modified) to
+    // send it, or null to drop it.
+    beforeSend = { event ->
+        if (event.metadata?.get("debugOnly") == true) null
+        else event.copy(message = event.message.replace(Regex("token=\\S+"), "token=[redacted]"))
+    },
+)
+```
+
+- تعمل `ignoreErrors` (`List<String>`) و`ignoreErrorPatterns` (`List<Regex>`)
+  أولاً. تُتجاوَز عناصر `ignoreErrors` الفارغة أو التي تحتوي مسافات فقط.
+- ثم تستقبل `beforeSend` كائن `LerixErrorEvent` بالحقول `message` و`stack`
+  و`type` و`severity` و`metadata`. أعِده (معدّلاً أو كما هو) لإرساله، أو أعِد
+  `null` لحذفه. تُستدعى على خيط (thread) في الخلفية.
+- إذا رمت `beforeSend` استثناءً، يُرسَل الحدث الأصلي ويُبتلَع الاستثناء
+  (ويُسجَّل في `debugMode`).
+- الرسالة التي تطابقها هي عنوان المشكلة، وتتضمّن صنف الخطأ.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).

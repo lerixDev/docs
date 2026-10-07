@@ -44,7 +44,7 @@ export function MyComponent() {
 | المعامل | النوع | مطلوب | الوصف |
 |-----------|------|----------|-------------|
 | `issue` | `string` | نعم | رسالة الخطأ أو وصفه |
-| `stack` | `string[]` | لا | أطر تتبّع المكدس. إذا حُذف، يُلتقط تلقائياً من موضع الاستدعاء — راجع [الالتقاط التلقائي لتتبّع المكدس](#الالتقاط-التلقائي-لتتبع-المكدس) أدناه |
+| `stack` | `string[]` | لا | أطر تتبّع المكدس. إذا حُذف، يُلتقط تلقائياً من موضع الاستدعاء — راجع [الالتقاط التلقائي لتتبّع المكدس](#الالتقاط-التلقائي-لتتبّع-المكدس) أدناه |
 | `type` | `BugType` | لا | تصنيف نوع الخطأ (الافتراضي: `RUNTIME_ERROR`) |
 | `severity` | `BugSeverity` | لا | مستوى الخطورة (الافتراضي: `MEDIUM`) |
 | `metadata` | `Record<string, unknown>` | لا | سياق إضافي يُرفق بالتقرير |
@@ -140,3 +140,73 @@ lerix.throwError('Test error');
 ```
 
 ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ، مع تتبّع مكدس محلَّل يشير إلى هذا السطر بالتحديد.
+
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب `@lerix-dev/lerix-nextjs` بالإصدار 1.3.0 أو أحدث.
+
+يحدّد خياران اختياريان في `LerixNextProvider` الأخطاء التي تُرسَل. ينطبقان
+على كل تقرير: `LerixErrorBoundary`، و`reportCaughtError` في `error.tsx`،
+والمعالجات العامة.
+
+لا يمكن تمرير الدوال وتعابير RegExp كخصائص (props) من مكوّن خادم (Server
+Component)، لذا اضبط هذين الخيارين في مكوّن عميل صغير خاص بك. يبقى
+`apiKey` و`projectId` مأخوذين من متغيّرات البيئة `NEXT_PUBLIC_`:
+
+```tsx app/lerix.tsx
+'use client';
+import { LerixNextProvider } from '@lerix-dev/lerix-nextjs';
+
+export function Lerix({ children }: { children: React.ReactNode }) {
+  return (
+    <LerixNextProvider
+      options={{
+        ignoreErrors: ['ResizeObserver loop', /^ChunkLoadError/],
+        beforeSend: (event) => (event.message.includes('extension://') ? null : event),
+      }}
+    >
+      {children}
+    </LerixNextProvider>
+  );
+}
+```
+
+ثم استخدمه في `layout.tsx` بدلاً من `LerixNextProvider`:
+
+```tsx app/layout.tsx
+import { LerixErrorBoundary } from '@lerix-dev/lerix-nextjs';
+import { Lerix } from './lerix';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Lerix>
+          <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
+            {children}
+          </LerixErrorBoundary>
+        </Lerix>
+      </body>
+    </html>
+  );
+}
+```
+
+- تعمل `ignoreErrors` أولاً. النص (string) يحذف أي خطأ تحتوي رسالته عليه،
+  دون تمييز حالة الأحرف. والتعبير `RegExp` يحذف أي خطأ تطابقه رسالته.
+  تُتجاوَز النصوص الفارغة.
+- ثم لا ترى `beforeSend` إلا ما تبقّى. أعِد الحدث (معدّلاً أو كما هو)
+  لإرساله، أو أعِد `null` لحذفه. إذا رمت استثناءً، يُرسَل الحدث الأصلي ولا
+  يصل الاستثناء إلى تطبيقك.
+- الرسالة التي تطابقها هي عنوان المشكلة، وتتضمّن صنف الخطأ، مثل
+  `TypeError: boom`.
+
+تستقبل `beforeSend` كائن `LerixErrorEvent`:
+`{ message, stack, type, severity, metadata? }`. والحقل `stack` مصفوفة من
+الإطارات، محلَّلة مسبقاً عبر خرائط المصدر.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).

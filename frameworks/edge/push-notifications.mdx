@@ -1,0 +1,104 @@
+---
+title: "Edge Functions — Push Notifications"
+description: "Send, schedule, update and unsend push notifications from an edge function, for example on a Supabase database webhook."
+---
+
+## Introduction
+
+`lerix.notifications` is a typed client for the
+[push notifications REST API](/api-reference/push-notifications). A common
+setup is a Supabase **Database Webhook** that calls an edge function, which
+pushes to the users affected by the change.
+
+<Warning>
+  Sending needs a **private key** with the *send push notifications*
+  permission, created in the **Project Settings** of the project your app
+  uses. It is not the SDK key. Keep it in a
+  function secret, never in client code.
+</Warning>
+
+## Configure
+
+```bash
+supabase secrets set LERIX_PUSH_KEY=...
+```
+
+```ts
+const lerix = Lerix.init({
+  apiKey: Deno.env.get('LERIX_KEY')!,
+  projectId: Deno.env.get('LERIX_PROJECT_ID')!,
+  app: { id: 'order-status-push' },
+  notifications: { apiKey: Deno.env.get('LERIX_PUSH_KEY')! },
+});
+```
+
+`notifications.projectId` defaults to the SDK's `projectId`. Set it when your
+functions report to one project and your mobile app lives in another.
+
+## Example: push when an order ships
+
+Create a Database Webhook on `UPDATE` of `orders` that calls this function:
+
+```ts supabase/functions/order-status-push/index.ts
+Deno.serve(lerix.wrap(async (req) => {
+  const { record, old_record } = await req.json();
+  if (record.status === old_record.status || record.status !== 'shipped') {
+    return new Response('ignored');
+  }
+
+  await lerix.notifications.send({
+    title: 'Your order is on its way',
+    body: `Order #${record.number} has shipped.`,
+    externalUserIds: [record.user_id],
+    metadata: { orderId: record.id },
+  });
+  return new Response('sent');
+}));
+```
+
+`externalUserIds` are your own user ids, as passed to `setUser()` in the
+client SDKs. One send reaches every device the user is signed in on, on every
+platform. See [Users & Identity](/modules/users-identity).
+
+## Send
+
+| Field | Description |
+|---|---|
+| `title`, `body` | Required |
+| `externalUserIds` | Up to 1000 of your user ids; can't be combined with the other targets |
+| `deviceTokens` | Lerix device ids |
+| `sendByTopic` + `topic` | Broadcast to a topic's subscribers |
+| `sound`, `imageUrl`, `metadata` | Optional content |
+| `sentAt` | ISO string or `Date` to schedule for later |
+
+The result has the `notificationId`. For `externalUserIds` sends it also has
+`matchedUsers`, `matchedDevices` and `unknownUserIds` (users with no device
+yet, which is not an error).
+
+## Update, unsend, cancel, deliveries
+
+```ts
+await lerix.notifications.update(id, { title: 'Delivered', body: 'Enjoy!' });
+await lerix.notifications.unsend(id);      // remove from devices, keep history
+await lerix.notifications.cancel(id);      // stop a scheduled one
+const rows = await lerix.notifications.deliveries(id); // per-recipient status
+```
+
+API errors throw `LerixApiException` with the backend's `code` and `status`.
+
+## Identity verification
+
+When the project requires
+[identity verification](/modules/users-identity), each `setUser()` call needs
+an `identityHash` computed on your server. An edge function is a good place
+for it:
+
+```ts
+import { identityHash } from 'npm:@lerix-dev/lerix-edge';
+
+const hash = await identityHash(Deno.env.get('LERIX_IDENTITY_SECRET')!, user.id);
+return Response.json({ identityHash: hash });
+```
+
+It is the lowercase hex HMAC-SHA256 of the user id, the same value the NestJS,
+Python and .NET SDKs compute. It is async here because Web Crypto is.

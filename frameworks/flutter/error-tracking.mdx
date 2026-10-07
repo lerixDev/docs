@@ -89,3 +89,43 @@ await Lerix.throwError(
 ```
 
 Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
+
+## Filtering errors
+
+Requires `lerix_flutter` 0.3.0 or later.
+
+Two optional `Lerix.init` options decide which errors are sent. They apply
+to every report: uncaught Flutter, Dart and zone errors, `Lerix.throwError`,
+and web.
+
+```dart
+Lerix.init(
+  // ...
+  ignoreErrors: [
+    'SocketException', // case-insensitive substring
+    RegExp(r'^HttpException: 40[13]'), // RegExp, matched with hasMatch
+  ],
+  beforeSend: (event) {
+    if (event.metadata?['test'] == true) return null; // drop it
+    return event.copyWith(
+      message: event.message.replaceAll(RegExp(r'token=\S+'), 'token=***'),
+    );
+  },
+  builder: () => runApp(const MyApp()),
+);
+```
+
+- `ignoreErrors` (`List<Pattern>`) runs first. A `String` drops any error
+  whose message contains it, ignoring case. Empty or whitespace-only strings
+  are skipped. A `RegExp` drops any error whose message it matches.
+- `beforeSend` then gets a `LerixErrorEvent` (`message`, `stack`, `type`,
+  `severity`, `metadata`). Return it to send it, return a changed copy from
+  `copyWith`, or return `null` to drop it. If `beforeSend` throws, the original
+  report is sent and the exception is never rethrown into your app.
+- A dropped report is not sent and doesn't call `onError`.
+- The message you match against is the issue title, which includes the error
+  class.
+
+Lerix also groups repeated errors into one issue and filters common noise on
+the server, for every SDK version. See
+[How errors are grouped into issues](/modules/error-tracking#how-errors-are-grouped-into-issues).

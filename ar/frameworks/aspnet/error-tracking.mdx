@@ -58,6 +58,58 @@ app.UseAuthorization();
 app.MapControllers();
 ```
 
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب `Lerix` / `Lerix.AspNetCore` بالإصدار 0.4.0 أو أحدث.
+
+تحدّد ثلاث خصائص في `LerixOptions` ما يغادر العملية (process). تنطبق على كل
+تقرير أياً كان مصدره: وسيط (middleware) ASP.NET Core، ومعالجات مستوى
+العملية، و`CaptureException` / `CaptureMessage`. استخدمها للترشيح حسب
+الرسالة، واستخدم `ShouldCapture` (أعلاه) للقرار حسب الاستثناء أو الطلب أو
+الحالة.
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    // A string matches when it appears anywhere in the message (case-insensitive, blank entries are skipped).
+    o.IgnoreErrors.Add("The client reset the request stream");
+    // A Regex matches when it finds a match in the message.
+    o.IgnoreErrorPatterns.Add(new Regex("^TaskCanceledException"));
+    // Runs after the ignore lists. Return the event (changed or not) to send it, or null to drop it.
+    o.BeforeSend = e =>
+    {
+        if (e.Metadata != null && e.Metadata.TryGetValue("tenant", out var t) && (string?)t == "load-test") return null;
+        e.Message = Regex.Replace(e.Message, @"\b\d{6,}\b", "<id>");
+        return e;
+    };
+});
+```
+
+يمكن أيضاً ربط `IgnoreErrors` من `appsettings.json`:
+
+```json appsettings.json
+{ "Lerix": { "IgnoreErrors": ["The client reset the request stream"] } }
+```
+
+- تعمل `IgnoreErrors` (`IList<string>`) و`IgnoreErrorPatterns` (`IList<Regex>`)
+  أولاً، ثم لا ترى `BeforeSend` (`Func<LerixErrorEvent, LerixErrorEvent?>`)
+  إلا ما تبقّى.
+- الرسالة التي تُطابَق وتُمرَّر إلى `BeforeSend` هي عنوان المشكلة المعروض في
+  لوحة التحكم، مثل `InvalidOperationException: boom`.
+- يحتوي `LerixErrorEvent` على `Message` و`Stack` (أسطر `at ...`) و`Type`
+  (`BugType`) و`Severity` (`BugSeverity`) و`Metadata` (ما مرّرته إلى دالة
+  الالتقاط، أو سياق الطلب من الوسيط). تُضاف تفاصيل الجهاز والتطبيق وبيئة
+  التشغيل بعد الدالة، التي تعمل على الخيط (thread) الذي التقط الخطأ.
+- إذا رمت `BeforeSend` استثناءً، يُرسَل الحدث الأصلي ويُسجَّل الاستثناء فقط، ولا
+  يُبلَّغ عنه ولا يُعاد رميه أبداً.
+- التقرير المحذوف لا يثبّت (pin) تتبّع الطلب الخاص به.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).
+
 ## الإبلاغ عن خطأ يدوياً
 
 `LerixClient` مسجَّل كـ singleton في الحاوية:

@@ -96,3 +96,42 @@ Lerix.throwError("Test error", stack: Thread.callStackSymbols)
 ```
 
 Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
+
+## Filtering errors
+
+Requires the iOS/macOS SDK 1.2.0 or later.
+
+Drop or rewrite error reports on the device before they are sent.
+Filtering runs on every report: manual `throwError` calls, and crash
+reports saved by the crash handler and sent on the next launch.
+
+```swift
+Lerix.initialize(
+    apiKey: "<project api key>",
+    projectId: "<project slug>",
+    // Dropped if any entry is a case-insensitive substring of the message.
+    ignoreErrors: ["The network connection was lost"],
+    // Dropped if any regex matches anywhere in the message.
+    ignoreErrorPatterns: [try! NSRegularExpression(pattern: "^NSURLErrorDomain -10\\d{2}")],
+    // Runs after the ignore lists, right before sending. Return the
+    // (optionally modified) event to send it, or nil to drop it.
+    beforeSend: { event in
+        var event = event
+        event.message = event.message.replacingOccurrences(of: "secret", with: "[redacted]")
+        if event.severity == .low { return nil }
+        return event
+    }
+)
+```
+
+- `ignoreErrors` (`[String]`) and `ignoreErrorPatterns`
+  (`[NSRegularExpression]`) run first. Blank strings are skipped.
+- `beforeSend` then gets a `LerixErrorEvent` with `message`, `stack`, `type`,
+  `severity` and `metadata`, all mutable. Return it (changed or not) to send
+  it, or `nil` to drop it.
+- The message you match against is the issue title, which includes the error
+  class.
+
+Lerix also groups repeated errors into one issue and filters common noise on
+the server, for every SDK version. See
+[How errors are grouped into issues](/modules/error-tracking#how-errors-are-grouped-into-issues).

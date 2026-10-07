@@ -62,6 +62,57 @@ app.UseAuthorization();
 app.MapControllers();
 ```
 
+## Filtering errors
+
+Requires `Lerix` / `Lerix.AspNetCore` 0.4.0 or later.
+
+Three `LerixOptions` properties decide what leaves the process. They apply
+to every report, whatever its origin: the ASP.NET Core middleware, the
+process-level handlers, and `CaptureException` / `CaptureMessage`. Use them
+for message-based filtering; use `ShouldCapture` (above) to decide by
+exception, request or status.
+
+```csharp Program.cs
+builder.Services.AddLerix(o =>
+{
+    // A string matches when it appears anywhere in the message (case-insensitive, blank entries are skipped).
+    o.IgnoreErrors.Add("The client reset the request stream");
+    // A Regex matches when it finds a match in the message.
+    o.IgnoreErrorPatterns.Add(new Regex("^TaskCanceledException"));
+    // Runs after the ignore lists. Return the event (changed or not) to send it, or null to drop it.
+    o.BeforeSend = e =>
+    {
+        if (e.Metadata != null && e.Metadata.TryGetValue("tenant", out var t) && (string?)t == "load-test") return null;
+        e.Message = Regex.Replace(e.Message, @"\b\d{6,}\b", "<id>");
+        return e;
+    };
+});
+```
+
+`IgnoreErrors` can also be bound from `appsettings.json`:
+
+```json appsettings.json
+{ "Lerix": { "IgnoreErrors": ["The client reset the request stream"] } }
+```
+
+- `IgnoreErrors` (`IList<string>`) and `IgnoreErrorPatterns` (`IList<Regex>`)
+  run first, then `BeforeSend` (`Func<LerixErrorEvent, LerixErrorEvent?>`) sees
+  only what's left.
+- The message matched and passed to `BeforeSend` is the issue title shown in
+  the dashboard, for example `InvalidOperationException: boom`.
+- `LerixErrorEvent` has `Message`, `Stack` (`at ...` lines), `Type`
+  (`BugType`), `Severity` (`BugSeverity`) and `Metadata` (what you passed to
+  the capture call, or the request context from the middleware). Device, app
+  and runtime details are added after the hook, which runs on the thread that
+  captured the error.
+- If `BeforeSend` throws, the original event is sent and the exception is only
+  logged. It is never reported or rethrown.
+- A dropped report does not pin its request's trace.
+
+Lerix also groups repeated errors into one issue and filters common noise on
+the server, for every SDK version. See
+[How errors are grouped into issues](/modules/error-tracking#how-errors-are-grouped-into-issues).
+
 ## Report an error manually
 
 `LerixClient` is a singleton in the container:

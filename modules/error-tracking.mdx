@@ -30,6 +30,102 @@ Reports carry a `bugType` (e.g. `crash`, `networkError`, `uiBug`,
 triage what matters first. See your framework's guide for the full list of
 values.
 
+## How errors are grouped into issues
+
+Lerix doesn't create a new issue for every report. Repeated reports of the
+same error are grouped into one issue, so a bug that fires 10,000 times shows
+up once, with a count.
+
+Two things decide which issue a report belongs to:
+
+- **The first line of the error message, with variable parts masked.**
+  Numbers, UUIDs, hex IDs, email addresses and URLs are replaced before
+  comparing. `Order 1234 not found` and `Order 5678 not found` are the same
+  issue. Error codes such as `#441` or `PGRST202` are kept, so different codes
+  stay different issues.
+- **The first stack frame that belongs to your app.** Frames from the Lerix
+  SDK, the runtime and your dependencies (for example `node_modules`,
+  `package:flutter` or `System.*`) are skipped. Only the function and file
+  name are used. Line and column numbers and bundler content hashes (like
+  `chunk-Cr8GYWvZ.js`) are ignored.
+
+Because line numbers and bundle hashes don't count, a web error stays the same
+issue across deploys instead of starting over with every build.
+
+Grouping happens on the Lerix server, so it applies to every SDK version
+automatically.
+
+### What the dashboard shows for each issue
+
+| Field | Meaning |
+|-------|---------|
+| **Occurrences** | Total number of reports grouped into the issue |
+| **Affected users** | Number of distinct users who hit the issue |
+| **First seen** | When the issue was first reported |
+| **Last seen** | When the issue was most recently reported |
+
+The issue list is sorted by **Last seen**, so whatever is happening right now
+is at the top.
+
+### Status, regressions and ignored issues
+
+Status, severity and assignee belong to the whole issue, not to a single
+report.
+
+- **Regressions.** If an issue you marked resolved or closed happens again, it
+  is reopened automatically and project members get the status-change email.
+- **Ignored issues.** An ignored issue keeps counting occurrences, but it stays
+  ignored and sends no notifications. It is hidden from the default list. Use
+  the **Ignored** filter to see it.
+
+### Built-in noise rules
+
+The server filters a few kinds of reports that never point at a bug in your
+code. These rules apply to every project and every SDK version:
+
+| Report | What happens |
+|--------|--------------|
+| `ResizeObserver loop limit exceeded` and `ResizeObserver loop completed with undelivered notifications` | Dropped |
+| `Script error.` (a cross-origin script error, where the browser hides the message and stack) | Dropped |
+| Errors whose stack frames all come from browser extensions (`chrome-extension://`, `moz-extension://`, `safari-extension://`, ...) | Dropped |
+| Flutter `A RenderFlex overflowed by ...` (any `A Render... overflowed by`) | Kept, but as a **Low** severity UI bug instead of a critical crash |
+
+The backend SDKs (NestJS, Python and ASP.NET Core) also don't report HTTP 4xx
+exceptions by default. Those are client mistakes, not server bugs.
+
+## Filtering errors in your app
+
+For noise specific to your app, every SDK takes two options when you
+initialize it:
+
+- **An ignore list.** A string drops any error whose message contains it,
+  ignoring case. A regular expression drops any error whose message it
+  matches. Blank strings are skipped.
+- **A before-send callback.** It receives the error event and returns it to
+  send it, returns a changed copy (for example with a token redacted), or
+  returns nothing (`null`, `nil` or `None`) to drop it.
+
+The ignore list runs first, and the callback only sees what's left. If the
+callback throws, the original event is sent and the exception never reaches
+your app. Both match against the issue title, which includes the error class,
+for example `TypeError: boom`.
+
+| SDK | Options | Minimum version |
+|-----|---------|-----------------|
+| [React](/frameworks/react/error-tracking#filtering-errors) | `ignoreErrors`, `beforeSend` | `@lerix-dev/lerix-react` 1.2.0 |
+| [Next.js](/frameworks/nextjs/error-tracking#filtering-errors) | `ignoreErrors`, `beforeSend` | `@lerix-dev/lerix-nextjs` 1.3.0 |
+| [Angular](/frameworks/angular/error-tracking#filtering-errors) | `ignoreErrors`, `beforeSend` | `@lerix-dev/lerix-angular` 1.2.0 |
+| [Flutter](/frameworks/flutter/error-tracking#filtering-errors) | `ignoreErrors`, `beforeSend` | `lerix_flutter` 0.3.0 |
+| [Swift (iOS/macOS)](/frameworks/ios/error-tracking#filtering-errors) | `ignoreErrors`, `ignoreErrorPatterns`, `beforeSend` | 1.2.0 |
+| [Kotlin (Android)](/frameworks/android/error-tracking#filtering-errors) | `ignoreErrors`, `ignoreErrorPatterns`, `beforeSend` | 1.2.0 |
+| [NestJS](/frameworks/nestjs/error-tracking#filtering-errors) | `ignoreErrors`, `beforeSend` | `@lerix-dev/lerix-nestjs` 1.4.0 |
+| [Python](/frameworks/python/error-tracking#filtering-errors) | `ignore_errors`, `before_send` | `lerix` 0.4.0 |
+| [ASP.NET Core](/frameworks/aspnet/error-tracking#filtering-errors) | `IgnoreErrors`, `IgnoreErrorPatterns`, `BeforeSend` | `Lerix` / `Lerix.AspNetCore` 0.4.0 |
+
+The React, Next.js and Angular SDKs get these options from
+`@lerix-dev/lerix-core` 1.3.0. The SDKs ship no built-in ignore patterns of
+their own. Common noise is handled by the server rules above.
+
 ## Source maps
 
 Production web builds are minified, so a browser stack trace points at

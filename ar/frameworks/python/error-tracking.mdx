@@ -82,6 +82,56 @@ LerixMiddleware.should_capture = lambda exc, status: status is None or status >=
 (أو اضبط `LerixMiddleware.client` مع Django) عندما تبلّغ عملية واحدة إلى أكثر
 من مشروع.
 
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب `lerix` بالإصدار 0.4.0 أو أحدث.
+
+يحدّد خياران ما يغادر العملية (process). ينطبقان على كل تقرير أياً كان
+مصدره: تكاملات أطر العمل، و`sys.excepthook` / `threading.excepthook` /
+معالج asyncio، و`capture_exception` / `capture_message`. استخدمهما
+للترشيح حسب الرسالة، واستخدم `should_capture` (أعلاه) للقرار حسب
+الاستثناء أو حالة HTTP.
+
+```python main.py
+import re
+import lerix
+from lerix import ErrorEvent
+
+def before_send(event: ErrorEvent):
+    if (event.metadata or {}).get("tenant") == "load-test":
+        return None                      # drop it
+    event.message = re.sub(r"\b\d{6,}\b", "<id>", event.message)
+    return event                         # send it (changed or not)
+
+lerix.init(
+    api_key="...",
+    project_id="...",
+    # A string matches when it appears anywhere in the message (case-insensitive,
+    # blank strings are skipped); a compiled pattern matches when .search() finds a match.
+    ignore_errors=["ConnectionResetError", re.compile(r"^TimeoutError")],
+    before_send=before_send,             # runs after ignore_errors
+)
+```
+
+- تعمل `ignore_errors` (`list[str | re.Pattern]`) أولاً، ثم لا ترى
+  `before_send` إلا ما تبقّى.
+- الرسالة التي تُطابَق وتُمرَّر إلى `before_send` هي عنوان المشكلة المعروض في
+  لوحة التحكم، مثل `ValueError: boom`.
+- `lerix.ErrorEvent` هو dataclass يحتوي على `message` و`stack` (قائمة نصوص
+  الإطارات) و`type` (`BugType`) و`severity` (`BugSeverity`) و`metadata` (ما
+  مرّرته إلى دالة الالتقاط، أو سياق الطلب من التكامل). تُضاف تفاصيل الجهاز
+  والتطبيق وبيئة التشغيل بعد الدالة، التي تعمل على الخيط (thread) الذي التقط
+  الخطأ.
+- إذا رفعت `before_send` استثناءً، يُرسَل الحدث الأصلي ويُسجَّل الخطأ فقط، ولا
+  يُبلَّغ عنه ولا يُعاد رفعه أبداً.
+- التقرير المحذوف لا يثبّت (pin) تتبّع الطلب الخاص به.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).
+
 ## الإبلاغ عن خطأ يدوياً
 
 ```python orders.py

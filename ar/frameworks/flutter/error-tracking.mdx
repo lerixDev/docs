@@ -89,3 +89,44 @@ await Lerix.throwError(
 ```
 
 ثم افتح [لوحة التحكم](https://app.lerix.dev) — يجب أن يظهر الخطأ خلال ثوانٍ.
+
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب `lerix_flutter` بالإصدار 0.3.0 أو أحدث.
+
+يحدّد خياران اختياريان في `Lerix.init` الأخطاء التي تُرسَل. ينطبقان على كل
+تقرير: أخطاء Flutter وDart والـ zone غير الملتقطة، و`Lerix.throwError`،
+والويب.
+
+```dart
+Lerix.init(
+  // ...
+  ignoreErrors: [
+    'SocketException', // case-insensitive substring
+    RegExp(r'^HttpException: 40[13]'), // RegExp, matched with hasMatch
+  ],
+  beforeSend: (event) {
+    if (event.metadata?['test'] == true) return null; // drop it
+    return event.copyWith(
+      message: event.message.replaceAll(RegExp(r'token=\S+'), 'token=***'),
+    );
+  },
+  builder: () => runApp(const MyApp()),
+);
+```
+
+- تعمل `ignoreErrors` (`List<Pattern>`) أولاً. النص (`String`) يحذف أي خطأ
+  تحتوي رسالته عليه، دون تمييز حالة الأحرف، وتُتجاوَز النصوص الفارغة أو التي
+  تحتوي مسافات فقط. والتعبير `RegExp` يحذف أي خطأ تطابقه رسالته.
+- ثم تستقبل `beforeSend` كائن `LerixErrorEvent` (`message`، `stack`، `type`،
+  `severity`، `metadata`). أعِده لإرساله، أو أعِد نسخة معدّلة عبر `copyWith`،
+  أو أعِد `null` لحذفه. إذا رمت `beforeSend` استثناءً، يُرسَل التقرير الأصلي
+  ولا يُعاد رمي الاستثناء داخل تطبيقك أبداً.
+- التقرير المحذوف لا يُرسَل ولا يستدعي `onError`.
+- الرسالة التي تطابقها هي عنوان المشكلة، وتتضمّن صنف الخطأ.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).

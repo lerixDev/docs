@@ -65,6 +65,51 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
 يمكنك أيضاً وراثة `LerixExceptionFilter` وتجاوز `catch` لتخصيص الاستجابة مع
 الإبقاء على الإبلاغ.
 
+<a id="filtering-errors"></a>
+
+## ترشيح الأخطاء
+
+يتطلّب `@lerix-dev/lerix-nestjs` بالإصدار 1.4.0 أو أحدث.
+
+يحدّد خياران ما يغادر العملية (process). ينطبقان على كل تقرير أياً كان
+مصدره: المرشّح العام، والاستثناءات غير الملتقطة والوعود المرفوضة غير
+المعالَجة، و`captureException` / `captureMessage`. استخدمهما للترشيح حسب
+الرسالة، واستخدم `shouldCapture` (أعلاه) للقرار حسب الاستثناء أو الطلب.
+
+```ts app.module.ts
+import { LerixErrorEvent, LerixModule } from '@lerix-dev/lerix-nestjs';
+
+LerixModule.forRoot({
+  apiKey, projectId,
+  // A string matches when it appears anywhere in the message (case-insensitive);
+  // a RegExp matches when it finds a match in the message. Blank strings are skipped.
+  ignoreErrors: ['ECONNRESET', /^AbortError:/],
+  // Runs after ignoreErrors. Return the event (changed or not) to send it, or null to drop it.
+  beforeSend: (event: LerixErrorEvent) => {
+    if (event.metadata?.['tenant'] === 'load-test') return null;
+    return { ...event, message: event.message.replace(/\b\d{6,}\b/g, '<id>') };
+  },
+});
+```
+
+- تعمل `ignoreErrors` أولاً، ثم لا ترى `beforeSend` إلا ما تبقّى.
+- الرسالة التي تُطابَق وتُمرَّر إلى `beforeSend` هي عنوان المشكلة المعروض في
+  لوحة التحكم، مثل `TypeError: Cannot read properties of undefined`.
+- يحتوي الحدث على `message` و`stack` (أسطر `at ...`) و`type` (`BugType`)
+  و`severity` (`BugSeverity`) و`metadata` (ما مرّرته إلى دالة الالتقاط، أو
+  سياق الطلب من المرشّح). تُضاف تفاصيل الجهاز والتطبيق وبيئة التشغيل بعد
+  الدالة.
+- إذا رمت `beforeSend` استثناءً، يُرسَل الحدث الأصلي ويُسجَّل الخطأ فقط، ولا
+  يُبلَّغ عنه ولا يُعاد رميه أبداً.
+- التقرير المحذوف لا يثبّت (pin) تتبّع الطلب الخاص به.
+
+استثناءات `HttpException` التي تقل عن 500 تُتجاوَز أصلاً عبر
+`shouldCapture` الافتراضية.
+
+كما يجمّع Lerix الأخطاء المتكرّرة في مشكلة واحدة ويرشّح الضوضاء الشائعة على
+الخادم، لكل إصدارات الـ SDK. راجع
+[كيف تُجمَّع الأخطاء في مشكلات](/ar/modules/error-tracking#how-errors-are-grouped-into-issues).
+
 ## الإبلاغ عن خطأ يدوياً
 
 ```ts orders.service.ts

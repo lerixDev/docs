@@ -1,0 +1,130 @@
+---
+title: "Edge Functions — Error Tracking"
+description: "What lerix.wrap() reports from your edge function, the error response, unhandled errors, and manual reporting."
+---
+
+## Introduction
+
+After the [installation](/frameworks/edge/installation), errors reach the
+dashboard in three ways: thrown out of a wrapped handler, escaping every
+handler as an unhandled error, or reported by you.
+
+## Errors thrown by the handler
+
+`lerix.wrap(handler)` catches what the handler throws, reports it, and answers
+in its place:
+
+| Thrown | Response | Reported as |
+|---|---|---|
+| A plain error | `500` `{ "statusCode": 500, "message": "Internal server error" }` | `crash`, critical |
+| An error with a `5xx` `status` / `statusCode` / `getStatus()` | that status | `runtime_error`, high |
+| An error with a `4xx` status (e.g. Hono's `HTTPException(404)`) | that status, with the error's message | not reported |
+
+Each report carries the request: method, URL **without the query string**,
+route, status and a request id (`x-request-id`, `x-correlation-id`, `cf-ray`
+or `x-vercel-id`). Edge functions have no router to ask for a route, so
+value-like path segments are replaced: `/orders/8812/items` is reported as
+`/orders/:id/items`.
+
+The error is still printed with `console.error`, so it keeps showing up in
+your platform's logs. Pass `logErrors: false` to stop that.
+
+### Customize the response
+
+```ts
+Deno.serve(lerix.wrap(handler, {
+  onError: (error, request) => Response.json({ error: 'Something went wrong' }, { status: 500 }),
+}));
+```
+
+### Choose what is reported
+
+```ts
+Lerix.init({
+  // ...
+  shouldCapture: (error, request) => request.route !== '/health',
+  captureServerErrors: true, // also report a 5xx the handler returns instead of throwing
+});
+```
+
+## Unhandled errors
+
+Errors that escape every handler, such as a rejected promise nobody awaited,
+are reported as `crash` through the runtime's `error` and
+`unhandledrejection` events (Supabase/Deno, Cloudflare Workers, Vercel Edge).
+
+Supabase ends the worker on such an error, normally before a report could be
+sent. So the SDK holds the runtime's default off until the report is out,
+then rethrows the error and the worker ends as it would have. Pass
+`exitOnUnhandled: false` to keep the worker serving instead.
+
+On Supabase, queued reports are also sent on `beforeunload`, just before an
+isolate shuts down. Set `captureUnhandled: false` to turn all of this off.
+
+## Report errors yourself
+
+```ts
+try {
+  await chargeCard(order);
+} catch (error) {
+  lerix.captureException(error, { severity: BugSeverity.CRITICAL, metadata: { orderId: order.id } });
+  return Response.json({ error: 'payment failed' }, { status: 402 });
+}
+
+lerix.captureMessage('Stripe webhook arrived out of order', { type: BugType.LOGIC_BUG });
+```
+
+Inside a wrapped handler, the current request is attached automatically.
+That needs `AsyncLocalStorage`: Supabase, Deno, Bun and Cloudflare with
+`nodejs_compat` provide it, and on Vercel Edge it is used when the runtime
+exposes a global one. Errors thrown out of the handler carry the request
+either way.
+
+Both methods never throw. Outside `wrap()` (a cron-style function, a queue
+consumer), hand the flush to the platform so the report is not lost when the
+isolate stops:
+
+```ts
+EdgeRuntime.waitUntil(lerix.flush()); // Supabase
+ctx.waitUntil(lerix.flush());         // Cloudflare
+```
+
+## Filter and edit reports
+
+`ignoreErrors` and `beforeSend` work as in every other Lerix SDK:
+
+```ts
+Lerix.init({
+  // ...
+  ignoreErrors: ['AbortError', /^NetworkError/],
+  beforeSend: (event) => {
+    if (event.message.includes('password')) return null; // drop
+    return { ...event, metadata: { ...event.metadata, region: Deno.env.get('SB_REGION') } };
+  },
+});
+```
+
+A string matches anywhere in the message (case-insensitive); a `RegExp`
+matches when it finds a match. `beforeSend` runs after `ignoreErrors`; return
+`null` to drop the report. If it throws, the original report is sent.
+
+## When reports are sent
+
+`wrap()` hands the sending to the first `waitUntil` it finds, so the response
+is not delayed:
+
+| Runtime | `waitUntil` |
+|---|---|
+| Supabase Edge Functions | `EdgeRuntime.waitUntil`, automatic |
+| Cloudflare Workers | the handler's `ctx`, automatic |
+| Next.js middleware | the handler's `event`, automatic |
+| Vercel edge routes | pass `{ waitUntil }` from `@vercel/functions` |
+| Deno, Bun servers | none: the response waits for the report, up to `flushTimeoutMs` |
+
+## Limits
+
+- Errors thrown while a **streamed** response body is being read happen after
+  `wrap()` has returned, so it does not see them. Catch them in the stream
+  and call `captureException`.
+- Stack traces from Deno point at your TypeScript files directly. Bundled
+  Workers and Vercel builds show bundle positions.

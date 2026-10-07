@@ -1,0 +1,186 @@
+---
+title: "Edge Functions — التثبيت"
+description: "أضف Lerix إلى Supabase Edge Functions أو Cloudflare Workers أو Vercel Edge أو Deno أو Bun للإبلاغ عن الأخطاء وتتبّع الطلبات وإرسال الإشعارات."
+---
+
+## مقدمة
+
+`@lerix-dev/lerix-edge` هو SDK الخاص بـ Lerix لبيئات تشغيل الحافة (edge):
+**Supabase Edge Functions** وCloudflare Workers ومسارات edge في Vercel
+وNext.js وNetlify Edge وDeno Deploy وBun. غلّف المعالج مرة واحدة، فيُبلَّغ
+عن كل خطأ يُلقيه إلى لوحة التحكم مع تتبّع المكدس والطلب. وتستطيع الحزمة
+نفسها تتبّع الطلبات وإرسال الإشعارات إلى مستخدميك.
+
+تستخدم الحزمة واجهات الويب القياسية فقط (`fetch` وWeb Crypto) ولا توجد لها
+أي اعتماديات. لا يُرسَل شيء قبل أول تقرير، وتُرسَل التقارير بعد الاستجابة
+عبر `waitUntil` الخاصة بالمنصة، فلا تتحمّل الدالة السليمة أي كلفة.
+
+<Note>
+  أنشئ مشروعاً بإطار **Edge Functions** في
+  [لوحة التحكم](https://app.lerix.dev) وانسخ **مفتاح API** و**معرّف المشروع**
+  من **إعدادات المشروع**.
+</Note>
+
+## 1. التثبيت والتهيئة
+
+<Tabs>
+  <Tab title="Supabase">
+    احفظ المفاتيح كأسرار (secrets) للدالة:
+
+    ```bash
+    supabase secrets set LERIX_KEY=... LERIX_PROJECT_ID=...
+    ```
+
+    استورد الحزمة بمُحدِّد `npm:` وغلّف المعالج الذي تمرّره إلى
+    `Deno.serve`:
+
+    ```ts supabase/functions/send-welcome-email/index.ts
+    import { Lerix } from 'npm:@lerix-dev/lerix-edge';
+
+    const lerix = Lerix.init({
+      apiKey: Deno.env.get('LERIX_KEY')!,
+      projectId: Deno.env.get('LERIX_PROJECT_ID')!,
+      app: { id: 'send-welcome-email' },
+      environment: 'production',
+    });
+
+    Deno.serve(lerix.wrap(async (req) => {
+      const { email } = await req.json();
+      // ...
+      return Response.json({ ok: true });
+    }));
+    ```
+
+    تُرسَل التقارير بعد الاستجابة عبر `EdgeRuntime.waitUntil`.
+  </Tab>
+  <Tab title="Cloudflare Workers">
+    ```bash
+    npm install @lerix-dev/lerix-edge
+    npx wrangler secret put LERIX_KEY
+    npx wrangler secret put LERIX_PROJECT_ID
+    ```
+
+    لا تتيح Workers الأسرار إلا عبر الوسيط `env`، لذا مرّر دالة إلى
+    `Lerix.init`. تستدعيها `wrap()` مع `env` عند أول طلب وترسل التقارير عبر
+    `ctx.waitUntil`:
+
+    ```ts src/index.ts
+    import { Lerix } from '@lerix-dev/lerix-edge';
+
+    const lerix = Lerix.init((env) => ({
+      apiKey: env.LERIX_KEY as string,
+      projectId: env.LERIX_PROJECT_ID as string,
+      app: { id: 'api-worker' },
+    }));
+
+    export default {
+      fetch: lerix.wrap(async (request: Request, env: Env, ctx: ExecutionContext) => {
+        return new Response('ok');
+      }),
+    };
+    ```
+
+    فعّل علامة التوافق `nodejs_compat` إن أردت أن تلتقط التقارير اليدوية
+    والنطاقات الفرعية الطلبَ الحالي (فهي توفّر `AsyncLocalStorage`). وبدونها
+    يظل يُبلَّغ عن الأخطاء التي يُلقيها المعالج مع طلبها.
+  </Tab>
+  <Tab title="Vercel / Next.js">
+    ```bash
+    npm install @lerix-dev/lerix-edge @vercel/functions
+    ```
+
+    ```ts app/api/checkout/route.ts
+    import { Lerix } from '@lerix-dev/lerix-edge';
+    import { waitUntil } from '@vercel/functions';
+
+    export const runtime = 'edge';
+
+    const lerix = Lerix.init({
+      apiKey: process.env.LERIX_KEY!,
+      projectId: process.env.LERIX_PROJECT_ID!,
+      app: { id: 'checkout' },
+    });
+
+    export const POST = lerix.wrap(async (request) => {
+      return Response.json({ ok: true });
+    }, { waitUntil });
+    ```
+
+    في `middleware.ts` تُستخدم `waitUntil` الخاصة بالوسيط `event` تلقائياً.
+  </Tab>
+  <Tab title="Deno / Bun">
+    ```ts
+    import { Lerix } from 'npm:@lerix-dev/lerix-edge'; // Bun: '@lerix-dev/lerix-edge'
+
+    const lerix = Lerix.init({ apiKey, projectId, app: { id: 'api' } });
+
+    Deno.serve(lerix.wrap(handler));          // Deno
+    Bun.serve({ fetch: lerix.wrap(handler) }); // Bun
+    ```
+
+    لا توجد `waitUntil` في الخوادم طويلة التشغيل: كل استجابة نتج عنها تقرير
+    تنتظره، بحدّ أقصى `flushTimeoutMs`.
+  </Tab>
+</Tabs>
+
+## 2. تحقّق من التكامل
+
+ألقِ خطأً من المعالج مرة واحدة:
+
+```ts
+Deno.serve(lerix.wrap(() => {
+  throw new Error('Lerix test error');
+}));
+```
+
+يتلقى المستدعي استجابة `500`، ويظهر الخطأ في
+[لوحة التحكم](https://app.lerix.dev) خلال ثوانٍ مع طريقة الطلب وعنوانه
+ومساره. احذف الاختبار بعد ذلك.
+
+## الخيارات
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `apiKey` | مطلوب | مفتاح API للمشروع |
+| `projectId` | مطلوب | معرّف المشروع |
+| `app.id` | مطلوب | اسم ثابت للدالة، مثل اسم مجلدها |
+| `app.name` / `app.version` / `app.buildNumber` | `id` / `0.0.0` / `0` | طريقة عرض الإصدار |
+| `environment` | | يُرسَل كبيانات وصفية مع كل تقرير |
+| `url` | `https://api.lerix.dev/v1` | عنوان API الأساسي |
+| `enabled` | `true` | `false` يعطّل الإبلاغ بالكامل، مفيد في الاختبارات |
+| `debug` | `false` | تسجيل الطلبات والتقارير |
+| `logger` | `console` | وجهة رسائل الـ SDK |
+| `installId` | `server:<environment>` | انظر أدناه |
+| `ignoreErrors`، `beforeSend` | | ترشيح التقارير أو تعديلها؛ راجع [تتبع الأخطاء](/ar/frameworks/edge/error-tracking) |
+| `shouldCapture` | الكل عدا 4xx | `(error, request) => boolean` للأخطاء التي تُلقى من `wrap()` |
+| `captureServerErrors` | `false` | الإبلاغ أيضاً عن استجابات `5xx` التي يُعيدها المعالج |
+| `captureUnhandled` | `true` | الإبلاغ عن حدثَي `error` و`unhandledrejection` |
+| `exitOnUnhandled` | `true` | بعد الإبلاغ، يُعاد رمي الخطأ لتنهي بيئة التشغيل العامل كما كانت ستفعل |
+| `flushTimeoutMs` | `2000` | الحد الأقصى لمدة `flush()` |
+| `tracing` | معطَّل | راجع [تتبّع الطلبات](/ar/frameworks/edge/request-tracing) |
+| `notifications` | | `{ apiKey }` بمفتاح خاص؛ راجع [الإشعارات](/ar/frameworks/edge/push-notifications) |
+
+## كيف تظهر دالتك في لوحة التحكم
+
+تُسجَّل الدالة كتطبيق من نوع `server` باسم `app.id`، مرة لكل بيئة تشغيل
+(`deno` و`workerd` و`edge-light` و`bun`). وتُظهر التقارير مكان تنفيذها، مثل
+`supabase:eu-central-1`.
+
+لا تملك عوازل الحافة (isolates) قرصاً تحفظ فيه معرّفاً، لذا يُسجَّل الـ SDK
+تحت **معرّف تثبيت** ثابت (`server:<environment>` افتراضياً). كل عازل وكل
+إقلاع بارد (cold start) للدالة نفسها والبيئة نفسها يُربط بالمستخدم نفسه في
+لوحة التحكم، بدلاً من مستخدم جديد مع كل إقلاع بارد.
+
+## الخطوات التالية
+
+<CardGroup cols={2}>
+  <Card title="تتبع الأخطاء" icon="bug" href="/ar/frameworks/edge/error-tracking">
+    ما تبلّغ عنه `wrap()`، واستجابة الخطأ، والإبلاغ اليدوي.
+  </Card>
+  <Card title="تتبّع الطلبات" icon="chart-line" href="/ar/frameworks/edge/request-tracing">
+    نطاق لكل طلب، مع استدعاءات `fetch` وقاعدة بيانات Supabase.
+  </Card>
+  <Card title="الإشعارات" icon="bell" href="/ar/frameworks/edge/push-notifications">
+    أرسل الإشعارات من دالة، مثلاً عند webhook لقاعدة البيانات.
+  </Card>
+</CardGroup>

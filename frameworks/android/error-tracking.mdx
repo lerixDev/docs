@@ -94,3 +94,43 @@ Lerix.throwError("Test error")
 ```
 
 Then open your [dashboard](https://app.lerix.dev) — the error should appear within seconds.
+
+## Filtering errors
+
+Requires the Android SDK 1.2.0 or later.
+
+Drop noisy errors or scrub data before it leaves the device. Filtering
+applies to every error the SDK sends: `Lerix.throwError` and uncaught
+crashes (checked when the crash is sent on the next launch).
+
+```kotlin
+Lerix.initialize(
+    context = this,
+    apiKey = "YOUR_PROJECT_API_KEY",
+    projectId = "YOUR_PROJECT_ID",
+    // Dropped when the message contains any of these (case-insensitive).
+    ignoreErrors = listOf("Read timed out", "Software caused connection abort"),
+    // Dropped when the message matches any of these regexes (containsMatchIn).
+    ignoreErrorPatterns = listOf(Regex("^java\\.net\\.\\w+Exception")),
+    // Runs after the ignore lists. Return the event (optionally modified) to
+    // send it, or null to drop it.
+    beforeSend = { event ->
+        if (event.metadata?.get("debugOnly") == true) null
+        else event.copy(message = event.message.replace(Regex("token=\\S+"), "token=[redacted]"))
+    },
+)
+```
+
+- `ignoreErrors` (`List<String>`) and `ignoreErrorPatterns` (`List<Regex>`)
+  run first. Empty or whitespace-only `ignoreErrors` entries are skipped.
+- `beforeSend` then gets a `LerixErrorEvent` with `message`, `stack`, `type`,
+  `severity` and `metadata`. Return it (changed or not) to send it, or `null`
+  to drop it. It is called on a background thread.
+- If `beforeSend` throws, the original event is sent and the exception is
+  swallowed (logged in `debugMode`).
+- The message you match against is the issue title, which includes the error
+  class.
+
+Lerix also groups repeated errors into one issue and filters common noise on
+the server, for every SDK version. See
+[How errors are grouped into issues](/modules/error-tracking#how-errors-are-grouped-into-issues).

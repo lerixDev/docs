@@ -1,0 +1,188 @@
+---
+title: "Edge Functions — Installation"
+description: "Add Lerix to Supabase Edge Functions, Cloudflare Workers, Vercel Edge, Deno or Bun to report errors, trace requests and send push notifications."
+---
+
+## Introduction
+
+`@lerix-dev/lerix-edge` is the Lerix SDK for edge runtimes: **Supabase Edge
+Functions**, Cloudflare Workers, Vercel and Next.js edge routes, Netlify Edge,
+Deno Deploy and Bun. Wrap your handler once and every error it throws is
+reported to the dashboard with its stack trace and request. The same package
+can trace requests and send push notifications to your users.
+
+It uses Web-standard APIs only (`fetch`, Web Crypto) and has no dependencies.
+Nothing is sent until the first report, and reports go out after the response
+through the platform's `waitUntil`, so a healthy function pays nothing.
+
+<Note>
+  Create a project with the **Edge Functions** framework in the
+  [dashboard](https://app.lerix.dev) and copy its **API key** and **project id**
+  from **Project Settings**.
+</Note>
+
+## 1. Install and initialize
+
+<Tabs>
+  <Tab title="Supabase">
+    Store the keys as function secrets:
+
+    ```bash
+    supabase secrets set LERIX_KEY=... LERIX_PROJECT_ID=...
+    ```
+
+    Import the package with an `npm:` specifier and wrap the handler you pass
+    to `Deno.serve`:
+
+    ```ts supabase/functions/send-welcome-email/index.ts
+    import { Lerix } from 'npm:@lerix-dev/lerix-edge';
+
+    const lerix = Lerix.init({
+      apiKey: Deno.env.get('LERIX_KEY')!,
+      projectId: Deno.env.get('LERIX_PROJECT_ID')!,
+      app: { id: 'send-welcome-email' },
+      environment: 'production',
+    });
+
+    Deno.serve(lerix.wrap(async (req) => {
+      const { email } = await req.json();
+      // ...
+      return Response.json({ ok: true });
+    }));
+    ```
+
+    Reports are sent after the response through `EdgeRuntime.waitUntil`.
+  </Tab>
+  <Tab title="Cloudflare Workers">
+    ```bash
+    npm install @lerix-dev/lerix-edge
+    npx wrangler secret put LERIX_KEY
+    npx wrangler secret put LERIX_PROJECT_ID
+    ```
+
+    Workers only expose secrets through the `env` argument, so pass a
+    function to `Lerix.init`. `wrap()` calls it with `env` on the first
+    request and sends reports through `ctx.waitUntil`:
+
+    ```ts src/index.ts
+    import { Lerix } from '@lerix-dev/lerix-edge';
+
+    const lerix = Lerix.init((env) => ({
+      apiKey: env.LERIX_KEY as string,
+      projectId: env.LERIX_PROJECT_ID as string,
+      app: { id: 'api-worker' },
+    }));
+
+    export default {
+      fetch: lerix.wrap(async (request: Request, env: Env, ctx: ExecutionContext) => {
+        return new Response('ok');
+      }),
+    };
+    ```
+
+    Turn on the `nodejs_compat` compatibility flag if you want manual reports
+    and child spans to pick up the current request (it provides
+    `AsyncLocalStorage`). Without it, errors thrown out of the handler are
+    still reported with their request.
+  </Tab>
+  <Tab title="Vercel / Next.js">
+    ```bash
+    npm install @lerix-dev/lerix-edge @vercel/functions
+    ```
+
+    ```ts app/api/checkout/route.ts
+    import { Lerix } from '@lerix-dev/lerix-edge';
+    import { waitUntil } from '@vercel/functions';
+
+    export const runtime = 'edge';
+
+    const lerix = Lerix.init({
+      apiKey: process.env.LERIX_KEY!,
+      projectId: process.env.LERIX_PROJECT_ID!,
+      app: { id: 'checkout' },
+    });
+
+    export const POST = lerix.wrap(async (request) => {
+      return Response.json({ ok: true });
+    }, { waitUntil });
+    ```
+
+    In `middleware.ts`, the `event` argument's `waitUntil` is used
+    automatically.
+  </Tab>
+  <Tab title="Deno / Bun">
+    ```ts
+    import { Lerix } from 'npm:@lerix-dev/lerix-edge'; // Bun: '@lerix-dev/lerix-edge'
+
+    const lerix = Lerix.init({ apiKey, projectId, app: { id: 'api' } });
+
+    Deno.serve(lerix.wrap(handler));          // Deno
+    Bun.serve({ fetch: lerix.wrap(handler) }); // Bun
+    ```
+
+    Long-running servers have no `waitUntil`: each response that produced a
+    report waits for it, up to `flushTimeoutMs`.
+  </Tab>
+</Tabs>
+
+## 2. Verify the integration
+
+Throw from the handler once:
+
+```ts
+Deno.serve(lerix.wrap(() => {
+  throw new Error('Lerix test error');
+}));
+```
+
+The caller receives a `500` and the error appears in your
+[dashboard](https://app.lerix.dev) within seconds, with the request's method,
+URL and route. Remove the test afterwards.
+
+## Options
+
+| Option | Default | Description |
+|---|---|---|
+| `apiKey` | required | Project API key |
+| `projectId` | required | Project id |
+| `app.id` | required | Stable name of the function, e.g. its folder name |
+| `app.name` / `app.version` / `app.buildNumber` | `id` / `0.0.0` / `0` | How the release is shown |
+| `environment` | | Sent as metadata with every report |
+| `url` | `https://api.lerix.dev/v1` | API base URL |
+| `enabled` | `true` | `false` turns reporting into a no-op, useful in tests |
+| `debug` | `false` | Log requests and reports |
+| `logger` | `console` | Where SDK messages go |
+| `installId` | `server:<environment>` | See below |
+| `ignoreErrors`, `beforeSend` | | Filter or edit reports; see [Error Tracking](/frameworks/edge/error-tracking) |
+| `shouldCapture` | all but 4xx | `(error, request) => boolean` for errors thrown out of `wrap()` |
+| `captureServerErrors` | `false` | Also report `5xx` responses the handler returns |
+| `captureUnhandled` | `true` | Report `error` / `unhandledrejection` events |
+| `exitOnUnhandled` | `true` | After reporting one, rethrow so the runtime ends the worker as it would have |
+| `flushTimeoutMs` | `2000` | Upper bound for `flush()` |
+| `tracing` | off | See [Request Tracing](/frameworks/edge/request-tracing) |
+| `notifications` | | `{ apiKey }` with a private key; see [Push Notifications](/frameworks/edge/push-notifications) |
+
+## How your function appears in the dashboard
+
+The function registers as a `server` app named after `app.id`, once per
+runtime (`deno`, `workerd`, `edge-light`, `bun`). Reports show where they ran,
+for example `supabase:eu-central-1`.
+
+Edge isolates have no disk to keep an id in, so the SDK registers under a
+stable **install id** (`server:<environment>` by default). Every isolate and
+cold start of the same function and environment maps to the same user in the
+dashboard, instead of one new user per cold start.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Error Tracking" icon="bug" href="/frameworks/edge/error-tracking">
+    What `wrap()` reports, the error response, and manual reporting.
+  </Card>
+  <Card title="Request Tracing" icon="chart-line" href="/frameworks/edge/request-tracing">
+    A span per request, with `fetch` and Supabase database calls.
+  </Card>
+  <Card title="Push Notifications" icon="bell" href="/frameworks/edge/push-notifications">
+    Send push from a function, e.g. on a database webhook.
+  </Card>
+</CardGroup>

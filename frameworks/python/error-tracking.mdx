@@ -87,6 +87,54 @@ The hooks use the client created by `lerix.init()`. Pass `client=` to a hook
 (or set `LerixMiddleware.client` for Django) when one process reports to
 more than one project.
 
+## Filtering errors
+
+Requires `lerix` 0.4.0 or later.
+
+Two options decide what leaves the process. They apply to every report,
+whatever its origin: the framework integrations, `sys.excepthook` /
+`threading.excepthook` / the asyncio handler, and `capture_exception` /
+`capture_message`. Use them for message-based filtering; use
+`should_capture` (above) to decide by exception or HTTP status.
+
+```python main.py
+import re
+import lerix
+from lerix import ErrorEvent
+
+def before_send(event: ErrorEvent):
+    if (event.metadata or {}).get("tenant") == "load-test":
+        return None                      # drop it
+    event.message = re.sub(r"\b\d{6,}\b", "<id>", event.message)
+    return event                         # send it (changed or not)
+
+lerix.init(
+    api_key="...",
+    project_id="...",
+    # A string matches when it appears anywhere in the message (case-insensitive,
+    # blank strings are skipped); a compiled pattern matches when .search() finds a match.
+    ignore_errors=["ConnectionResetError", re.compile(r"^TimeoutError")],
+    before_send=before_send,             # runs after ignore_errors
+)
+```
+
+- `ignore_errors` (`list[str | re.Pattern]`) runs first, then `before_send`
+  sees only what's left.
+- The message matched and passed to `before_send` is the issue title shown in
+  the dashboard, for example `ValueError: boom`.
+- `lerix.ErrorEvent` is a dataclass with `message`, `stack` (list of frame
+  strings), `type` (`BugType`), `severity` (`BugSeverity`) and `metadata`
+  (what you passed to the capture call, or the request context from an
+  integration). Device, app and runtime details are added after the hook,
+  which runs on the thread that captured the error.
+- If `before_send` raises, the original event is sent and the error is only
+  logged. It is never reported or re-raised.
+- A dropped report does not pin its request's trace.
+
+Lerix also groups repeated errors into one issue and filters common noise on
+the server, for every SDK version. See
+[How errors are grouped into issues](/modules/error-tracking#how-errors-are-grouped-into-issues).
+
 ## Report an error manually
 
 ```python orders.py
