@@ -1,0 +1,96 @@
+---
+title: "Python — التحليلات والملاحظات"
+description: "سجّل أحداث الخادم في مسارات التحويل نفسها التي تغذّيها تطبيقاتك، وأرسل الملاحظات من خادمك إلى صندوق الملاحظات."
+---
+
+يتطلب ذلك `lerix` بالإصدار 0.5.0 أو أحدث. ولمعرفة ما تراه في لوحة التحكم، راجع
+[التحليلات](/ar/modules/analytics) و[الملاحظات](/ar/modules/feedback).
+
+## التحليلات
+
+سجّل ما يحدث في خادمك كأحداث تحليلات. يعود `track` فوراً ولا يرمي أي استثناء:
+تُخزَّن الأحداث في الذاكرة ويرسلها خيط (thread) في الخلفية على دفعات.
+
+```python
+import lerix
+
+lerix.init(api_key="...", project_id="...")
+
+lerix.track("invoice_paid", {"amount": 42.5, "currency": "OMR", "first": True}, user_id=user.id)
+lerix.track("nightly_export_finished")
+```
+
+- **`user_id`** هو معرّفك الخاص للشخص الذي يخصّه الحدث، وهو نفسه الذي تمرّره
+  تطبيقاتك إلى [`setUser()`](/ar/modules/users-identity). الأحداث التي لا تحمله
+  تُنسب إلى مستخدم خدمة مجهول واحد، فمرّره كلما تعلّق الحدث بشخص ما.
+- **الأسماء** تبدأ بحرف، ثم حروف أو أرقام أو مسافات أو `_` أو `.` أو `:` أو `-`
+  (من 2 إلى 64 حرفاً). ويُسقط الحدث ذو الاسم غير الصالح (ويُسجَّل مع
+  `debug=True`).
+- **الخصائص** قاموس `dict` حتى 25 مفتاحاً. تبدأ المفاتيح بحرف أو `_`، ثم حروف أو
+  أرقام أو `_` أو `.` أو `-`. والقيم نصوص (حتى 1024 حرفاً) أو أرقام منتهية أو
+  قيم منطقية أو `None`. وتُسقط المدخلات غير الصالحة واحدة واحدة، ولا تُدعم
+  القواميس والقوائم المتداخلة.
+
+### الإرسال
+
+تُرسل الأحداث كل 10 ثوانٍ، وفور تجمّع 50 حدثاً، وعند استدعاء `lerix.flush()` أو
+`lerix.analytics.flush()`، وعند خروج المفسّر. يحمل كل طلب حتى 100 حدث، وينتظر
+في الذاكرة حتى 1000 حدث (ويُحذف الأقدم بعدها).
+
+تُحذف الدفعة التي ترفضها الواجهة لعدم صلاحيتها. أما خطأ الشبكة أو 401 أو 429
+أو 5xx فيحتفظ بها ويُعيد المحاولة على فترات متزايدة (من ثانيتين حتى 5 دقائق).
+ولا تُحفظ الأحداث بين مرات إعادة التشغيل.
+
+```python
+lerix.init(
+    api_key="...",
+    project_id="...",
+    analytics={"flush_interval": 5, "flush_at": 50, "max_batch_size": 100, "max_queue_size": 1000},
+)
+
+lerix.init(api_key="...", project_id="...", analytics=False)  # track() becomes a no-op
+
+lerix.analytics.set_enabled(False)  # stop recording and clear the buffer (e.g. a user opted out)
+lerix.analytics.flush(timeout=5)    # send now; True when it finished in time
+```
+
+### البيئة
+
+تحمل الأحداث `prod` أو `dev` أو قيمتك الخاصة: تصبح `production` بالقيمة `prod`
+و`development` بالقيمة `dev`. والقيمة غير المضبوطة أو غير الصالحة تصبح `dev` مع
+`debug=True`، و`prod` فيما عدا ذلك.
+
+## الملاحظات
+
+أرسل الملاحظات من خادمك، من نموذج الدعم الخاص بك أو من روبوت محادثة مثلاً. لا
+واجهة على الخادم: ترسل `submit` ما تعطيها وتُرجع معرّف الملاحظة، التي تظهر تحت
+**الملاحظات** في لوحة التحكم.
+
+```python
+from lerix import FeedbackAttachment
+
+feedback_id = lerix.feedback.submit(
+    message="The export button does nothing",
+    email="ana@example.com",           # optional
+    labels=["bug"],                    # label keys from the dashboard
+    user_id=user.id,                   # optional, your own ID for the person
+    custom={"plan": "pro"},            # optional, up to 50 keys / 16 KB of JSON
+    attachments=[FeedbackAttachment(data=png_bytes, width=1280, height=800)],
+)
+```
+
+- تُحذف المسافات الطرفية من `message`، ويجب أن يكون طولها من 1 إلى 4000 حرف.
+- `attachments`: حتى 5 صور PNG أو JPEG أو WebP بحجم أقصاه 5 ميغابايت لكل منها،
+  بصيغة `bytes` أو `FeedbackAttachment` أو قاموس بالحقول نفسها. يُقرأ النوع من
+  البايتات، ويُعدّ `content_type` المخالف لها خطأً.
+- داخل [طلب مُتتبَّع](/ar/frameworks/python/request-tracing)، تُربط الملاحظة
+  بتتبّع الطلب.
+- بخلاف `track`، تنتظر `submit` حتى تنتهي وترمي `lerix.LerixApiError`: الرمز
+  `INVALID_FEEDBACK` للمدخلات غير الصالحة (ولا يُرسل شيء)، أو خطأ الواجهة بعد
+  محاولتين إضافيتين عند خطأ الشبكة أو 429 أو 5xx. وتعيد المحاولات استخدام معرّف
+  العميل نفسه، فلا تُنشأ الملاحظة مرتين. وتُرجع `None` مع `enabled=False`.
+
+<Note>
+  يُخزَّن `user_id` الذي تمرّره على أنه *مُبلَّغ عنه* من خادمك. ولا تُرسل الردود
+  بالإشعارات إلا للمستخدمين المُتحقَّق منهم عبر `setUser` في حزم العميل.
+</Note>

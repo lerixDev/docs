@@ -1,0 +1,213 @@
+---
+title: "Flutter — الملاحظات وNPS والتحليلات"
+description: "أضِف إلى تطبيق Flutter ملاحظات داخل التطبيق مع لقطات شاشة مُعلَّم عليها، واستبيان NPS، وتحليلات المنتج."
+---
+
+يتطلب ذلك `lerix_flutter` بالإصدار 0.4.0 أو أحدث. كل ما في هذه الصفحة يعمل على
+iOS وأندرويد وmacOS وWindows والويب. لمعرفة ما تقدّمه كل وحدة وما تراه في لوحة
+التحكم، راجع [الملاحظات](/ar/modules/feedback) و[استبيانات NPS](/ar/modules/nps-surveys)
+و[التحليلات](/ar/modules/analytics).
+
+## الإعداد
+
+إضافتان إلى التطبيق الذي أعددته في [التثبيت](/ar/frameworks/flutter/installation):
+
+1. ضع `LerixFeedback` **فوق** `MaterialApp`. فهو يستضيف نموذج الملاحظات ولوحة
+   NPS، ولا يكلّف شيئاً ما داما مغلقين.
+2. أضِف `LerixNavigatorObserver` إلى الـ navigator ليُسجَّل عرض الشاشات.
+
+```dart main.dart
+import 'package:flutter/material.dart';
+import 'package:lerix_flutter/lerix_flutter.dart';
+
+void main() {
+  Lerix.init(
+    url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    builder: () => runApp(const LerixFeedback(child: MyApp())),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      navigatorObservers: [LerixNavigatorObserver()],
+      home: const HomeScreen(),
+    );
+  }
+}
+```
+
+ومع go_router، مرّر المراقب إلى `GoRouter` بدلاً من ذلك:
+
+```dart
+final router = GoRouter(
+  observers: [LerixNavigatorObserver()],
+  routes: [/* ... */],
+);
+```
+
+### خيارات التهيئة
+
+تقبل `Lerix.init` معاملين اختياريين لهذه الوحدات:
+
+| المعامل | النوع | الوصف |
+|-----------|------|-------------|
+| `environment` | `String?` | يُرسل مع الملاحظات وإجابات الاستبيان والأحداث. القيمة الافتراضية `dev` لنسخ التطوير والمحاكيات ومضيفي الويب المحليين، و`prod` فيما عدا ذلك. |
+| `analytics` | `LerixAnalyticsOptions` | `enabled` و`autoSessions` و`autoScreens`، وكلها `true` افتراضياً. |
+
+```dart
+Lerix.init(
+  // ...
+  environment: 'staging',
+  analytics: const LerixAnalyticsOptions(autoScreens: false),
+  builder: () => runApp(const LerixFeedback(child: MyApp())),
+);
+```
+
+## الملاحظات داخل التطبيق
+
+افتح النموذج من أي مكان تحت `LerixFeedback`، من زر "إرسال ملاحظة" مثلاً:
+
+```dart
+final result = await Lerix.feedback.show(context);
+if (result.submitted) {
+  print('Thanks! ${result.id ?? 'queued'}');
+}
+```
+
+يتقلّص التطبيق إلى خلفية مع الاحتفاظ بحالته. يكتب المستخدم رسالته، ويختار
+التصنيفات، ويلتقط لقطات شاشة بالتنقّل في التطبيق ثم النقر على **التقاط**،
+ويرسم عليها (4 ألوان و3 أحجام مع تراجع وإعادة)، ويضيف بريده، ثم يراجع كل شيء
+عبر **عرض التفاصيل**. وتختفي خطوة لقطة الشاشة إن لم يستطع محرّك العرض التقاط
+الشاشة.
+
+تُرجع `show()` كائن `LerixFeedbackResult`:
+
+| الحقل | الوصف |
+|---|---|
+| `submitted` | `true` حين يرسلها المستخدم (وصلت، أو حُفظت بأمان في قائمة الانتظار) |
+| `id` | معرّف الخادم، إن وصلت الملاحظة قبل انتهاء الاستدعاء |
+| `clientId` | المعرّف الذي تُحفظ به الملاحظة ويُمنع به تكرارها |
+| `queued` | `true` حين تكون محفوظة على الجهاز بانتظار الإرسال |
+
+### الخيارات
+
+تأتي التصنيفات ووضع البريد ووضع لقطات الشاشة من لوحة التحكم. ويمكنك تجاوزها
+في استدعاء واحد عبر `LerixFeedbackOptions`:
+
+```dart
+await Lerix.feedback.show(
+  context,
+  const LerixFeedbackOptions(
+    labels: ['bug', 'improvement'],      // only these keys, in this order; [] hides the step
+    email: LerixEmailMode.required,      // hidden, optional, required
+    screenshot: LerixScreenshotMode.optional, // hidden, optional
+    prefillEmail: 'user@example.com',
+    custom: {'plan': 'pro'},             // up to 50 keys / 16 KB
+  ),
+);
+```
+
+ولتعبئة البريد مسبقاً في كل مرة، استدعِ `Lerix.feedback.setUserEmail('user@example.com')`
+بعد تسجيل دخول المستخدم.
+
+### إخفاء العناصر الحساسة
+
+غلّف كل ما يجب ألا يظهر في لقطة الشاشة بـ `LerixConfidential`، فيُطمس قبل
+إنشاء الصورة.
+
+```dart
+LerixConfidential(
+  child: Text(cardNumber),
+)
+```
+
+### واجهتك الخاصة
+
+أرسل الملاحظات من نموذجك الخاص عبر `submit`. لقطات الشاشة بايتات PNG أو JPEG
+أو WebP، حتى 5 ميغابايت لكل منها.
+
+```dart
+final result = await Lerix.feedback.submit(
+  message: 'Checkout button does nothing',
+  labels: ['bug'],
+  email: 'user@example.com',
+  screenshots: [pngBytes],
+  custom: {'plan': 'pro'},
+);
+```
+
+### المظهر واللغة
+
+يتبع النموذج سمة تطبيقك (فاتحة أو داكنة، واللون الأساسي). العربية (من اليمين
+إلى اليسار) والإنجليزية مدمجتان، وتعود اللغات الأخرى إلى الإنجليزية.
+
+```dart
+LerixFeedback(
+  theme: LerixThemeData(/* ... */),   // override the look
+  strings: {
+    'fr': LerixStrings.en.copyWith(send: 'Envoyer'),
+  },
+  child: const MyApp(),
+)
+```
+
+## استبيان NPS
+
+استدعِ `maybeShowNps` في لحظة هادئة، عند ظهور الشاشة الرئيسية مثلاً. تُرجع
+`true` إن عُرض الاستبيان.
+
+```dart
+await Lerix.surveys.maybeShowNps(context);
+
+// While testing: skip the eligibility rules
+await Lerix.surveys.maybeShowNps(context, force: true);
+```
+
+لا تعرض الحزمة الاستبيان إلا حين يستحقه هذا التثبيت، وفق القواعد التي تضبطها
+في لوحة التحكم (راجع [استبيانات NPS](/ar/modules/nps-surveys)). ومع
+`debugMode: true` تطبع وحدة التحكم سبب تخطي الاستبيان.
+
+## التحليلات
+
+```dart
+Lerix.track('checkout_started', {'items': 3, 'coupon': 'EID'});
+Lerix.screen('Checkout'); // a screen the observer can't see, such as a tab
+```
+
+- تُسجَّل الأحداث `$first_open` و`$session_start` / `$session_end`
+  و`$app_update` و`$screen_view` تلقائياً.
+- تُؤخذ أسماء الشاشات من اسم المسار: `GoRoute.name`، أو `name` في
+  `RouteSettings` / `MaterialPage`. وتُتخطى المسارات غير المسمّاة ونوافذ الحوار
+  واللوحات السفلية. ويضيف `LerixNavigatorObserver(includePopups: true)` النوافذ
+  المنبثقة المسمّاة، ويتيح لك `nameExtractor` تسمية المسارات بنفسك.
+- لا يرمي `Lerix.track` أي استثناء، ويمكن استدعاؤه قبل `Lerix.init`. وتُهمل
+  الأسماء والخصائص غير الصالحة وتُسجَّل في وضع التصحيح.
+- تُحفظ الأحداث على الجهاز وتُرسل على دفعات.
+
+```dart
+await Lerix.analytics.setEnabled(false); // opt out: persisted, clears the queue
+await Lerix.analytics.flush();           // send now
+```
+
+<Note>
+  استدعِ [`Lerix.setUser`](/ar/modules/users-identity) بعد تسجيل الدخول، فتحسب
+  التحليلات الشخص عبر أجهزته، وتستطيع الرد على ملاحظاته بإشعار.
+</Note>
+
+## الخطوات السابقة (Breadcrumbs)
+
+تُرفق آخر 50 خطوة بكل بلاغ ملاحظات، ويُضاف عرض الشاشات تلقائياً. أضِف خطواتك:
+
+```dart
+Lerix.addBreadcrumb(
+  'Tapped pay',
+  category: LerixBreadcrumbCategory.ui,   // navigation, log, http, ui, custom
+  data: {'amount': 49},
+);
+```

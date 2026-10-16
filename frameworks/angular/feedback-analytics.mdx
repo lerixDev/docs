@@ -1,0 +1,133 @@
+---
+title: "Angular — Feedback, NPS and Analytics"
+description: "Add an in-app feedback dialog, an NPS survey and product analytics to your Angular app, with Router screen tracking."
+---
+
+Requires `@lerix-dev/lerix-angular` 1.3.0 or later. `@angular/router` is a peer
+dependency. For what each module does and what you see in the dashboard, read
+[Feedback](/modules/feedback), [NPS surveys](/modules/nps-surveys) and
+[Analytics](/modules/analytics).
+
+## Setup
+
+Add `provideLerixRouterTracking()` next to the `provideLerix()` from
+[Installation](/frameworks/angular/installation). It records a `$screen_view`
+on every Router `NavigationEnd`, and turns off the SDK's History API tracking
+so nothing is counted twice.
+
+```ts app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideLerix, provideLerixRouterTracking } from '@lerix-dev/lerix-angular';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes),
+    provideLerix({
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      environment: 'staging', // default: dev on localhost / *.local or in debug mode, else prod
+    }),
+    provideLerixRouterTracking({
+      name: (path) => path.replace(/^\/orders\/[^/]+/, '/orders/:id'),
+    }),
+  ],
+};
+```
+
+The optional `name` maps a path (without query or hash) to a screen name, so
+`/orders/42` and `/orders/43` count as one screen. Return `null` to
+skip a path.
+
+`provideLerix()` also takes `locale`, `analytics` (`enabled`, `autoSessions`,
+`autoScreens`), `feedback` (`theme`, `primaryColor`, `strings`, `zIndex`) and
+`captureConsoleErrors`. They work as in [React](/frameworks/react/feedback-analytics#setup).
+
+## In-app feedback
+
+```ts toolbar.component.ts
+import { Component, inject } from '@angular/core';
+import { LerixConfidentialDirective, LerixFeedbackService } from '@lerix-dev/lerix-angular';
+
+@Component({
+  selector: 'app-toolbar',
+  imports: [LerixConfidentialDirective],
+  template: `
+    <button (click)="feedback.show()">Send feedback</button>
+    <p lerixConfidential>{{ email }}</p> <!-- masked in screenshots -->
+  `,
+})
+export class ToolbarComponent {
+  readonly feedback = inject(LerixFeedbackService);
+  email = 'user@example.com';
+}
+```
+
+`LerixFeedbackService` has:
+
+| Method | Description |
+|---|---|
+| `show(options?)` | Opens the dialog. Options: `labels`, `email` (`hidden`, `optional`, `required`), `screenshot` (`hidden`, `optional`), `prefillEmail`, `custom`. Resolves `{ submitted, id?, clientId? }`. |
+| `submit(input)` | Sends feedback from your own form: `{ message, labels?, email?, screenshots?: Blob[], custom? }`. Resolves `{ clientId, id?, status }`. |
+| `setUserEmail(email)` | Prefills the email field. |
+| `getConfig()` | The project's feedback settings, as the dialog sees them. |
+
+The dialog renders inside a Shadow DOM, is a lazy chunk loaded on first use,
+and ships English and Arabic (right to left). The `lerixConfidential`
+directive adds `data-lerix-mask`, which blacks the element out of screenshots.
+
+## NPS survey
+
+```ts
+import { AfterViewInit, Component, inject } from '@angular/core';
+import { LerixSurveyService } from '@lerix-dev/lerix-angular';
+
+@Component({ selector: 'app-home', template: `...` })
+export class HomeComponent implements AfterViewInit {
+  private readonly surveys = inject(LerixSurveyService);
+
+  ngAfterViewInit() {
+    void this.surveys.maybeShowNps(); // only when this install is due
+  }
+}
+```
+
+Pass `{ force: true }` while testing to skip the rules. See
+[When the survey is shown](/modules/nps-surveys#when-the-survey-is-shown).
+
+## Analytics
+
+```ts
+import { Component, inject } from '@angular/core';
+import { LerixAnalyticsService } from '@lerix-dev/lerix-angular';
+
+@Component({ selector: 'app-checkout', template: `...` })
+export class CheckoutComponent {
+  private readonly analytics = inject(LerixAnalyticsService);
+
+  checkout() {
+    this.analytics.track('checkout_started', { items: 3 });
+  }
+}
+```
+
+`LerixAnalyticsService` has `track`, `screen`, `flush`, `setEnabled`
+(the persisted opt-out), `isEnabled`, `getSessionId` and `addBreadcrumb`.
+`$first_open`, `$session_start` / `$session_end`, `$app_update` and
+`$screen_view` are recorded automatically. `track` never throws.
+
+<Note>
+  Call [`setUser`](/modules/users-identity) after sign-in. Analytics then
+  counts the person across devices, and you can reply to their feedback by
+  push.
+</Note>
+
+## Breadcrumbs
+
+```ts
+this.analytics.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+The last 50 breadcrumbs (navigation is added automatically) are attached to
+feedback. Categories: `navigation`, `log`, `http`, `ui`, `custom`.

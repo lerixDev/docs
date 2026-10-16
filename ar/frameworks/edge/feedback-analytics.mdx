@@ -1,0 +1,84 @@
+---
+title: "Edge Functions — التحليلات والملاحظات"
+description: "سجّل الأحداث من Supabase Edge Functions وCloudflare Workers وVercel Edge وDeno وBun، وأرسل الملاحظات إلى صندوق الملاحظات."
+---
+
+يتطلب ذلك `@lerix-dev/lerix-edge` بالإصدار 0.2.0 أو أحدث. تستخدم الميزتان عميل
+`lerix` الذي أعددته في [التثبيت](/ar/frameworks/edge/installation). ولمعرفة ما
+تراه في لوحة التحكم، راجع [التحليلات](/ar/modules/analytics)
+و[الملاحظات](/ar/modules/feedback).
+
+## التحليلات
+
+```ts
+Deno.serve(lerix.wrap(async (req) => {
+  const { userId, amount } = await req.json();
+  lerix.track('payment_succeeded', { amount, currency: 'OMR' }, { userId });
+  return new Response('ok');
+}));
+```
+
+- تصل الأحداث إلى مسارات التحويل وأعداد المستخدمين نفسها التي تغذّيها أحداث
+  تطبيقاتك. و`userId` هو معرّفك الخاص للمستخدم، وهو نفسه الذي تمرّره تطبيقاتك
+  إلى [`setUser()`](/ar/modules/users-identity).
+- تبدأ الأسماء بحرف، ثم حروف أو أرقام أو مسافات أو `_` أو `.` أو `:` أو `-`
+  (من 2 إلى 64 حرفاً). حتى 25 خاصية، قيمها نصوص (حتى 1024 حرفاً) أو أرقام
+  منتهية أو قيم منطقية أو `null`. الاسم غير الصالح يُسقط الحدث، والخاصية غير
+  الصالحة تُسقط وحدها. ولا يرمي `track()` أي استثناء.
+
+### الإرسال
+
+تُخزَّن الأحداث داخل الـ isolate (حتى 1000 حدث، ويُحذف الأقدم أولاً) وتُرسل على
+دفعات حتى 100 حدث بعد الرد عبر `waitUntil`، أو فور تجمّع 50 حدثاً. ولا يوجد
+مؤقّت، لأن الـ isolates تتجمّد بين الطلبات.
+
+وخارج `wrap()`، في معالج مهام مجدولة أو مستهلك طوابير مثلاً، أرسل ما تبقى قبل
+أن تعود:
+
+```ts
+lerix.track('nightly_sync_finished', { rows });
+await lerix.flush();
+```
+
+إن تعذّر الوصول إلى الواجهة أو أجابت بـ 401 أو 429 أو 5xx، تبقى الأحداث في
+الذاكرة ويعيد طلب لاحق المحاولة بعد فترة انتظار (من ثانيتين حتى 5 دقائق).
+وتُحذف الدفعة التي تُرفض لعدم صلاحيتها. ولا يبقى شيء بعد انتهاء الـ isolate.
+
+### البيئة وإيقاف التتبّع
+
+تحمل الأحداث `platform: "edge"`، وبيئة التشغيل بوصفها نظام التشغيل، وإصدار
+تطبيقك ورقم البناء، والبيئة: خيار `environment`، أو `NODE_ENV` حيث يمكن قراءته،
+فتُرسل `production` باسم `prod` و`development` باسم `dev` (و`prod` إن لم
+تُضبط).
+
+```ts
+lerix.analytics.setEnabled(false); // stop recording and clear the buffer
+```
+
+ويحوّل `analytics: false` في خيارات `Lerix.init` الدالة `track()` إلى عملية لا
+تفعل شيئاً.
+
+## الملاحظات
+
+```ts
+const id = await lerix.feedback.submit({
+  message: 'Checkout button does nothing',
+  email: 'user@example.com',          // optional
+  labels: ['bug'],                    // project label keys
+  userId,                             // optional, your ID for the user
+  custom: { plan: 'pro' },            // optional, up to 50 keys / 16 KB
+  attachments: [{ data: pngBytes }],  // optional, up to 5 PNG/JPEG/WebP images of 5 MB
+});
+```
+
+- تُرفع المرفقات أولاً، ثم تُنشأ الملاحظة بمعرّفاتها.
+- يُعاد إرسال الطلبات الفاشلة مرتين بمعرّف العميل نفسه، فلا تتكرر الملاحظة.
+- ترفض `submit()` بخطأ `LerixApiException` (الرمز `INVALID_FEEDBACK` لمدخلات لا
+  يمكن إرسالها، أو خطأ الواجهة)، وتُرجع `null` مع `enabled: false`.
+- داخل [طلب مُتتبَّع](/ar/frameworks/edge/request-tracing)، ترتبط الملاحظة
+  بالتتبّع.
+
+<Note>
+  يُخزَّن `userId` الذي تمرّره على أنه *مُبلَّغ عنه* من خادمك. ولا تُرسل الردود
+  بالإشعارات إلا للمستخدمين المُتحقَّق منهم عبر `setUser` في حزم العميل.
+</Note>

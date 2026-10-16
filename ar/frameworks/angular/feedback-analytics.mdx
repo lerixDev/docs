@@ -1,0 +1,131 @@
+---
+title: "Angular — الملاحظات وNPS والتحليلات"
+description: "أضِف إلى تطبيق Angular نافذة ملاحظات داخل التطبيق، واستبيان NPS، وتحليلات المنتج، مع تتبّع الشاشات عبر Router."
+---
+
+يتطلب ذلك `@lerix-dev/lerix-angular` بالإصدار 1.3.0 أو أحدث، و`@angular/router`
+تبعية نظيرة (peer dependency). لمعرفة ما تقدّمه كل وحدة وما تراه في لوحة
+التحكم، راجع [الملاحظات](/ar/modules/feedback)
+و[استبيانات NPS](/ar/modules/nps-surveys) و[التحليلات](/ar/modules/analytics).
+
+## الإعداد
+
+أضِف `provideLerixRouterTracking()` بجانب `provideLerix()` الذي أعددته في
+[التثبيت](/ar/frameworks/angular/installation). يسجّل `$screen_view` عند كل
+`NavigationEnd` في الـ Router، ويوقف تتبّع History API في الحزمة كي لا يُحتسب
+شيء مرتين.
+
+```ts app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideLerix, provideLerixRouterTracking } from '@lerix-dev/lerix-angular';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes),
+    provideLerix({
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      environment: 'staging', // default: dev on localhost / *.local or in debug mode, else prod
+    }),
+    provideLerixRouterTracking({
+      name: (path) => path.replace(/^\/orders\/[^/]+/, '/orders/:id'),
+    }),
+  ],
+};
+```
+
+تحوّل الدالة الاختيارية `name` المسار (دون الاستعلام أو الجزء بعد `#`) إلى اسم
+شاشة، فيُحتسب `/orders/42` و`/orders/43` شاشة واحدة. أرجِع `null` لتخطي مسار.
+
+ويقبل `provideLerix()` أيضاً `locale` و`analytics` (`enabled` و`autoSessions`
+و`autoScreens`) و`feedback` (`theme` و`primaryColor` و`strings` و`zIndex`)
+و`captureConsoleErrors`، وتعمل كما في [React](/ar/frameworks/react/feedback-analytics).
+
+## الملاحظات داخل التطبيق
+
+```ts toolbar.component.ts
+import { Component, inject } from '@angular/core';
+import { LerixConfidentialDirective, LerixFeedbackService } from '@lerix-dev/lerix-angular';
+
+@Component({
+  selector: 'app-toolbar',
+  imports: [LerixConfidentialDirective],
+  template: `
+    <button (click)="feedback.show()">Send feedback</button>
+    <p lerixConfidential>{{ email }}</p> <!-- masked in screenshots -->
+  `,
+})
+export class ToolbarComponent {
+  readonly feedback = inject(LerixFeedbackService);
+  email = 'user@example.com';
+}
+```
+
+يوفّر `LerixFeedbackService`:
+
+| الدالة | الوصف |
+|---|---|
+| `show(options?)` | تفتح النافذة. الخيارات: `labels`، و`email` (`hidden` أو `optional` أو `required`)، و`screenshot` (`hidden` أو `optional`)، و`prefillEmail`، و`custom`. تُرجع `{ submitted, id?, clientId? }`. |
+| `submit(input)` | ترسل الملاحظات من نموذجك الخاص: `{ message, labels?, email?, screenshots?: Blob[], custom? }`. تُرجع `{ clientId, id?, status }`. |
+| `setUserEmail(email)` | تعبّئ حقل البريد مسبقاً. |
+| `getConfig()` | إعدادات الملاحظات للمشروع كما تراها النافذة. |
+
+تُعرض النافذة داخل Shadow DOM، وتُحمَّل كجزء منفصل عند أول استخدام، وتأتي
+بالعربية (من اليمين إلى اليسار) والإنجليزية. ويضيف الموجّه `lerixConfidential`
+السمة `data-lerix-mask` التي تطمس العنصر في لقطات الشاشة.
+
+## استبيان NPS
+
+```ts
+import { AfterViewInit, Component, inject } from '@angular/core';
+import { LerixSurveyService } from '@lerix-dev/lerix-angular';
+
+@Component({ selector: 'app-home', template: `...` })
+export class HomeComponent implements AfterViewInit {
+  private readonly surveys = inject(LerixSurveyService);
+
+  ngAfterViewInit() {
+    void this.surveys.maybeShowNps(); // only when this install is due
+  }
+}
+```
+
+مرّر `{ force: true }` أثناء الاختبار لتجاوز القواعد. راجع
+[استبيانات NPS](/ar/modules/nps-surveys).
+
+## التحليلات
+
+```ts
+import { Component, inject } from '@angular/core';
+import { LerixAnalyticsService } from '@lerix-dev/lerix-angular';
+
+@Component({ selector: 'app-checkout', template: `...` })
+export class CheckoutComponent {
+  private readonly analytics = inject(LerixAnalyticsService);
+
+  checkout() {
+    this.analytics.track('checkout_started', { items: 3 });
+  }
+}
+```
+
+يوفّر `LerixAnalyticsService` الدوال `track` و`screen` و`flush` و`setEnabled`
+(إيقاف التتبّع المحفوظ) و`isEnabled` و`getSessionId` و`addBreadcrumb`. وتُسجَّل
+الأحداث `$first_open` و`$session_start` / `$session_end` و`$app_update`
+و`$screen_view` تلقائياً. ولا يرمي `track` أي استثناء.
+
+<Note>
+  استدعِ [`setUser`](/ar/modules/users-identity) بعد تسجيل الدخول، فتحسب
+  التحليلات الشخص عبر أجهزته، وتستطيع الرد على ملاحظاته بإشعار.
+</Note>
+
+## الخطوات السابقة (Breadcrumbs)
+
+```ts
+this.analytics.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+تُرفق آخر 50 خطوة (ويُضاف التنقّل تلقائياً) بالملاحظات. الفئات: `navigation`
+و`log` و`http` و`ui` و`custom`.

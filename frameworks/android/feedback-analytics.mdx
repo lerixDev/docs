@@ -1,0 +1,172 @@
+---
+title: "Android (Kotlin) — Feedback, NPS and Analytics"
+description: "Add in-app feedback, shake to report, an NPS survey and product analytics to your native Android app."
+---
+
+Requires `lerix` 1.3.0 or later. For what each module does and what you see in
+the dashboard, read [Feedback](/modules/feedback),
+[NPS surveys](/modules/nps-surveys) and [Analytics](/modules/analytics).
+
+## Setup
+
+Call `Lerix.initialize()` from `Application.onCreate()`, as in
+[Installation](/frameworks/android/installation). Analytics starts on its own:
+Activities are tracked through the application's lifecycle callbacks, so
+there is nothing to add to each screen. Two optional parameters configure
+these modules:
+
+```kotlin MyApplication.kt
+Lerix.initialize(
+    context = this,
+    apiKey = "your-api-key",
+    projectId = "your-project-id",
+    environment = "staging",   // default: dev for debuggable builds and emulators, else prod
+    analytics = LerixAnalyticsOptions(
+        enabled = true,
+        autoSessions = true,
+        autoScreens = true,        // a $screen_view per resumed Activity
+        trackFragments = false,    // true: also one per resumed AndroidX Fragment
+    ),
+)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `environment` | `String?` | Sent with feedback, survey responses and events |
+| `analytics` | `LerixAnalyticsOptions` | `enabled`, `autoSessions`, `autoScreens` (default `true`) and `trackFragments` (default `false`) |
+
+The SDK declares its own feedback Activity through manifest merging, so
+there's nothing to add to your `AndroidManifest.xml`.
+
+## In-app feedback
+
+```kotlin
+Lerix.feedback.show(activity) { result ->
+    if (result.submitted) Log.d("App", "feedback ${result.clientId}")
+}
+```
+
+The current screen is captured before the UI appears, with `PixelCopy` on
+Android 8+ so maps and video are included. The flow is message, labels,
+screenshots (tap one to draw on it with 4 colours, 3 pen sizes, undo and redo;
+**Add screenshot** captures another screen), email, then a review with **Show
+details**. Screens that set `FLAG_SECURE` are never captured.
+
+`result` is a `LerixFeedbackResult(submitted, id, clientId)`. `id` is `null`
+while the feedback is still queued.
+
+### Options
+
+Labels, the email mode and the screenshot mode come from the dashboard. Override
+them for one call:
+
+```kotlin
+Lerix.feedback.show(
+    activity,
+    LerixFeedbackOptions(
+        labels = listOf("bug", "improvement"),
+        email = LerixFieldMode.REQUIRED,        // HIDDEN, OPTIONAL, REQUIRED
+        screenshot = LerixFieldMode.OPTIONAL,   // HIDDEN or OPTIONAL
+        prefillEmail = user.email,
+        custom = mapOf("plan" to "pro"),
+    ),
+)
+
+Lerix.feedback.setUserEmail(user.email)   // prefill for every flow
+```
+
+### Shake to report
+
+```kotlin
+Lerix.feedback.enableShakeToReport(application)
+// Later, to stop:
+Lerix.feedback.disableShakeToReport()
+```
+
+### Hide sensitive views
+
+```kotlin
+Lerix.markConfidential(cardNumberView)     // a black box in screenshots
+Lerix.unmarkConfidential(cardNumberView)
+```
+
+### Your own UI
+
+```kotlin
+lifecycleScope.launch {
+    val result = Lerix.feedback.submit(
+        message = "Checkout button does nothing",
+        labels = listOf("bug"),
+        email = "user@example.com",
+        screenshots = listOf(pngBytes),   // PNG, JPEG or WebP, up to 5 MB each
+    )
+}
+```
+
+### Language, dark mode and colours
+
+The UI ships in English and Arabic and follows the system light or dark mode.
+Layouts mirror in Arabic when your app declares `android:supportsRtl="true"`.
+The accent colour is your theme's `colorPrimary`; override it:
+
+```kotlin
+Lerix.setAccentColor(0xFF6E56CF.toInt())
+```
+
+Override any `lerix_*` string by defining a string resource with the same name
+in your app.
+
+## NPS survey
+
+```kotlin
+lifecycleScope.launch {
+    val shown = Lerix.surveys.maybeShowNps(activity)
+}
+
+// Without coroutines
+Lerix.surveys.maybeShowNps(activity) { shown -> }
+
+// While testing: skip the eligibility rules
+lifecycleScope.launch { Lerix.surveys.maybeShowNps(activity, force = true) }
+```
+
+The SDK shows the survey only when this install is due (see
+[When the survey is shown](/modules/nps-surveys#when-the-survey-is-shown)).
+In `debugMode`, Logcat says why a survey was skipped and when it is next due.
+
+## Analytics
+
+```kotlin
+Lerix.track("checkout_started", mapOf("items" to 3, "coupon" to "EID"))
+Lerix.screen("Checkout")            // manual screen view (Compose, custom navigation)
+
+Lerix.analytics.flush()             // send now
+Lerix.analytics.setEnabled(false)   // opt out: stops recording, clears the queue, persisted
+```
+
+- `$first_open`, `$session_start` / `$session_end`, `$app_update` and a
+  `$screen_view` per resumed Activity (its class name) are recorded
+  automatically.
+- With Jetpack Compose or a single-Activity app, call `Lerix.screen()` when
+  your destination changes.
+- A process started in the background (an FCM data message, a service) isn't
+  counted as an app start or a session.
+- `track` never throws. Invalid events and properties are dropped and logged
+  in `debugMode`.
+
+<Note>
+  Call [`Lerix.setUser`](/modules/users-identity) after sign-in. Analytics
+  then counts the person across devices, and you can reply to their feedback by
+  push.
+</Note>
+
+## Breadcrumbs
+
+The last 50 breadcrumbs are attached to feedback. Screen changes are added
+automatically.
+
+```kotlin
+Lerix.addBreadcrumb("Added item to cart", category = "ui", data = mapOf("sku" to "A1"))
+```
+
+Categories: `navigation`, `log`, `http`, `ui`, `custom` (the default).

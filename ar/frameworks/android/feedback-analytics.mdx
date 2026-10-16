@@ -1,0 +1,167 @@
+---
+title: "Android (Kotlin) — الملاحظات وNPS والتحليلات"
+description: "أضِف إلى تطبيق أندرويد الأصلي ملاحظات داخل التطبيق، والإبلاغ بهزّ الجهاز، واستبيان NPS، وتحليلات المنتج."
+---
+
+يتطلب ذلك `lerix` بالإصدار 1.3.0 أو أحدث. لمعرفة ما تقدّمه كل وحدة وما تراه
+في لوحة التحكم، راجع [الملاحظات](/ar/modules/feedback)
+و[استبيانات NPS](/ar/modules/nps-surveys) و[التحليلات](/ar/modules/analytics).
+
+## الإعداد
+
+استدعِ `Lerix.initialize()` من `Application.onCreate()` كما في
+[التثبيت](/ar/frameworks/android/installation). تبدأ التحليلات من تلقاء نفسها:
+تُتتبَّع الـ Activities عبر استدعاءات دورة حياة التطبيق، فلا شيء تضيفه إلى كل
+شاشة. ويضبط معاملان اختياريان هذه الوحدات:
+
+```kotlin MyApplication.kt
+Lerix.initialize(
+    context = this,
+    apiKey = "your-api-key",
+    projectId = "your-project-id",
+    environment = "staging",   // default: dev for debuggable builds and emulators, else prod
+    analytics = LerixAnalyticsOptions(
+        enabled = true,
+        autoSessions = true,
+        autoScreens = true,        // a $screen_view per resumed Activity
+        trackFragments = false,    // true: also one per resumed AndroidX Fragment
+    ),
+)
+```
+
+| المعامل | النوع | الوصف |
+|-----------|------|-------------|
+| `environment` | `String?` | يُرسل مع الملاحظات وإجابات الاستبيان والأحداث |
+| `analytics` | `LerixAnalyticsOptions` | `enabled` و`autoSessions` و`autoScreens` (افتراضياً `true`)، و`trackFragments` (افتراضياً `false`) |
+
+تعلن الحزمة عن Activity الملاحظات الخاصة بها عبر دمج ملفات manifest، فلا
+حاجة لإضافة شيء إلى `AndroidManifest.xml`.
+
+## الملاحظات داخل التطبيق
+
+```kotlin
+Lerix.feedback.show(activity) { result ->
+    if (result.submitted) Log.d("App", "feedback ${result.clientId}")
+}
+```
+
+تُلتقط الشاشة الحالية قبل ظهور الواجهة، عبر `PixelCopy` على أندرويد 8 فأحدث
+فتظهر الخرائط والفيديو في اللقطة. يمرّ النموذج بالرسالة، ثم التصنيفات، ثم
+لقطات الشاشة (انقر إحداها للرسم عليها بـ 4 ألوان و3 أحجام للقلم مع تراجع
+وإعادة، أو أضِف لقطة لشاشة أخرى)، ثم البريد، ثم مراجعة فيها زر **عرض
+التفاصيل**. ولا تُلتقط أبداً الشاشات التي تضبط `FLAG_SECURE`.
+
+`result` من النوع `LerixFeedbackResult(submitted, id, clientId)`، وتبقى `id`
+بالقيمة `null` ما دامت الملاحظة في قائمة الانتظار.
+
+### الخيارات
+
+تأتي التصنيفات ووضع البريد ووضع لقطات الشاشة من لوحة التحكم. ويمكنك تجاوزها
+في استدعاء واحد:
+
+```kotlin
+Lerix.feedback.show(
+    activity,
+    LerixFeedbackOptions(
+        labels = listOf("bug", "improvement"),
+        email = LerixFieldMode.REQUIRED,        // HIDDEN, OPTIONAL, REQUIRED
+        screenshot = LerixFieldMode.OPTIONAL,   // HIDDEN or OPTIONAL
+        prefillEmail = user.email,
+        custom = mapOf("plan" to "pro"),
+    ),
+)
+
+Lerix.feedback.setUserEmail(user.email)   // prefill for every flow
+```
+
+### الإبلاغ بهزّ الجهاز
+
+```kotlin
+Lerix.feedback.enableShakeToReport(application)
+// Later, to stop:
+Lerix.feedback.disableShakeToReport()
+```
+
+### إخفاء العناصر الحساسة
+
+```kotlin
+Lerix.markConfidential(cardNumberView)     // a black box in screenshots
+Lerix.unmarkConfidential(cardNumberView)
+```
+
+### واجهتك الخاصة
+
+```kotlin
+lifecycleScope.launch {
+    val result = Lerix.feedback.submit(
+        message = "Checkout button does nothing",
+        labels = listOf("bug"),
+        email = "user@example.com",
+        screenshots = listOf(pngBytes),   // PNG, JPEG or WebP, up to 5 MB each
+    )
+}
+```
+
+### اللغة والوضع الداكن والألوان
+
+تأتي الواجهة بالعربية والإنجليزية وتتبع الوضع الفاتح أو الداكن للنظام. وتنعكس
+التخطيطات في العربية إن أعلن تطبيقك `android:supportsRtl="true"`. لون التمييز
+هو `colorPrimary` في سمتك، ويمكنك تغييره:
+
+```kotlin
+Lerix.setAccentColor(0xFF6E56CF.toInt())
+```
+
+ولتغيير أي نص `lerix_*`، عرّف مورد نص بالاسم نفسه في تطبيقك.
+
+## استبيان NPS
+
+```kotlin
+lifecycleScope.launch {
+    val shown = Lerix.surveys.maybeShowNps(activity)
+}
+
+// Without coroutines
+Lerix.surveys.maybeShowNps(activity) { shown -> }
+
+// While testing: skip the eligibility rules
+lifecycleScope.launch { Lerix.surveys.maybeShowNps(activity, force = true) }
+```
+
+لا تعرض الحزمة الاستبيان إلا حين يستحقه هذا التثبيت (راجع
+[استبيانات NPS](/ar/modules/nps-surveys)). وفي `debugMode` يذكر Logcat سبب
+تخطي الاستبيان وموعد استحقاقه التالي.
+
+## التحليلات
+
+```kotlin
+Lerix.track("checkout_started", mapOf("items" to 3, "coupon" to "EID"))
+Lerix.screen("Checkout")            // manual screen view (Compose, custom navigation)
+
+Lerix.analytics.flush()             // send now
+Lerix.analytics.setEnabled(false)   // opt out: stops recording, clears the queue, persisted
+```
+
+- تُسجَّل تلقائياً الأحداث `$first_open` و`$session_start` / `$session_end`
+  و`$app_update`، وحدث `$screen_view` لكل Activity تُستأنف (باسم صنفها).
+- مع Jetpack Compose أو التطبيقات ذات الـ Activity الواحدة، استدعِ
+  `Lerix.screen()` عند تغيّر الوجهة.
+- العملية التي تبدأ في الخلفية (رسالة بيانات من FCM، أو خدمة) لا تُحتسب
+  تشغيلاً ولا جلسة.
+- لا يرمي `track` أي استثناء. وتُهمل الأحداث والخصائص غير الصالحة وتُسجَّل في
+  `debugMode`.
+
+<Note>
+  استدعِ [`Lerix.setUser`](/ar/modules/users-identity) بعد تسجيل الدخول، فتحسب
+  التحليلات الشخص عبر أجهزته، وتستطيع الرد على ملاحظاته بإشعار.
+</Note>
+
+## الخطوات السابقة (Breadcrumbs)
+
+تُرفق آخر 50 خطوة بالملاحظات، ويُضاف تغيّر الشاشات تلقائياً.
+
+```kotlin
+Lerix.addBreadcrumb("Added item to cart", category = "ui", data = mapOf("sku" to "A1"))
+```
+
+الفئات: `navigation` و`log` و`http` و`ui` و`custom` (الافتراضية).

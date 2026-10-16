@@ -1,14 +1,199 @@
 ---
 title: "Analytics"
-description: "Track users, sessions, geography, and app performance in real time."
+description: "Active users, sessions, screens, retention, funnels and crash-free rates, recorded automatically by the SDK you already ship."
 icon: "chart-bar"
 ---
 
-<Badge>Coming soon</Badge>
+## What it does
 
-Analytics will let you track users, sessions, geography, and app performance
-in real time from the same dashboard you already use for error tracking and
-push notifications.
+Analytics answers who uses your app, how often, on what, and where they drop
+off. Once the SDK is initialized it records installs, sessions, screen views
+and app updates on its own. Add `track()` calls for the moments that matter
+to your product:
 
-This module isn't available yet. Check back soon, or follow
-[@lerixdev](https://x.com/lerixdev) for updates.
+<CodeGroup>
+
+```dart Flutter
+Lerix.track('checkout_started', {'items': 3, 'coupon': 'EID'});
+```
+
+```swift Swift
+Lerix.track("checkout_started", props: ["items": 3, "coupon": "EID"])
+```
+
+```kotlin Kotlin
+Lerix.track("checkout_started", mapOf("items" to 3, "coupon" to "EID"))
+```
+
+```ts Web
+Lerix.track('checkout_started', { items: 3, coupon: 'EID' });
+```
+
+```ts NestJS
+this.lerix.track('payment_succeeded', { plan: 'pro', amount: 49 }, { userId: order.userId });
+```
+
+</CodeGroup>
+
+Because the same SDK reports your errors, analytics knows which sessions
+crashed. That gives you **crash-free sessions and users per app version**
+without a second tool.
+
+`track()` never throws. An invalid event or property is dropped on the device
+(and logged in debug mode) instead of breaking your app.
+
+## Automatic events
+
+Every client SDK (Flutter, Swift, Kotlin and the web SDKs) records these
+without any code:
+
+| Event | When | Properties |
+|---|---|---|
+| `$first_open` | The first launch of a new install | None |
+| `$session_start` | A cold start, or a return to the foreground after 30 minutes or more in the background | `coldStart` |
+| `$session_end` | The app goes to the background (or, if it was killed, on the next start) | `duration` in seconds |
+| `$screen_view` | A screen, route or page is shown | `screen`, `previous` |
+| `$app_update` | The app starts on a different version than last time | `from`, `to` |
+
+- **Sessions.** A new session starts after 30 minutes in the background. On
+  the web, each tab has its own session, which ends after 30 minutes of
+  inactivity.
+- **Screens.** Where screen names come from depends on the platform: route
+  names in Flutter, Activities on Android, `.lerixScreen()` in SwiftUI, the
+  router in Next.js and Angular, and the URL elsewhere on the web. You can
+  always record one yourself with `Lerix.screen("Checkout")`. See your
+  [framework guide](#set-it-up).
+- **Turn them off.** Automatic sessions and screens can each be switched off
+  in the SDK's init options.
+
+The `$` prefix is reserved for these events. Your own event names can't start
+with it.
+
+### Server-side events
+
+The server SDKs (NestJS, Python, ASP.NET and Edge Functions) record no
+automatic events. Use them to `track()` what only your backend knows, such as
+a payment that went through. Pass your own user ID and the event counts
+toward that user, in the same funnels and user counts as the events your
+apps send.
+
+## Users and devices
+
+Analytics counts two things:
+
+- **Devices**: distinct installs. Each install gets a random ID generated on
+  the device the first time the SDK runs.
+- **Users**: distinct people. A person is the user ID you pass to
+  [`setUser`](/modules/users-identity) when someone signs in, or the install
+  when nobody is signed in.
+
+One person using your iOS app and your website counts as one user and two
+devices, as long as both apps call `setUser` with the same ID.
+
+## In the dashboard
+
+### Analytics
+
+**Analytics** in the project sidebar shows:
+
+- **Key numbers**: daily, weekly and monthly active users (DAU, WAU, MAU),
+  **stickiness** (DAU ÷ MAU), new installs, sessions, the median session
+  length, and the crash-free session and user rates.
+- **Over time**: users, devices, sessions and installs per day.
+- **Breakdowns** by platform, OS version, app version, country and top
+  screens. **Click any row to filter the whole page** by it, for example to
+  see only Android users of version 1.4.0.
+- **Crash-free by version**, worst first, so a bad release is the first row.
+- **Retention**: of the users first seen in each day or week, the share who
+  came back in each following period (up to 12 periods).
+- **Funnels**: pick 2 to 10 events or screens in order and a time window to
+  complete them, and see how many users reach each step, the conversion from
+  the first step, and the drop-off between steps. Funnels follow the date
+  range and filters at the top of the page.
+
+Use the date range and the environment switch at the top to change what
+every panel shows. The page shows one environment at a time, `prod` by
+default.
+
+### Events
+
+**Events** lists every event your apps send, custom and automatic, with its
+count, unique users and a trend line. Open one to see it over time and split
+it by any of its properties (the top 50 values).
+
+### Crash-free sessions
+
+A session is crash-free when the SDK reported no crash during it. Error and
+crash reports carry the current session ID, so this works for every client
+SDK that reports both errors and sessions. The rates are only shown when
+there are sessions to measure.
+
+## Environments
+
+Every event carries an environment. By default the SDKs send `dev` from debug
+builds, simulators, emulators and `localhost`, and `prod` everywhere else.
+Set your own value, such as `staging`, in the SDK's init options. Environment
+names are lowercase: letters, digits, `_` and `-`, 2 to 32 characters.
+
+The dashboard always filters by one environment, so test traffic never mixes
+with production numbers.
+
+## Privacy
+
+- **No IP address is stored.** The country is looked up from the request's IP
+  address when the event arrives, and only the country code is kept. Without
+  a lookup database, the country comes from the device's region setting.
+- **Random install IDs.** Analytics doesn't use advertising identifiers
+  (IDFA, AAID), so it needs no App Tracking Transparency prompt.
+- **Opt-out.** `Lerix.analytics.setEnabled(false)` stops recording, clears
+  any queued events and is remembered across launches. Call it with `true` to
+  turn analytics back on, for example from your consent screen.
+- **Your properties are yours.** Only send the properties you need, and keep
+  personal data out of event names and values.
+
+## Limits and validation
+
+| What | Rule |
+|---|---|
+| Event name | Starts with a letter, then letters, digits, spaces, `_`, `.`, `:` or `-`. 2 to 64 characters. The `$` prefix is reserved. |
+| Properties | Up to 25 per event. |
+| Property key | Starts with a letter or `_`, then letters, digits, `_`, `.` or `-`. Up to 128 characters. |
+| Property value | A string (up to 1,024 characters), a finite number, a boolean or `null`. Nested objects and lists aren't supported. |
+| Timestamp | No more than 7 days in the past or 1 hour in the future when it arrives. |
+| Batch | Up to 100 events and 512 KB per request. |
+| Offline queue | Client SDKs keep up to 1 MB or 7 days of unsent events, dropping the oldest first. Server SDKs keep up to 1,000 in memory. |
+
+Client SDKs send events in batches: the first one 5 seconds after start, then
+every 30 seconds (or as soon as 50 are waiting), and when the app goes to the
+background. Each event has its own ID, so a batch sent twice is counted once.
+
+## Events quota
+
+Analytics is metered by your plan's monthly event limit. Every event counts,
+automatic ones included. A usage meter on the **Analytics** page shows how
+many events your organization has sent this month against the limit.
+
+The limit is soft today: when you go over it, events are still recorded, the
+dashboard shows a warning, and the SDKs log a warning in debug mode. How far
+back you can look depends on your plan's data retention.
+
+<Note>
+  If the server ever asks an SDK to pause analytics, the SDK holds its events
+  for the time requested instead of dropping them, then carries on.
+</Note>
+
+## Set it up
+
+| SDK | Guide |
+|---|---|
+| Flutter | [Feedback, NPS and analytics](/frameworks/flutter/feedback-analytics#analytics) |
+| Swift | [Feedback, NPS and analytics](/frameworks/ios/feedback-analytics#analytics) |
+| Kotlin | [Feedback, NPS and analytics](/frameworks/android/feedback-analytics#analytics) |
+| React | [Feedback, NPS and analytics](/frameworks/react/feedback-analytics#analytics) |
+| Next.js | [Feedback, NPS and analytics](/frameworks/nextjs/feedback-analytics#analytics) |
+| Angular | [Feedback, NPS and analytics](/frameworks/angular/feedback-analytics#analytics) |
+| Web (JS) | [Feedback, NPS and analytics](/frameworks/web/feedback-analytics#analytics) |
+| NestJS | [Analytics and feedback](/frameworks/nestjs/feedback-analytics#analytics) |
+| Python | [Analytics and feedback](/frameworks/python/feedback-analytics#analytics) |
+| ASP.NET | [Analytics and feedback](/frameworks/aspnet/feedback-analytics#analytics) |
+| Edge Functions | [Analytics and feedback](/frameworks/edge/feedback-analytics#analytics) |

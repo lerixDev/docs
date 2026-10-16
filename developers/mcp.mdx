@@ -75,6 +75,11 @@ no API key to generate or paste in.
 | `get_usage_stats` | Notification delivery and device/geo usage for a project |
 | `list_topics` | Push-notification topics configured for a project |
 | `get_push_config_status` | Which push providers (iOS/Android/Web) are configured for a project — never returns a secret |
+| `list_feedback` | The project's [feedback](/modules/feedback) inbox, filterable by `status`, `label` and a text `search`, paginated with `page` and `limit` (default 20, up to 100). Returns a message preview, per-status counts and a dashboard link per item; never the user's email address |
+| `get_feedback` | One feedback report (`feedbackId`): message, labels, device and app details, breadcrumbs and the linked error. Screenshots are summarized (count, type, size) with a dashboard link to view them |
+| `get_nps` | [NPS](/modules/nps-surveys) score, response rate, distribution and trend for the active survey (or `surveyId`), plus the latest detractor comments. Filters: `from`, `to` (YYYY-MM-DD, default the last 90 days), `platform`, `appVersion`, `environment` |
+| `analytics_overview` | [Analytics](/modules/analytics) overview: DAU/WAU/MAU, installs, sessions, crash-free rates and breakdowns. Filters: `from`, `to` (default the last 30 days), `environment` (default `prod`), `platform`, `appVersion` |
+| `top_events` | The most frequent events, with counts and unique users. Same filters as `analytics_overview`, plus `limit` (default 25, up to 200) and `includeTrend` to add daily counts |
 
 **Create / connect** (requires confirmation):
 
@@ -93,6 +98,7 @@ no API key to generate or paste in.
 |---|---|
 | `resolve_issue` | Mark an issue resolved |
 | `assign_issue` | Assign an issue to a team member |
+| `update_feedback_status` | Move one feedback report (`feedbackId`) to `new`, `in_progress`, `resolved`, `closed` or `spam`. Needs `confirm: true` and the same permission as resolving issues; every change is recorded in the audit log |
 
 ## Security notes
 

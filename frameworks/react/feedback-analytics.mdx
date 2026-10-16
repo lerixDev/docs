@@ -1,0 +1,175 @@
+---
+title: "React — Feedback, NPS and Analytics"
+description: "Add an in-app feedback dialog, an NPS survey and product analytics to your React app with hooks."
+---
+
+Requires `@lerix-dev/lerix-react` 1.3.0 or later (with `@lerix-dev/lerix-core`
+1.4.0). For what each module does and what you see in the dashboard, read
+[Feedback](/modules/feedback), [NPS surveys](/modules/nps-surveys) and
+[Analytics](/modules/analytics).
+
+## Setup
+
+Nothing extra is needed beyond the `LerixProvider` from
+[Installation](/frameworks/react/installation). Analytics starts on mount, and
+URL changes are recorded as screen views through the History API.
+
+The provider's `options` accept these settings for the new modules:
+
+```tsx main.tsx
+<LerixProvider
+  options={{
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    environment: 'staging',                        // default: dev on localhost / *.local or in debug mode, else prod
+    locale: 'ar',                                  // UI language; defaults to the browser's
+    analytics: { autoSessions: true, autoScreens: true },
+    feedback: { theme: 'auto', primaryColor: '#6E56CF' },
+    captureConsoleErrors: true,                    // console.error calls become breadcrumbs
+  }}
+>
+  <App />
+</LerixProvider>
+```
+
+| Option | Description |
+|---|---|
+| `environment` | Sent with feedback, survey responses and events |
+| `locale` | Language of the feedback and NPS UI, such as `ar` or `en-US` |
+| `analytics` | `enabled`, `autoSessions`, `autoScreens`, all `true` by default |
+| `feedback` | `theme` (`auto`, `light`, `dark`), `primaryColor`, `strings` per language, `zIndex` |
+| `captureConsoleErrors` | Records `console.error` calls as breadcrumbs. Off by default. |
+| `release` | Also used for `$app_update`: the event fires when this value changes |
+
+## In-app feedback
+
+```tsx
+import { useLerixFeedback } from '@lerix-dev/lerix-react';
+
+function FeedbackButton() {
+  const feedback = useLerixFeedback();
+  return <button onClick={() => feedback.show()}>Send feedback</button>;
+}
+```
+
+The dialog (message, labels, screenshot with pen annotation, email, review
+with **Show details**) renders inside a Shadow DOM, so your CSS can't reach it
+and it can't break your layout. It follows light or dark mode (`.dark` or
+`[data-theme]` on `<html>`, else the OS) and ships English and Arabic (right
+to left). The dialog and the screenshot library load on first use, in their
+own chunk.
+
+`useLerixFeedback()` returns `{ show, submit, setUserEmail, isOpen }`.
+`show(options?)` resolves `{ submitted, id?, clientId? }` and takes:
+
+```tsx
+await feedback.show({
+  labels: ['bug', 'improvement'],   // only these keys, in this order
+  email: 'required',                // 'hidden' | 'optional' | 'required'
+  screenshot: 'optional',           // 'hidden' | 'optional'
+  prefillEmail: user.email,
+  custom: { plan: 'pro' },          // up to 50 keys / 16 KB
+});
+```
+
+### Hide sensitive content
+
+`LerixConfidential` adds `data-lerix-mask`, which blacks the element out of
+screenshots. You can also put the attribute on any element yourself.
+
+```tsx
+import { LerixConfidential } from '@lerix-dev/lerix-react';
+
+<LerixConfidential>{user.email}</LerixConfidential>
+<LerixConfidential as="section">...</LerixConfidential>
+```
+
+The dialog also offers **pixel-perfect capture**, which uses the browser's
+screen-share prompt to capture canvas, video and cross-origin content exactly.
+
+### Your own form
+
+```tsx
+const { submit } = useLerixFeedback();
+
+const result = await submit({
+  message: 'Checkout button does nothing',
+  labels: ['bug'],
+  email: 'user@example.com',
+  screenshots: [blob],   // PNG, JPEG or WebP Blobs, up to 5 MB each
+});
+// result: { clientId, id?, status: 'created' | 'duplicate' | 'queued' }
+```
+
+Feedback is queued in IndexedDB and retried until the server accepts it.
+
+## NPS survey
+
+```tsx
+import { useLerixSurvey } from '@lerix-dev/lerix-react';
+
+function Home() {
+  useLerixSurvey({ autoShow: true }); // checks once, 2 seconds after mount
+  return <Dashboard />;
+}
+```
+
+Or call it yourself at the right moment:
+
+```tsx
+const { maybeShowNps } = useLerixSurvey();
+
+await maybeShowNps();                  // only when this install is due
+await maybeShowNps({ force: true });   // always (testing)
+```
+
+`useLerixSurvey({ autoShow: true, delayMs: 5000 })` changes the delay. The SDK
+shows the card only when this install is due (see
+[When the survey is shown](/modules/nps-surveys#when-the-survey-is-shown)).
+
+## Analytics
+
+```tsx
+import { useLerixScreen, useLerixTrack } from '@lerix-dev/lerix-react';
+
+function Checkout() {
+  const track = useLerixTrack();
+  useLerixScreen('Checkout'); // names a screen the URL doesn't, such as a modal step
+
+  return <button onClick={() => track('checkout_started', { items: 3 })}>Pay</button>;
+}
+```
+
+`$first_open`, `$session_start` / `$session_end` (per tab, a new session after
+30 minutes of inactivity), `$app_update` and `$screen_view` (from the URL) are
+recorded automatically. `track` never throws.
+
+The core facade is re-exported for code outside components:
+
+```ts
+import { Lerix } from '@lerix-dev/lerix-react';
+
+Lerix.track('export_finished', { rows: 1200 });
+await Lerix.analytics.flush();
+Lerix.analytics.setEnabled(false); // opt out: persisted, clears the queue
+```
+
+Events are batched and sent with `fetch(..., { keepalive: true })` when the
+tab is hidden, so the last events of a visit aren't lost.
+
+<Note>
+  Call [`setUser`](/modules/users-identity) after sign-in. Analytics then
+  counts the person across devices, and you can reply to their feedback by
+  push.
+</Note>
+
+## Breadcrumbs
+
+The last 50 breadcrumbs are attached to feedback. Navigation is added
+automatically.
+
+```ts
+Lerix.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+Categories: `navigation`, `log`, `http`, `ui`, `custom`.

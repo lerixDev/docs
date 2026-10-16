@@ -1,0 +1,138 @@
+---
+title: "Next.js — الملاحظات وNPS والتحليلات"
+description: "أضِف إلى تطبيق Next.js نافذة ملاحظات داخل التطبيق، واستبيان NPS، وتحليلات المنتج، مع تتبّع الشاشات في App Router."
+---
+
+يتطلب ذلك `@lerix-dev/lerix-nextjs` بالإصدار 1.4.0 أو أحدث. لمعرفة ما تقدّمه
+كل وحدة وما تراه في لوحة التحكم، راجع [الملاحظات](/ar/modules/feedback)
+و[استبيانات NPS](/ar/modules/nps-surveys) و[التحليلات](/ar/modules/analytics).
+
+## الإعداد
+
+أضِف `LerixScreenTracker` مرة واحدة داخل `LerixNextProvider` الذي أعددته في
+[التثبيت](/ar/frameworks/nextjs/installation). يسجّل `$screen_view` لكل مسار
+(pathname) عبر `usePathname()`، ويوقف تتبّع History API في الحزمة كي لا يُحتسب
+شيء مرتين.
+
+```tsx app/layout.tsx
+import { LerixErrorBoundary, LerixNextProvider, LerixScreenTracker } from '@lerix-dev/lerix-nextjs';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <LerixNextProvider>
+          <LerixScreenTracker
+            name={(path) => path.replace(/^\/products\/[^/]+/, '/products/[id]')}
+          />
+          <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
+            {children}
+          </LerixErrorBoundary>
+        </LerixNextProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+تحوّل الدالة الاختيارية `name` المسار إلى اسم شاشة. استخدمها لتجميع المسارات
+الديناميكية، فيُحتسب `/products/42` و`/products/43` شاشة واحدة. أرجِع `null`
+لتخطي مسار.
+
+ومن دون `LerixScreenTracker` (في Pages Router مثلاً)، تبقى تغيّرات الرابط
+مُسجّلة عبر History API.
+
+### البيئة
+
+يقرأ `LerixNextProvider` المتغيّر `NEXT_PUBLIC_LERIX_ENVIRONMENT` كبيئة
+افتراضية. ومن دونه ترسل الحزمة `dev` على `localhost` و`*.local` أو في وضع
+التصحيح، و`prod` فيما عدا ذلك.
+
+```bash .env.production
+NEXT_PUBLIC_LERIX_ENVIRONMENT=prod
+```
+
+ويقبل `options` في المزوّد أيضاً `locale` و`analytics` و`feedback` (`theme`
+و`primaryColor` و`strings` و`zIndex`) و`captureConsoleErrors`، وتعمل كما في
+[React](/ar/frameworks/react/feedback-analytics).
+
+## الملاحظات داخل التطبيق
+
+```tsx components/feedback-button.tsx
+'use client';
+import { useLerixFeedback } from '@lerix-dev/lerix-nextjs';
+
+export function FeedbackButton() {
+  const feedback = useLerixFeedback();
+  return <button onClick={() => feedback.show()}>Send feedback</button>;
+}
+```
+
+تُعرض النافذة داخل Shadow DOM وتُحمَّل عند أول استخدام في جزء مستقل. تقبل
+`show(options?)` الخيارات `labels` و`email` و`screenshot` و`prefillEmail`
+و`custom`، وترسل `submit({ message, labels?, email?, screenshots?, custom? })`
+الملاحظات من نموذجك الخاص. راجع [React](/ar/frameworks/react/feedback-analytics)
+للقائمة الكاملة.
+
+اطمس المحتوى الحساس في لقطات الشاشة:
+
+```tsx
+'use client';
+import { LerixConfidential } from '@lerix-dev/lerix-nextjs';
+
+<LerixConfidential>{user.email}</LerixConfidential>
+```
+
+## استبيان NPS
+
+```tsx app/(app)/home-client.tsx
+'use client';
+import { useLerixSurvey } from '@lerix-dev/lerix-nextjs';
+
+export function HomeClient() {
+  useLerixSurvey({ autoShow: true }); // the NPS card, when this install is due
+  return null;
+}
+```
+
+أو استدعِ `maybeShowNps()` من `useLerixSurvey()` بنفسك، مع `{ force: true }`
+أثناء الاختبار. راجع [استبيانات NPS](/ar/modules/nps-surveys).
+
+## التحليلات
+
+```tsx
+'use client';
+import { useLerixTrack } from '@lerix-dev/lerix-nextjs';
+
+export function CheckoutButton() {
+  const track = useLerixTrack();
+  return <button onClick={() => track('checkout_started', { items: 3 })}>Checkout</button>;
+}
+```
+
+- تُسجَّل الأحداث `$first_open` و`$session_start` / `$session_end`
+  و`$app_update` و`$screen_view` تلقائياً.
+- يسمّي `useLerixScreen('Settings / Billing')` شاشة لا يسمّيها الرابط، كتبويب
+  أو خطوة في نافذة.
+- `Lerix.analytics.setEnabled(false)` هو إيقاف التتبّع المحفوظ،
+  و`Lerix.analytics.flush()` يرسل فوراً. ويُعاد تصدير `Lerix` من
+  `@lerix-dev/lerix-nextjs`.
+
+تسجّل هذه الحزمة الأحداث في المتصفح. أما الأحداث من شيفرة تعمل على Edge
+runtime فراجع لها [Edge Functions](/ar/frameworks/edge/feedback-analytics).
+
+<Note>
+  استدعِ [`setUser`](/ar/modules/users-identity) بعد تسجيل الدخول، فتحسب
+  التحليلات الشخص عبر أجهزته، وتستطيع الرد على ملاحظاته بإشعار.
+</Note>
+
+## الخطوات السابقة (Breadcrumbs)
+
+```ts
+'use client';
+import { Lerix } from '@lerix-dev/lerix-nextjs';
+
+Lerix.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+تُرفق آخر 50 خطوة (ويُضاف التنقّل تلقائياً) بالملاحظات.

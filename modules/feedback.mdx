@@ -1,13 +1,201 @@
 ---
 title: "Feedback"
-description: "Collect structured user feedback directly inside your app."
-icon: "star"
+description: "Let users report bugs and ideas from inside your app, with annotated screenshots, device details and the last error attached."
+icon: "comment-dots"
 ---
 
-<Badge>Coming soon</Badge>
+## What it does
 
-Feedback will let you collect structured user feedback directly inside your
-app, alongside the errors and crashes you're already tracking.
+Feedback adds a "Send feedback" flow to your app. The user writes a message,
+picks a label, attaches screenshots they can draw on, and optionally leaves an
+email address. The report lands in the **Feedbacks** inbox of your project,
+next to the errors and crashes the same SDK already reports.
 
-This module isn't available yet. Check back soon, or follow
-[@lerixdev](https://x.com/lerixdev) for updates.
+Each report arrives with the context you'd otherwise have to ask for:
+
+- **Screenshots** of the screen the user was on, annotated with a pen.
+- **Device and app details**: platform, OS and version, device model, locale,
+  time zone, screen size, app version and build.
+- **Breadcrumbs**: the last 50 screen changes and log entries before the
+  report, so you can see what the user did.
+- **The last error**: if the same install reported an error in the 30 minutes
+  before the feedback, the two are linked.
+- **Who sent it**: the user ID you set with
+  [`setUser`](/modules/users-identity), so you can reply by push.
+
+Feedback and NPS surveys are free on every plan.
+
+## Platforms
+
+| SDK | Built-in UI | Headless `submit()` | Guide |
+|---|---|---|---|
+| Flutter (iOS, Android, macOS, Windows, web) | Yes | Yes | [Flutter](/frameworks/flutter/feedback-analytics) |
+| Swift (iOS 15+, macOS 12+) | Yes | Yes (iOS 13+) | [Swift](/frameworks/ios/feedback-analytics) |
+| Kotlin (Android) | Yes | Yes | [Kotlin](/frameworks/android/feedback-analytics) |
+| React, Next.js, Angular, Web (JS) | Yes | Yes | [React](/frameworks/react/feedback-analytics), [Next.js](/frameworks/nextjs/feedback-analytics), [Angular](/frameworks/angular/feedback-analytics), [Web](/frameworks/web/feedback-analytics) |
+| NestJS, Python, ASP.NET, Edge Functions | No | Yes | [NestJS](/frameworks/nestjs/feedback-analytics), [Python](/frameworks/python/feedback-analytics), [ASP.NET](/frameworks/aspnet/feedback-analytics), [Edge](/frameworks/edge/feedback-analytics) |
+
+The server SDKs have no UI. Use them to forward feedback your own backend
+collects, such as a support form or a chatbot, into the same inbox.
+
+## The flow
+
+In every SDK with a built-in UI, the flow has the same steps:
+
+<Steps>
+  <Step title="Message">
+    The user describes the problem or idea.
+  </Step>
+  <Step title="Labels">
+    They pick one or more labels, such as **Bug**, **Improvement** or
+    **Praise**.
+  </Step>
+  <Step title="Screenshots">
+    The current screen is captured. The user can draw on it, go to another
+    screen and capture that too.
+  </Step>
+  <Step title="Email">
+    Hidden, optional or required, depending on your settings.
+  </Step>
+  <Step title="Review">
+    **Show details** lists every field that will be sent, so the user can see
+    exactly what leaves the device.
+  </Step>
+</Steps>
+
+The UI ships in English and Arabic (right to left), follows the app's light or
+dark mode and its primary colour, and accepts your own strings for other
+languages.
+
+### Hide sensitive content
+
+Mark views that must never appear in a screenshot. They are painted over
+before the image is created, so the original pixels never leave the device.
+
+| SDK | How to mask |
+|---|---|
+| Flutter | `LerixConfidential(child: ...)` |
+| Swift | `view.lerixConfidential = true`, or `.lerixConfidential()` in SwiftUI |
+| Kotlin | `Lerix.markConfidential(view)` |
+| Web, React, Next.js, Angular | The `data-lerix-mask` attribute, `<LerixConfidential>` or the `lerixConfidential` directive |
+
+On Android, screens that set `FLAG_SECURE` are never captured.
+
+### Offline delivery
+
+Feedback is written to the device first and sent from there. If the device
+is offline, or the server can't be reached, the SDK keeps it and retries with
+backoff until it is accepted. Screenshots are uploaded first and remembered,
+so a retry never uploads them twice. Every report carries a client ID that the
+server deduplicates on, so a retry never creates a second entry.
+
+## Limits and validation
+
+| Field | Rule |
+|---|---|
+| Message | Required, 1 to 4,000 characters after trimming. Longer messages are truncated. |
+| Labels | Label keys configured for the project. Unknown keys are dropped. |
+| Email | Optional. An invalid address is dropped and the feedback is still created. |
+| Screenshots | PNG, JPEG or WebP, up to 5 MB each. Up to 5 per report (3 by default, set in the dashboard). The file type is checked from its bytes, not its name. |
+| Custom data | Up to 50 keys and 16 KB of JSON. |
+| Breadcrumbs | The newest 50. |
+| Rate | 10 reports and 20 screenshot uploads per minute per install. |
+
+## In the dashboard
+
+Open **Feedbacks** in the project sidebar. It has three tabs: **Inbox**,
+**Surveys** (see [NPS surveys](/modules/nps-surveys)) and **Settings**.
+
+### Inbox
+
+Every report, newest first. You can:
+
+- Search the message text.
+- Filter by status, label, platform, app version, environment, assignee, date
+  range, and whether it has a screenshot.
+- Select several reports and move them to another status at once.
+
+Each report has one of five statuses:
+
+| Status | Meaning |
+|---|---|
+| **New** | Not looked at yet. Every report starts here. |
+| **In progress** | Someone is working on it. |
+| **Resolved** | Fixed or answered. |
+| **Closed** | Nothing more to do. |
+| **Spam** | Not a real report. |
+
+### A single report
+
+Open a report to see its screenshots (click one for a full-size view), the
+message and labels, the device and app details, custom data and the
+breadcrumb trail. The **User** card shows the user ID, how many reports they
+have sent, and their open issues. If an error was reported just before the
+feedback, it is linked under **Linked error**. Reports sent from a traced
+backend request also link to the **Request trace**.
+
+From the report you can:
+
+- Change its status and labels, and assign it to a project member.
+- Add **internal notes** for your team. The user never sees them.
+- **Reply** to the user, by email or by push notification (see below).
+- **Create a GitHub issue** from it, when the project has
+  [GitHub connected](/dashboard#project-settings).
+- Delete it, together with its screenshots.
+
+### Reply to the user
+
+**Reply** sends your answer to the person who left the feedback, and records
+it in the report's activity.
+
+- **Email** needs the address the user entered.
+- **Push notification** needs a verified user: the app must call
+  [`setUser`](/modules/users-identity) before the user sends feedback. The
+  reply reaches every device that user is signed in on.
+
+A user ID that a server SDK passes in the request body is shown as
+*reported*, not verified, and is never used for push replies.
+
+### Settings
+
+The **Settings** tab controls the form inside your apps. The SDKs read these
+settings at runtime and cache them for 24 hours, so changes reach your users
+without an app release.
+
+| Setting | Options |
+|---|---|
+| **Collect feedback** | Off stops the form from opening in your apps. |
+| **Email field** | Hidden, optional or required. |
+| **Screenshot step** | Hidden or optional. |
+| **Max screenshots** | 0 to 5. |
+| **Labels** | A key (what the SDK sends and what filters use), an English and an Arabic title, a colour, and whether it is hidden from the app. Drag to set the order. |
+
+A new project starts with three labels: `bug`, `improvement` and `praise`.
+
+You can override the label list, the email mode and the screenshot mode for a
+single `show()` call in code.
+
+### Notifications
+
+Project members get an in-app notification for every new report, and an
+email if they have turned on feedback emails in their notification
+preferences. To post new feedback to Slack or your own service, add a
+[webhook](/developers/webhooks).
+
+## Privacy
+
+- **Nothing is sent until the user submits.** Closing the form without sending it sends nothing.
+- **The user sees what is sent.** **Show details** lists every field.
+- **Masked views stay on the device.** See [Hide sensitive
+  content](#hide-sensitive-content).
+- **No IP address is stored** with feedback.
+- **Environments stay apart.** Debug builds, simulators, emulators and
+  `localhost` report as `dev`, everything else as `prod`, unless you set the
+  environment yourself. Filter the inbox by environment to keep test reports
+  out of the way.
+
+<Note>
+  The server can pause a feature for an SDK, for example when you turn
+  **Collect feedback** off. The SDK then stops sending that feature's traffic
+  for the time the server asks, and keeps anything already queued.
+</Note>

@@ -53,7 +53,8 @@
                     "pages": [
                       "frameworks/ios/installation",
                       "frameworks/ios/push-notifications",
-                      "frameworks/ios/error-tracking"
+                      "frameworks/ios/error-tracking",
+                      "frameworks/ios/feedback-analytics"
                     ]
                   },
                   {
@@ -62,7 +63,8 @@
                     "pages": [
                       "frameworks/android/installation",
                       "frameworks/android/push-notifications",
-                      "frameworks/android/error-tracking"
+                      "frameworks/android/error-tracking",
+                      "frameworks/android/feedback-analytics"
                     ]
                   },
                   {
@@ -73,7 +75,8 @@
                       "frameworks/flutter/push-notifications",
                       "frameworks/flutter/windows",
                       "frameworks/flutter/error-tracking",
-                      "frameworks/flutter/source-maps"
+                      "frameworks/flutter/source-maps",
+                      "frameworks/flutter/feedback-analytics"
                     ]
                   }
                 ]
@@ -89,7 +92,8 @@
                       "frameworks/react/installation",
                       "frameworks/react/push-notifications",
                       "frameworks/react/error-tracking",
-                      "frameworks/react/source-maps"
+                      "frameworks/react/source-maps",
+                      "frameworks/react/feedback-analytics"
                     ]
                   },
                   {
@@ -99,7 +103,8 @@
                       "frameworks/nextjs/installation",
                       "frameworks/nextjs/push-notifications",
                       "frameworks/nextjs/error-tracking",
-                      "frameworks/nextjs/source-maps"
+                      "frameworks/nextjs/source-maps",
+                      "frameworks/nextjs/feedback-analytics"
                     ]
                   },
                   {
@@ -109,14 +114,16 @@
                       "frameworks/angular/installation",
                       "frameworks/angular/push-notifications",
                       "frameworks/angular/error-tracking",
-                      "frameworks/angular/source-maps"
+                      "frameworks/angular/source-maps",
+                      "frameworks/angular/feedback-analytics"
                     ]
                   },
                   {
                     "group": "Web (JS)",
                     "icon": "js",
                     "pages": [
-                      "frameworks/web/push-notifications"
+                      "frameworks/web/push-notifications",
+                      "frameworks/web/feedback-analytics"
                     ]
                   }
                 ]
@@ -132,7 +139,8 @@
                       "frameworks/nestjs/installation",
                       "frameworks/nestjs/error-tracking",
                       "frameworks/nestjs/push-notifications",
-                      "frameworks/nestjs/request-tracing"
+                      "frameworks/nestjs/request-tracing",
+                      "frameworks/nestjs/feedback-analytics"
                     ]
                   },
                   {
@@ -142,7 +150,8 @@
                       "frameworks/python/installation",
                       "frameworks/python/error-tracking",
                       "frameworks/python/push-notifications",
-                      "frameworks/python/request-tracing"
+                      "frameworks/python/request-tracing",
+                      "frameworks/python/feedback-analytics"
                     ]
                   },
                   {
@@ -152,7 +161,8 @@
                       "frameworks/aspnet/installation",
                       "frameworks/aspnet/error-tracking",
                       "frameworks/aspnet/push-notifications",
-                      "frameworks/aspnet/request-tracing"
+                      "frameworks/aspnet/request-tracing",
+                      "frameworks/aspnet/feedback-analytics"
                     ]
                   },
                   {
@@ -162,7 +172,8 @@
                       "frameworks/edge/installation",
                       "frameworks/edge/error-tracking",
                       "frameworks/edge/request-tracing",
-                      "frameworks/edge/push-notifications"
+                      "frameworks/edge/push-notifications",
+                      "frameworks/edge/feedback-analytics"
                     ]
                   },
                   {
@@ -185,8 +196,9 @@
               "modules/users-identity",
               "modules/request-tracing",
               "modules/analytics",
-              "modules/in-app-messages",
               "modules/feedback",
+              "modules/nps-surveys",
+              "modules/in-app-messages",
               "modules/updates"
             ]
           },
@@ -216,6 +228,13 @@
                 "icon": "hashtag",
                 "pages": [
                   "developers/errors-responses"
+                ]
+              },
+              {
+                "group": "Webhooks",
+                "icon": "plug",
+                "pages": [
+                  "developers/webhooks"
                 ]
               },
               {
@@ -254,7 +273,8 @@
                     "pages": [
                       "ar/frameworks/ios/installation",
                       "ar/frameworks/ios/push-notifications",
-                      "ar/frameworks/ios/error-tracking"
+                      "ar/frameworks/ios/error-tracking",
+                      "ar/frameworks/ios/feedback-analytics"
                     ]
                   },
                   {
@@ -263,7 +283,8 @@
                     "pages": [
                       "ar/frameworks/android/installation",
                       "ar/frameworks/android/push-notifications",
-                      "ar/frameworks/android/error-tracking"
+                      "ar/frameworks/android/error-tracking",
+                      "ar/frameworks/android/feedback-analytics"
                     ]
                   },
                   {
@@ -274,7 +295,8 @@
                       "ar/frameworks/flutter/push-notifications",
                       "ar/frameworks/flutter/windows",
                       "ar/frameworks/flutter/error-tracking",
-                      "ar/frameworks/flutter/source-maps"
+                      "ar/frameworks/flutter/source-maps",
+                      "ar/frameworks/flutter/feedback-analytics"
                     ]
                   }
                 ]
@@ -290,7 +312,8 @@
                       "ar/frameworks/react/installation",
                       "ar/frameworks/react/push-notifications",
                       "ar/frameworks/react/error-tracking",
-                      "ar/frameworks/react/source-maps"
+                      "ar/frameworks/react/source-maps",
+                      "ar/frameworks/react/feedback-analytics"
                     ]
                   },
                   {
@@ -300,7 +323,8 @@
                       "ar/frameworks/nextjs/installation",
                       "ar/frameworks/nextjs/push-notifications",
                       "ar/frameworks/nextjs/error-tracking",
-                      "ar/frameworks/nextjs/source-maps"
+                      "ar/frameworks/nextjs/source-maps",
+                      "ar/frameworks/nextjs/feedback-analytics"
                     ]
                   },
                   {
@@ -310,14 +334,16 @@
                       "ar/frameworks/angular/installation",
                       "ar/frameworks/angular/push-notifications",
                       "ar/frameworks/angular/error-tracking",
-                      "ar/frameworks/angular/source-maps"
+                      "ar/frameworks/angular/source-maps",
+                      "ar/frameworks/angular/feedback-analytics"
                     ]
                   },
                   {
                     "group": "Web (JS)",
                     "icon": "js",
                     "pages": [
-                      "ar/frameworks/web/push-notifications"
+                      "ar/frameworks/web/push-notifications",
+                      "ar/frameworks/web/feedback-analytics"
                     ]
                   }
                 ]
@@ -333,7 +359,8 @@
                       "ar/frameworks/nestjs/installation",
                       "ar/frameworks/nestjs/error-tracking",
                       "ar/frameworks/nestjs/push-notifications",
-                      "ar/frameworks/nestjs/request-tracing"
+                      "ar/frameworks/nestjs/request-tracing",
+                      "ar/frameworks/nestjs/feedback-analytics"
                     ]
                   },
                   {
@@ -343,7 +370,8 @@
                       "ar/frameworks/python/installation",
                       "ar/frameworks/python/error-tracking",
                       "ar/frameworks/python/push-notifications",
-                      "ar/frameworks/python/request-tracing"
+                      "ar/frameworks/python/request-tracing",
+                      "ar/frameworks/python/feedback-analytics"
                     ]
                   },
                   {
@@ -353,7 +381,8 @@
                       "ar/frameworks/aspnet/installation",
                       "ar/frameworks/aspnet/error-tracking",
                       "ar/frameworks/aspnet/push-notifications",
-                      "ar/frameworks/aspnet/request-tracing"
+                      "ar/frameworks/aspnet/request-tracing",
+                      "ar/frameworks/aspnet/feedback-analytics"
                     ]
                   },
                   {
@@ -363,7 +392,8 @@
                       "ar/frameworks/edge/installation",
                       "ar/frameworks/edge/error-tracking",
                       "ar/frameworks/edge/request-tracing",
-                      "ar/frameworks/edge/push-notifications"
+                      "ar/frameworks/edge/push-notifications",
+                      "ar/frameworks/edge/feedback-analytics"
                     ]
                   },
                   {
@@ -386,8 +416,9 @@
               "ar/modules/users-identity",
               "ar/modules/request-tracing",
               "ar/modules/analytics",
-              "ar/modules/in-app-messages",
               "ar/modules/feedback",
+              "ar/modules/nps-surveys",
+              "ar/modules/in-app-messages",
               "ar/modules/updates"
             ]
           },
@@ -417,6 +448,13 @@
                 "icon": "hashtag",
                 "pages": [
                   "ar/developers/errors-responses"
+                ]
+              },
+              {
+                "group": "Webhooks و Slack",
+                "icon": "plug",
+                "pages": [
+                  "ar/developers/webhooks"
                 ]
               },
               {

@@ -1,0 +1,147 @@
+---
+title: "NPS surveys"
+description: "Ask users how likely they are to recommend your app, on a schedule you control from the dashboard."
+icon: "face-smile"
+---
+
+## What it does
+
+Net Promoter Score (NPS) asks one question: "How likely are you to recommend
+us to a friend?", answered on a scale from 0 to 10. Lerix shows the question
+in a bottom sheet inside your app, follows up with a second question that
+depends on the score, and thanks the user.
+
+You add one line of code. The wording, cadence, sampling and targeting live
+in the dashboard, so you can change them, or pause the survey, without
+shipping a new version.
+
+<CodeGroup>
+
+```dart Flutter
+await Lerix.surveys.maybeShowNps(context);
+```
+
+```swift Swift
+Task { await Lerix.surveys.maybeShowNps() }
+```
+
+```kotlin Kotlin
+lifecycleScope.launch { Lerix.surveys.maybeShowNps(activity) }
+```
+
+```ts Web
+await Lerix.surveys.maybeShowNps();
+```
+
+</CodeGroup>
+
+Call it at a calm moment, such as on the home screen or after a completed
+order. The SDK decides on the device whether this install is due, and shows
+nothing when it isn't. Pass `force: true` while testing to skip every rule.
+
+NPS works in the SDKs with a UI: Flutter, Swift (iOS 15+ and macOS 12+),
+Kotlin, React, Next.js, Angular and Web (JS). See each
+[framework guide](#set-it-up) for the exact call.
+
+## Score groups
+
+Each answer puts the user in one of three groups:
+
+| Group | Scores |
+|---|---|
+| **Detractors** | 0 to 6 |
+| **Passives** | 7 and 8 |
+| **Promoters** | 9 and 10 |
+
+**NPS = % promoters − % detractors**, so it ranges from −100 to +100.
+Passives count toward the total but not toward either side.
+
+The follow-up question and the thank-you message can differ per group, for
+example "What could we do better?" for detractors and "What do you like
+most?" for promoters.
+
+## When the survey is shown
+
+Every Lerix SDK runs the same eligibility check on the device, so a user sees
+the survey on the same schedule whatever platform they're on. An install is
+eligible when all of these are true:
+
+| Rule | Default | Meaning |
+|---|---|---|
+| **Minimum app starts** | 3 | Brand-new users aren't asked. |
+| **First ask after** | 7 days | Counted from the first app start. |
+| **Sample** | 100% | The share of installs that can ever see the survey. |
+| **Ask every** | 90 days | The wait after the user answers. |
+| **After a dismiss** | 14 days | The wait after the user closes the survey without answering. |
+
+A few details:
+
+- **First surveys are spread out.** Each install gets its first survey at a
+  random point within the first cycle, so not every user is asked on the same
+  day after a release.
+- **Sampling is stable.** Whether an install falls inside the sample is
+  decided from its install ID, so the same install always gets the same
+  answer, on every SDK.
+- **A dismiss isn't an answer.** Closing the survey before picking a score
+  waits only the dismiss cooldown, not the full cycle. Picking a score counts
+  as an answer even if the user skips the follow-up.
+- **What counts as an app start.** On mobile and desktop, a launch into the
+  foreground. On the web, a new session (after 30 minutes of inactivity).
+- **Debug logs say why.** With `debugMode` on, the SDK logs which rule kept the
+  survey from showing and when the install is next due.
+
+## Configure it from the dashboard
+
+Open **Feedbacks → Surveys**. A default NPS survey, with English and Arabic
+text, is created the first time an SDK asks for surveys, so
+`maybeShowNps()` works without any setup. Open it to change:
+
+- **Wording**: the question, plus a follow-up and a thank-you for each group,
+  in English and Arabic. Left empty, Arabic users see the English text.
+- **When to ask**: the rules in the table above.
+- **Sample**: the share of eligible installs that see it.
+- **Who sees it**: platforms, environments and a minimum app version. These
+  are checked on the server before the survey reaches the app. None selected
+  means all.
+- **Pause / Activate**: a paused survey stops showing within a day, once the
+  apps refresh their cached configuration.
+
+## Results
+
+Each survey has two tabs.
+
+**Results** shows:
+
+- The NPS score, with the split between promoters, passives and detractors.
+  Below 30 responses the dashboard notes that a single answer moves the score
+  a lot.
+- **Response rate**: answered ÷ shown, plus how many showings were dismissed
+  or not acted on yet. This tells you whether the survey is shown at a good
+  moment.
+- A **weekly trend** and the **score distribution**.
+- NPS by app version and by platform, so you can see whether a release
+  changed how users feel.
+
+**Responses** lists each answer with its score, message, platform, app
+version and user ID. Filter by group, or by whether the user left a message.
+
+### Detractor alerts
+
+When a user answers 0 to 6, project members get a notification, and an email
+if they've turned on detractor alerts. To post detractor answers to Slack or
+your own service, add a [webhook](/developers/webhooks) for `nps.detractor`.
+If the app called [`setUser`](/modules/users-identity), you know exactly who
+to follow up with.
+
+## Set it up
+
+- [Flutter](/frameworks/flutter/feedback-analytics#nps-survey)
+- [Swift](/frameworks/ios/feedback-analytics#nps-survey)
+- [Kotlin](/frameworks/android/feedback-analytics#nps-survey)
+- [React](/frameworks/react/feedback-analytics#nps-survey)
+- [Next.js](/frameworks/nextjs/feedback-analytics#nps-survey)
+- [Angular](/frameworks/angular/feedback-analytics#nps-survey)
+- [Web (JS)](/frameworks/web/feedback-analytics#nps-survey)
+
+Survey responses go through the same offline queue as feedback: the showing
+is recorded first, then the answer or the dismiss, under one ID per showing.

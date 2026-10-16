@@ -1,0 +1,95 @@
+---
+title: "NestJS — Analytics and Feedback"
+description: "Track server-side events in the same funnels as your apps, and send feedback from your own backend to the Feedback inbox."
+---
+
+Requires `@lerix-dev/lerix-nestjs` 1.5.0 or later. Both features use the
+`LerixService` you inject after [Installation](/frameworks/nestjs/installation).
+For what you see in the dashboard, read [Analytics](/modules/analytics) and
+[Feedback](/modules/feedback).
+
+## Analytics
+
+Record what only your backend knows, such as a payment that went through. The
+event lands in the same funnels, event lists and user counts as the events your
+apps send:
+
+```ts orders.service.ts
+import { Injectable } from '@nestjs/common';
+import { LerixService } from '@lerix-dev/lerix-nestjs';
+
+@Injectable()
+export class OrdersService {
+  constructor(private readonly lerix: LerixService) {}
+
+  async markPaid(order: Order) {
+    // ...
+    this.lerix.track('payment_succeeded', { plan: 'pro', amount: 49 }, { userId: order.userId });
+  }
+}
+```
+
+- `userId` is your own ID for the user, the same one your apps pass to
+  [`setUser()`](/modules/users-identity). Leave it out for events that aren't
+  about a user.
+- Names start with a letter, then letters, digits, spaces, `_`, `.`, `:` or `-`
+  (2 to 64 characters). Up to 25 properties, with string (up to 1,024
+  characters), finite number, boolean or `null` values. An invalid name drops
+  the event; an invalid property is dropped on its own. `track()` never throws.
+- Server events record no sessions or screens.
+
+### Delivery
+
+Events are buffered in memory (up to 1,000, oldest dropped first) and sent in
+batches of up to 100: every 10 seconds, as soon as 50 are waiting, on
+`this.lerix.analytics.flush()`, and on shutdown. Call `app.enableShutdownHooks()`
+in `main.ts` so a graceful shutdown flushes them.
+
+When the API is unreachable or answers 401, 429 or 5xx, events are kept and
+retried with backoff (2 seconds up to 5 minutes). A batch refused as invalid is
+dropped. Nothing is written to disk, so events still pending when the process
+is killed are lost.
+
+### Environment and opt-out
+
+Events carry `platform: "server"`, your app's version and build number, and
+the environment: the `environment` option, or `NODE_ENV`, with `production`
+sent as `prod` and `development` as `dev` (`prod` when unset).
+
+```ts
+this.lerix.analytics.setEnabled(false); // stop recording and clear the buffer
+```
+
+`analytics: false` in the `LerixModule.forRoot()` options turns analytics off
+from the start.
+
+## Feedback
+
+Send feedback your own backend collects, such as a support form, a chatbot or
+an email gateway, to the project's **Feedbacks** inbox:
+
+```ts
+const id = await this.lerix.feedback.submit({
+  message: 'Checkout button does nothing',
+  email: 'user@example.com',           // optional, used for email replies
+  labels: ['bug'],                     // label keys configured for the project
+  userId: user.id,                     // optional, your ID for the user
+  custom: { plan: 'pro' },             // optional, up to 50 keys / 16 KB
+  attachments: [{ data: pngBytes }],   // optional, up to 5 PNG/JPEG/WebP images of 5 MB
+});
+```
+
+- Attachments are uploaded first, then the feedback is created with their IDs.
+- A failed request is retried twice with the same client ID, so a retry never
+  creates a duplicate.
+- `submit()` rejects with `LerixApiException`: code `INVALID_FEEDBACK` for
+  input that can't be sent (an empty or too long message, an invalid email, an
+  attachment that isn't a PNG, JPEG or WebP image), or the API's error
+  otherwise. With `enabled: false` it resolves `null`.
+- Inside a [traced request](/frameworks/nestjs/request-tracing), the feedback
+  is linked to the request's trace.
+
+<Note>
+  The `userId` you pass is stored as *reported* by your server. Replies by push
+  only go to users verified through a client SDK's `setUser`.
+</Note>

@@ -1,0 +1,217 @@
+---
+title: "Flutter — Feedback, NPS and Analytics"
+description: "Add in-app feedback with annotated screenshots, an NPS survey and product analytics to your Flutter app."
+---
+
+Requires `lerix_flutter` 0.4.0 or later. Everything on this page works on
+iOS, Android, macOS, Windows and the web. For what each module does and what
+you see in the dashboard, read [Feedback](/modules/feedback),
+[NPS surveys](/modules/nps-surveys) and [Analytics](/modules/analytics).
+
+## Setup
+
+Two additions to the app you set up in [Installation](/frameworks/flutter/installation):
+
+1. Put `LerixFeedback` **above** your `MaterialApp`. It hosts the feedback
+   flow and the NPS sheet, and costs nothing while they're closed.
+2. Add `LerixNavigatorObserver` to your navigator so screen views are recorded.
+
+```dart main.dart
+import 'package:flutter/material.dart';
+import 'package:lerix_flutter/lerix_flutter.dart';
+
+void main() {
+  Lerix.init(
+    url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    builder: () => runApp(const LerixFeedback(child: MyApp())),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      navigatorObservers: [LerixNavigatorObserver()],
+      home: const HomeScreen(),
+    );
+  }
+}
+```
+
+With go_router, pass the observer to `GoRouter` instead:
+
+```dart
+final router = GoRouter(
+  observers: [LerixNavigatorObserver()],
+  routes: [/* ... */],
+);
+```
+
+### Init options
+
+`Lerix.init` takes two optional parameters for these modules:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `environment` | `String?` | Sent with feedback, survey responses and events. Defaults to `dev` for debug builds, simulators, emulators and local web hosts, otherwise `prod`. |
+| `analytics` | `LerixAnalyticsOptions` | `enabled`, `autoSessions` and `autoScreens`, all `true` by default. |
+
+```dart
+Lerix.init(
+  // ...
+  environment: 'staging',
+  analytics: const LerixAnalyticsOptions(autoScreens: false),
+  builder: () => runApp(const LerixFeedback(child: MyApp())),
+);
+```
+
+## In-app feedback
+
+Open the flow from anywhere below `LerixFeedback`, for example from a "Send
+feedback" button:
+
+```dart
+final result = await Lerix.feedback.show(context);
+if (result.submitted) {
+  print('Thanks! ${result.id ?? 'queued'}');
+}
+```
+
+The app shrinks into a backdrop and keeps its state. The user writes a
+message, picks labels, captures screenshots by navigating the app and tapping
+**Capture**, draws on them (4 colours, 3 sizes, undo and redo), adds an email
+and reviews **Show details**. The screenshot step is hidden when the
+renderer can't capture the screen.
+
+`show()` returns a `LerixFeedbackResult`:
+
+| Field | Description |
+|---|---|
+| `submitted` | `true` when the user sent it (delivered, or safely queued) |
+| `id` | The server ID, when it was delivered before the call returned |
+| `clientId` | The ID the feedback is stored and deduplicated under |
+| `queued` | `true` when it is saved on the device and waiting to be sent |
+
+### Options
+
+Labels, the email mode and the screenshot mode come from the dashboard. Override
+them for one call with `LerixFeedbackOptions`:
+
+```dart
+await Lerix.feedback.show(
+  context,
+  const LerixFeedbackOptions(
+    labels: ['bug', 'improvement'],      // only these keys, in this order; [] hides the step
+    email: LerixEmailMode.required,      // hidden, optional, required
+    screenshot: LerixScreenshotMode.optional, // hidden, optional
+    prefillEmail: 'user@example.com',
+    custom: {'plan': 'pro'},             // up to 50 keys / 16 KB
+  ),
+);
+```
+
+To prefill the email for every flow, call `Lerix.feedback.setUserEmail('user@example.com')`
+once the user signs in.
+
+### Hide sensitive widgets
+
+Wrap anything that must not appear in a screenshot in `LerixConfidential`. It
+is painted over before the image is created.
+
+```dart
+LerixConfidential(
+  child: Text(cardNumber),
+)
+```
+
+### Your own UI
+
+Send feedback from your own form with `submit`. Screenshots are PNG, JPEG or
+WebP bytes, up to 5 MB each.
+
+```dart
+final result = await Lerix.feedback.submit(
+  message: 'Checkout button does nothing',
+  labels: ['bug'],
+  email: 'user@example.com',
+  screenshots: [pngBytes],
+  custom: {'plan': 'pro'},
+);
+```
+
+### Look and language
+
+The flow follows your app's theme (light or dark, primary colour). English
+and Arabic (right to left) are built in, and other languages fall back to
+English.
+
+```dart
+LerixFeedback(
+  theme: LerixThemeData(/* ... */),   // override the look
+  strings: {
+    'fr': LerixStrings.en.copyWith(send: 'Envoyer'),
+  },
+  child: const MyApp(),
+)
+```
+
+## NPS survey
+
+Call `maybeShowNps` at a calm moment, for example when the home screen
+appears. It returns `true` when the survey was shown.
+
+```dart
+await Lerix.surveys.maybeShowNps(context);
+
+// While testing: skip the eligibility rules
+await Lerix.surveys.maybeShowNps(context, force: true);
+```
+
+The SDK only shows the survey when this install is due, using the rules you
+set in the dashboard (see [When the survey is shown](/modules/nps-surveys#when-the-survey-is-shown)).
+With `debugMode: true`, the console says why a survey was skipped.
+
+## Analytics
+
+```dart
+Lerix.track('checkout_started', {'items': 3, 'coupon': 'EID'});
+Lerix.screen('Checkout'); // a screen the observer can't see, such as a tab
+```
+
+- `$first_open`, `$session_start` / `$session_end`, `$app_update` and
+  `$screen_view` are recorded automatically.
+- Screen names come from the route's name: `GoRoute.name`, or the `name` in
+  `RouteSettings` / `MaterialPage`. Unnamed routes, dialogs and bottom sheets
+  are skipped. `LerixNavigatorObserver(includePopups: true)` also reports named
+  popups, and `nameExtractor` lets you name routes yourself.
+- `Lerix.track` never throws and can be called before `Lerix.init`. Invalid
+  names and properties are dropped and logged in debug mode.
+- Events are stored on the device and sent in batches.
+
+```dart
+await Lerix.analytics.setEnabled(false); // opt out: persisted, clears the queue
+await Lerix.analytics.flush();           // send now
+```
+
+<Note>
+  Call [`Lerix.setUser`](/modules/users-identity) after sign-in. Analytics
+  then counts the person across devices, and you can reply to their feedback by
+  push.
+</Note>
+
+## Breadcrumbs
+
+The last 50 breadcrumbs are attached to every feedback report. Screen views
+are added automatically. Add your own:
+
+```dart
+Lerix.addBreadcrumb(
+  'Tapped pay',
+  category: LerixBreadcrumbCategory.ui,   // navigation, log, http, ui, custom
+  data: {'amount': 49},
+);
+```

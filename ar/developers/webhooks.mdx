@@ -1,0 +1,255 @@
+---
+title: "Webhooks و Slack"
+description: "انشر الملاحظات الجديدة وإجابات المنتقدين في NPS والمشاكل الجديدة في Slack أو على خادمك، بطلبات موقّعة يمكنك التحقق منها."
+icon: "plug"
+---
+
+## نظرة عامة
+
+يرسل الـ Webhook طلب HTTP من نوع `POST` إلى رابط تختاره كلما حدث شيء في
+المشروع. استخدمه للنشر في قناة على Slack، أو لفتح تذكرة في نظامك، أو لبدء
+عملية آلية في Zapier.
+
+| الحدث | متى يُرسل |
+|---|---|
+| `feedback.created` | حين يرسل مستخدم [ملاحظة](/ar/modules/feedback) |
+| `nps.detractor` | حين يجيب مستخدم عن [استبيان NPS](/ar/modules/nps-surveys) بدرجة من 0 إلى 6 |
+| `issue.created` | حين يُبلَّغ عن [مشكلة](/ar/modules/error-tracking) جديدة لأول مرة |
+| `webhook.test` | حين تنقر **اختبار** في لوحة التحكم |
+
+يُرسل `issue.created` مرة واحدة لكل مشكلة، لا مع كل تكرار لها، فلا تُغرق حلقة
+الأعطال قناتك.
+
+## إضافة Webhook
+
+<Steps>
+  <Step title="افتح الإعدادات">
+    في المشروع، افتح **الإعدادات ← Webhooks و Slack** وانقر **إضافة Webhook**.
+    تحتاج إلى صلاحية تعديل إعدادات المشروع.
+  </Step>
+  <Step title="اختر الوجهة">
+    - **Webhook**: أي رابط `https://` يمكن الوصول إليه من الإنترنت. يوقّع
+      Lerix كل طلب (انظر أدناه).
+    - **Slack**: رابط incoming webhook تنشئه في Slack من **Apps ← Incoming
+      Webhooks**، ويبدأ بـ `https://hooks.slack.com/`. ينشر Lerix رسالة منسّقة
+      فيها رابط يعيدك إلى لوحة التحكم.
+  </Step>
+  <Step title="اختر الأحداث">
+    اختر واحداً على الأقل من `feedback.created` و`nps.detractor`
+    و`issue.created`.
+  </Step>
+  <Step title="انسخ سرّ التوقيع">
+    في الـ Webhook العام، يظهر سرّ التوقيع (`whsec_...`) **مرة واحدة** فقط بعد
+    إنشائه مباشرة. احفظه مع إعدادات خادمك. وإن أضعته، احذف الـ Webhook وأضِفه
+    من جديد لتحصل على سرّ جديد.
+  </Step>
+  <Step title="أرسل اختباراً">
+    انقر **اختبار** لإرسال حدث `webhook.test`. تعرض لوحة التحكم رمز الحالة
+    الذي أجاب به خادمك، أو الخطأ إن تعذّر الوصول إليه.
+  </Step>
+</Steps>
+
+يمكنك إيقاف الـ Webhook مؤقتاً دون حذفه، وتعديل رابطه أو أحداثه في أي وقت.
+
+## محتوى الطلب
+
+يحمل كل طلب Webhook عام متناً بصيغة JSON بالغلاف نفسه:
+
+```json
+{
+  "type": "feedback.created",
+  "projectSlug": "my-shop",
+  "createdAt": "2026-10-13T08:00:00.000Z",
+  "data": { }
+}
+```
+
+ومعه هذه الترويسات:
+
+| الترويسة | القيمة |
+|---|---|
+| `Content-Type` | `application/json` |
+| `Lerix-Event` | نوع الحدث، وهو نفسه `type` في المتن |
+| `Lerix-Delivery` | معرّف UUID لهذا الإرسال. تحتفظ به إعادات المحاولة للإرسال نفسه، فاستخدمه لتجاهل التكرار. |
+| `Lerix-Signature` | `t=<unix seconds>,v1=<hex signature>` |
+
+### الحقل `data` لكل حدث
+
+<Tabs>
+  <Tab title="feedback.created">
+    ```json
+    {
+      "id": "6f1c2a3e-...",
+      "message": "Checkout button does nothing",
+      "labels": ["bug"],
+      "email": "user@example.com",
+      "status": "new",
+      "platform": "ios",
+      "appVersion": "1.4.0",
+      "environment": "prod",
+      "externalId": "user-42",
+      "attachmentCount": 1,
+      "bugId": "b7d0...",
+      "createdAt": "2026-10-13T08:00:00.000Z",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/feedbacks/6f1c2a3e-..."
+    }
+    ```
+
+    تكون `email` و`externalId` و`bugId` بالقيمة `null` حين لا تنطبق. وتُضبط
+    `bugId` حين يكون التثبيت نفسه قد أبلغ عن خطأ قبيل الملاحظة.
+  </Tab>
+  <Tab title="nps.detractor">
+    ```json
+    {
+      "surveyId": "2a9e...",
+      "responseId": "c41b...",
+      "score": 4,
+      "message": "Too many steps to pay",
+      "platform": "android",
+      "appVersion": "1.4.0",
+      "environment": "prod",
+      "externalId": "user-42",
+      "answeredAt": "2026-10-13T08:00:00.000Z",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/feedbacks/surveys/2a9e..."
+    }
+    ```
+
+    تكون `message` بالقيمة `null` إن لم يُجب المستخدم عن سؤال المتابعة.
+  </Tab>
+  <Tab title="issue.created">
+    ```json
+    {
+      "id": "b7d0...",
+      "title": "TypeError: Cannot read properties of undefined",
+      "severity": "critical",
+      "type": "crash",
+      "fingerprint": "3f9a...",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/issues/b7d0..."
+    }
+    ```
+  </Tab>
+  <Tab title="webhook.test">
+    ```json
+    {
+      "message": "This is a test delivery from Lerix.",
+      "triggeredBy": "Ana"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+قد تُضاف حقول جديدة إلى `data` مع الوقت. تجاهل الحقول التي لا تعرفها بدلاً من
+رفض الطلب.
+
+## التحقق من التوقيع
+
+الترويسة `Lerix-Signature` هي HMAC-SHA256 للطابع الزمني والمتن الخام،
+`t + "." + body`، بمفتاح هو سرّ التوقيع الخاص بالـ Webhook. تحقّق منها قبل أن
+تثق بأي طلب:
+
+1. قسّم الترويسة عند `,` واقرأ `t` و`v1`.
+2. ارفض الطلب إن ابتعد `t` عن ساعتك أكثر من 5 دقائق، فهذا يمنع إعادة إرسال
+   طلب قديم.
+3. احسب `HMAC-SHA256(secret, t + "." + rawBody)` بصيغة hex وقارنه بـ `v1`
+   مقارنةً ثابتة الزمن.
+
+استخدم متن الطلب **الخام** كما وصل تماماً. فتحليل JSON ثم إعادة تحويله إلى نص
+يغيّر البايتات ويُفسد التوقيع.
+
+<CodeGroup>
+
+```ts Node.js (Express)
+import crypto from 'node:crypto';
+import express from 'express';
+
+const secret = process.env.LERIX_WEBHOOK_SECRET!; // whsec_...
+
+function verifyLerixSignature(rawBody: string, header: string, toleranceSeconds = 300): boolean {
+  const parts = Object.fromEntries(
+    header.split(',').map((part) => {
+      const i = part.indexOf('=');
+      return [part.slice(0, i).trim(), part.slice(i + 1).trim()];
+    }),
+  );
+  const t = Number(parts.t);
+  if (!Number.isInteger(t) || Math.abs(Date.now() / 1000 - t) > toleranceSeconds) return false;
+
+  const expected = crypto.createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
+  const a = Buffer.from(parts.v1 ?? '', 'hex');
+  const b = Buffer.from(expected, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+const app = express();
+
+app.post('/lerix/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  const rawBody = req.body.toString('utf8');
+  if (!verifyLerixSignature(rawBody, req.header('Lerix-Signature') ?? '')) {
+    return res.status(400).send('invalid signature');
+  }
+  const event = JSON.parse(rawBody);
+  // Use req.header('Lerix-Delivery') to skip deliveries you've already handled.
+  console.log(event.type, event.data);
+  res.sendStatus(200);
+});
+```
+
+```python Python (Flask)
+import hashlib
+import hmac
+import json
+import os
+import time
+
+from flask import Flask, abort, request
+
+SECRET = os.environ["LERIX_WEBHOOK_SECRET"]  # whsec_...
+
+
+def verify_lerix_signature(raw_body: bytes, header: str, tolerance_seconds: int = 300) -> bool:
+    parts = dict(part.strip().split("=", 1) for part in header.split(",") if "=" in part)
+    try:
+        t = int(parts.get("t", ""))
+    except ValueError:
+        return False
+    if abs(time.time() - t) > tolerance_seconds:
+        return False
+    signed = f"{t}.".encode() + raw_body
+    expected = hmac.new(SECRET.encode(), signed, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, parts.get("v1", ""))
+
+
+app = Flask(__name__)
+
+
+@app.post("/lerix/webhook")
+def lerix_webhook():
+    raw_body = request.get_data()  # the raw bytes, before any JSON parsing
+    if not verify_lerix_signature(raw_body, request.headers.get("Lerix-Signature", "")):
+        abort(400)
+    event = json.loads(raw_body)
+    # Use request.headers["Lerix-Delivery"] to skip deliveries you've already handled.
+    print(event["type"], event["data"])
+    return "", 200
+```
+
+</CodeGroup>
+
+لا تُوقَّع طلبات Slack، لأن رابط incoming webhook في Slack هو نفسه السرّ،
+فاحرص على إبقائه خاصاً.
+
+## الإرسال وإعادة المحاولة
+
+- ينتظر Lerix ردّ خادمك حتى **5 ثوانٍ**. أجب بأي رمز `2xx` بسرعة، وأنجز العمل
+  البطيء بعد الرد.
+- عند خطأ في الشبكة أو انتهاء المهلة أو `429` أو `5xx`، يعيد Lerix المحاولة حتى
+  **3 مرات**، بعد 2 ثم 10 ثم 30 ثانية. تُوقَّع كل محاولة من جديد بطابع زمني حديث،
+  وتحتفظ بمعرّف `Lerix-Delivery` نفسه.
+- لا تُعاد المحاولة مع أي رمز آخر (مثل `400` أو `404`).
+- لا تُتَّبع عمليات إعادة التوجيه.
+- يجب أن يستخدم الرابط `https` وأن يشير إلى عنوان عام. تُرفض العناوين الخاصة
+  وعناوين الاسترجاع (loopback) والعناوين المحلية للرابط (link-local)، عند حفظ
+  الـ Webhook وعند إرسال كل طلب.
+
+لا يُضمن وصول الطلبات بالترتيب. استخدم `createdAt` في المتن إن كان الترتيب
+مهماً لك.

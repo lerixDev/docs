@@ -1,0 +1,158 @@
+---
+title: "Web — Feedback, NPS and Analytics"
+description: "Add an in-app feedback dialog, an NPS survey and product analytics to any web app with the framework-agnostic core SDK."
+---
+
+For plain TypeScript or JavaScript, Vue, Svelte or any web app without a
+dedicated Lerix package, use `@lerix-dev/lerix-core` 1.4.0 or later. It is the
+engine behind the React, Next.js and Angular SDKs, and it also reports errors.
+For what each module does and what you see in the dashboard, read
+[Feedback](/modules/feedback), [NPS surveys](/modules/nps-surveys) and
+[Analytics](/modules/analytics).
+
+<Note>
+  `@lerix-dev/lerix-js`, the package on the [Web push](/frameworks/web/push-notifications)
+  page, covers push notifications only. Feedback, NPS and analytics live in
+  `@lerix-dev/lerix-core`. Using React, Next.js or Angular? Use
+  [React](/frameworks/react/feedback-analytics),
+  [Next.js](/frameworks/nextjs/feedback-analytics) or
+  [Angular](/frameworks/angular/feedback-analytics) instead.
+</Note>
+
+## Setup
+
+```bash
+npm install @lerix-dev/lerix-core
+```
+
+```ts main.ts
+import { Lerix } from '@lerix-dev/lerix-core';
+
+await Lerix.initialize({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  release: '1.4.0',            // also drives $app_update
+  environment: 'staging',      // default: dev on localhost / *.local or in debug mode, else prod
+  locale: 'ar',                // UI language; defaults to the browser's
+  analytics: { autoSessions: true, autoScreens: true },
+  feedback: { theme: 'auto', primaryColor: '#6E56CF' },
+});
+```
+
+| Option | Description |
+|---|---|
+| `environment` | Sent with feedback, survey responses and events. Lowercase, 2 to 32 characters. |
+| `locale` | Language of the feedback and NPS UI, such as `ar` or `en-US` |
+| `analytics` | `enabled`, `autoSessions`, `autoScreens`, all `true` by default. `enabled: false` turns tracking off for this page load without touching the stored opt-out. |
+| `feedback.theme` | `auto` (default) follows `.dark` or `[data-theme]` on `<html>`, then the OS. Or `light` / `dark`. |
+| `feedback.primaryColor` | Accent colour for buttons, any CSS colour |
+| `feedback.strings` | Text overrides per language, such as `{ en: { title: 'Report a problem' } }` |
+| `feedback.zIndex` | Stacking order of the overlay |
+| `captureConsoleErrors` | Records `console.error` calls as breadcrumbs. Off by default. |
+
+## In-app feedback
+
+```ts
+const result = await Lerix.feedback.show(); // { submitted, id?, clientId? }
+```
+
+The dialog (message, labels, screenshot with pen annotation, email, review
+with **Show details**, thanks) renders inside a Shadow DOM, so your CSS can't
+reach it and it can't break your layout. The UI and the screenshot library
+are a separate entry point (`@lerix-dev/lerix-core/feedback`), loaded only
+when the dialog or the NPS card is first used, so bundlers put them in their
+own chunk.
+
+Override the dashboard settings for one call:
+
+```ts
+await Lerix.feedback.show({
+  labels: ['bug', 'improvement'],   // only these keys, in this order
+  email: 'required',                // 'hidden' | 'optional' | 'required'
+  screenshot: 'optional',           // 'hidden' | 'optional'
+  prefillEmail: 'user@example.com',
+  custom: { plan: 'pro' },          // up to 50 keys / 16 KB
+});
+
+Lerix.feedback.setUserEmail('user@example.com'); // prefill for every dialog
+```
+
+### Hide sensitive content
+
+Add `data-lerix-mask` to any element to black it out of screenshots:
+
+```html
+<p data-lerix-mask>4242 4242 4242 4242</p>
+```
+
+The dialog also offers **pixel-perfect capture**, which uses the browser's
+screen-share prompt to capture canvas, video and cross-origin content exactly.
+
+### Your own form
+
+```ts
+const result = await Lerix.feedback.submit({
+  message: 'Checkout button does nothing',
+  labels: ['bug'],
+  email: 'user@example.com',
+  screenshots: [blob],   // PNG, JPEG or WebP Blobs, up to 5 MB each, at most 5
+  custom: { plan: 'pro' },
+});
+// result: { clientId, id?, status: 'created' | 'duplicate' | 'queued' }
+```
+
+Feedback is queued in IndexedDB (with a `localStorage` fallback) and retried
+until the server accepts it. `status` is `queued` and `id` is missing while the
+browser is offline.
+
+## NPS survey
+
+```ts
+const shown = await Lerix.surveys.maybeShowNps();     // only when this install is due
+await Lerix.surveys.maybeShowNps({ force: true });    // always (testing)
+```
+
+A card slides up from the bottom: a 0 to 10 score, a follow-up question for the
+score's group, then thanks. On the web, an "app start" is a new session, so
+`minAppStarts` counts visits after 30 minutes of inactivity. See
+[When the survey is shown](/modules/nps-surveys#when-the-survey-is-shown).
+In debug mode, the console says why a survey was skipped.
+
+## Analytics
+
+```ts
+Lerix.track('checkout_started', { items: 3, coupon: 'EID' });
+Lerix.screen('Checkout');            // a screen the URL doesn't name
+
+await Lerix.analytics.flush();       // send now
+Lerix.analytics.setEnabled(false);   // opt out: persisted, clears the queue
+```
+
+- `$first_open`, `$session_start` / `$session_end` (per tab, a new session after
+  30 minutes of inactivity), `$app_update` (when `release` changes) and
+  `$screen_view` (from `pushState`, `replaceState` and `popstate`) are
+  recorded automatically.
+- If your router doesn't change the URL, or you want cleaner names, call
+  `Lerix.analytics.disableAutoScreens()` and record screens yourself with
+  `Lerix.screen()`.
+- `track` and `screen` never throw. Invalid events and properties are dropped
+  on the device.
+- Events are batched and sent with `fetch(..., { keepalive: true })` when the
+  tab is hidden, so the last events of a visit aren't lost.
+- `Lerix.analytics.getSessionId()` returns the current session ID, which error
+  reports also carry.
+
+<Note>
+  Call [`Lerix.setUser`](/modules/users-identity) after sign-in. Analytics
+  then counts the person across devices, and you can reply to their feedback by
+  push.
+</Note>
+
+## Breadcrumbs
+
+```ts
+Lerix.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+The last 50 breadcrumbs (navigation is added automatically) are attached to
+feedback. Categories: `navigation`, `log`, `http`, `ui`, `custom`.

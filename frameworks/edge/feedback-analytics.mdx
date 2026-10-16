@@ -1,0 +1,84 @@
+---
+title: "Edge Functions — Analytics and Feedback"
+description: "Track events from Supabase Edge Functions, Cloudflare Workers, Vercel Edge, Deno and Bun, and send feedback to the Feedback inbox."
+---
+
+Requires `@lerix-dev/lerix-edge` 0.2.0 or later. Both features use the
+`lerix` client from [Installation](/frameworks/edge/installation). For what you
+see in the dashboard, read [Analytics](/modules/analytics) and
+[Feedback](/modules/feedback).
+
+## Analytics
+
+```ts
+Deno.serve(lerix.wrap(async (req) => {
+  const { userId, amount } = await req.json();
+  lerix.track('payment_succeeded', { amount, currency: 'OMR' }, { userId });
+  return new Response('ok');
+}));
+```
+
+- Events land in the same funnels and user counts as your apps' events.
+  `userId` is your own ID for the user, the same one your apps pass to
+  [`setUser()`](/modules/users-identity).
+- Names start with a letter, then letters, digits, spaces, `_`, `.`, `:` or `-`
+  (2 to 64 characters). Up to 25 properties, with string (up to 1,024
+  characters), finite number, boolean or `null` values. An invalid name drops
+  the event; an invalid property is dropped on its own. `track()` never throws.
+
+### Delivery
+
+Events are buffered in the isolate (up to 1,000, oldest dropped first) and sent
+in batches of up to 100, after the response through `waitUntil`, or as soon as
+50 are waiting. There is no timer, because isolates freeze between requests.
+
+Outside `wrap()`, for example in a cron handler or a queue consumer, flush
+before you return:
+
+```ts
+lerix.track('nightly_sync_finished', { rows });
+await lerix.flush();
+```
+
+If the API is unreachable or answers 401, 429 or 5xx, the events stay buffered
+and a later request retries after a backoff (2 seconds up to 5 minutes). A
+batch refused as invalid is dropped. Nothing outlives the isolate.
+
+### Environment and opt-out
+
+Events carry `platform: "edge"`, the runtime as the OS, your app's version and
+build number, and the environment: the `environment` option, or `NODE_ENV`
+where it can be read, with `production` sent as `prod` and `development` as
+`dev` (`prod` when unset).
+
+```ts
+lerix.analytics.setEnabled(false); // stop recording and clear the buffer
+```
+
+`analytics: false` in the `Lerix.init` options turns `track()` into a no-op.
+
+## Feedback
+
+```ts
+const id = await lerix.feedback.submit({
+  message: 'Checkout button does nothing',
+  email: 'user@example.com',          // optional
+  labels: ['bug'],                    // project label keys
+  userId,                             // optional, your ID for the user
+  custom: { plan: 'pro' },            // optional, up to 50 keys / 16 KB
+  attachments: [{ data: pngBytes }],  // optional, up to 5 PNG/JPEG/WebP images of 5 MB
+});
+```
+
+- Attachments are uploaded first, then the feedback is created with their IDs.
+- Failed requests are retried twice with the same client ID, so a retry never
+  duplicates the feedback.
+- `submit()` rejects with `LerixApiException` (`INVALID_FEEDBACK` for input that
+  can't be sent, or the API's error) and resolves `null` with `enabled: false`.
+- Inside a [traced request](/frameworks/edge/request-tracing), the feedback
+  links to the trace.
+
+<Note>
+  The `userId` you pass is stored as *reported* by your server. Replies by push
+  only go to users verified through a client SDK's `setUser`.
+</Note>

@@ -1,0 +1,104 @@
+---
+title: "ASP.NET Core — التحليلات والملاحظات"
+description: "سجّل أحداث الخادم في مسارات التحويل نفسها التي تغذّيها تطبيقاتك، وأرسل الملاحظات من خادمك إلى صندوق الملاحظات."
+---
+
+يتطلب ذلك `Lerix` بالإصدار 0.4.0 أو أحدث. تستخدم الميزتان الكائن الوحيد
+`LerixClient` الذي تحقنه بعد [التثبيت](/ar/frameworks/aspnet/installation).
+ولمعرفة ما تراه في لوحة التحكم، راجع [التحليلات](/ar/modules/analytics)
+و[الملاحظات](/ar/modules/feedback).
+
+## التحليلات
+
+سجّل ما يحدث على الخادم: التسجيلات الجديدة، والمدفوعات، والمهام. تظهر الأحداث
+تحت **التحليلات** في لوحة التحكم بجانب أحداث تطبيقاتك.
+
+```csharp OrdersService.cs
+public class OrdersService(LerixClient lerix)
+{
+    public void Complete(Order order, User user)
+    {
+        // ...
+        lerix.Track("checkout_completed", new Dictionary<string, object?>
+        {
+            ["items"] = 3,
+            ["total"] = 49.90m,
+            ["coupon"] = "EID",
+        }, userId: user.Id);
+    }
+}
+```
+
+- لا يرمي `Track` أي استثناء ولا ينتظر الشبكة أبداً: يتحقق من الحدث ويضعه في
+  ذاكرة مؤقتة.
+- `userId` هو معرّفك للمستخدم الذي يخصّه الحدث، وهو نفسه الذي تمرّره تطبيقاتك
+  إلى [`setUser()`](/ar/modules/users-identity) (بعد حذف المسافات الطرفية، حتى
+  255 حرفاً). يُرسل مع كل حدث، فتستطيع خدمة واحدة تتبّع مستخدمين كثيرين.
+- **الأسماء** تبدأ بحرف، ثم حروف أو أرقام أو مسافات أو `_` أو `.` أو `:` أو `-`
+  (من 2 إلى 64 حرفاً). وأي اسم آخر يُسقط الحدث.
+- **الخصائص**: حتى 25 مفتاحاً، يبدأ كل منها بحرف أو `_`، ثم حروف أو أرقام أو `_`
+  أو `.` أو `-`. والقيم نصوص (حتى 1024 حرفاً) أو أرقام منتهية (أي نوع رقمي أو
+  `decimal`) أو `bool` أو `null`، ويصلح كذلك `JsonElement` من أحد هذه الأنواع.
+  وأي شيء آخر (كائنات متداخلة، أو قوائم، أو تواريخ، أو NaN) يُسقط مفتاحاً مفتاحاً،
+  ويُسجَّل حين يكون `Debug` مفعّلاً.
+
+### الإرسال
+
+تُرسل الأحداث كل `FlushInterval` (10 ثوانٍ)، وفور تجمّع `FlushAt` (50) حدثاً،
+وعند `FlushAsync()`، وعند الإيقاف (`IHostedService.StopAsync`، أو التخلص من
+العميل). يحمل كل طلب 100 حدث على الأكثر. وتتسع الذاكرة المؤقتة لـ `MaxQueueSize`
+(1000) حدث، ويُحذف الأقدم حين تمتلئ. ولا يُكتب شيء على القرص.
+
+إن تعذّر الوصول إلى الواجهة أو أعادت خطأً قابلاً لإعادة المحاولة، تُحفظ الدفعة
+ويتباطأ الإرسال من ثانيتين حتى 5 دقائق. وتُحذف الدفعات التي ترفضها الواجهة لعدم
+صلاحيتها. وإن أُوقفت التحليلات للمشروع من جهة Lerix، ينتظر الإرسال المدة التي
+تطلبها الواجهة.
+
+```csharp
+await lerix.Analytics.FlushAsync();   // also part of lerix.FlushAsync()
+lerix.Analytics.SetEnabled(false);    // stop recording and clear the buffer (until restart)
+```
+
+```json appsettings.json
+{ "Lerix": { "Analytics": { "FlushInterval": "00:00:05", "FlushAt": 20 } } }
+```
+
+يحوّل `"Analytics": { "Enabled": false }` الدالة `Track` إلى عملية لا تفعل
+شيئاً. وتحمل الأحداث البيئة من خيار `Environment` (أو `ASPNETCORE_ENVIRONMENT` /
+`DOTNET_ENVIRONMENT`) بأحرف صغيرة، حيث تُرسل `Production` باسم `prod`
+و`Development` باسم `dev`.
+
+## الملاحظات
+
+أرسل ملاحظات المستخدمين من واجهتك الخاصة أو صندوق الدعم أو روبوت. تظهر تحت
+**الملاحظات** في لوحة التحكم، مثل الملاحظات المُرسلة من حزم التطبيقات.
+
+```csharp
+var id = await lerix.Feedback.SubmitAsync(new LerixFeedback
+{
+    Message = "The export button does nothing",
+    Email = "user@example.com",
+    Labels = new[] { "bug" },
+    UserId = user.Id,
+    Custom = new Dictionary<string, object?> { ["plan"] = "pro" },
+    Attachments = new[] { new LerixFeedbackAttachment(screenshotBytes) { Width = 1280, Height = 800 } },
+});
+```
+
+- `Message` إلزامي (من 1 إلى 4000 حرف بعد حذف المسافات الطرفية). و`Labels` هي
+  مفاتيح التصنيفات المُعدّة للمشروع، وتُهمل الواجهة غير المعروف منها.
+- يقبل `Custom` حتى 50 مفتاحاً و16 كيلوبايت من JSON.
+- `Attachments`: حتى 5 صور PNG أو JPEG أو WebP بحجم أقصاه 5 ميغابايت لكل منها.
+  يُقرأ النوع من البايتات، ويُعدّ `ContentType` المخالف لها خطأً.
+- الاستدعاء داخل [طلب مُتتبَّع](/ar/frameworks/aspnet/request-tracing) يحمل معرّف
+  تتبّع ذلك الطلب، ويُحتفظ بالتتبّع.
+- ترمي المدخلات غير الصالحة `LerixApiException` مع `Code = "INVALID_FEEDBACK"`
+  قبل إرسال أي شيء. وتُعاد محاولة أخطاء الشبكة و5xx و429 مرتين بمعرّف العميل
+  نفسه، فلا تُنشئ إعادة المحاولة بلاغاً ثانياً. ويُرمى آخر خطأ كـ
+  `LerixApiException`.
+- تُرجع معرّف الملاحظة، أو `null` حين تكون الحزمة معطّلة (`Enabled = false`).
+
+<Note>
+  يُخزَّن `UserId` الذي تمرّره على أنه *مُبلَّغ عنه* من خادمك. ولا تُرسل الردود
+  بالإشعارات إلا للمستخدمين المُتحقَّق منهم عبر `setUser` في حزم العميل.
+</Note>

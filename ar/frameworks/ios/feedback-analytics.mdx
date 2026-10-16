@@ -1,0 +1,186 @@
+---
+title: "iOS (Swift) — الملاحظات وNPS والتحليلات"
+description: "أضِف إلى تطبيق iOS أو macOS الأصلي ملاحظات داخل التطبيق، والإبلاغ بهزّ الجهاز، واستبيان NPS، وتحليلات المنتج."
+---
+
+يتطلب ذلك `Lerix` بالإصدار 1.3.0 أو أحدث. لمعرفة ما تقدّمه كل وحدة وما تراه
+في لوحة التحكم، راجع [الملاحظات](/ar/modules/feedback)
+و[استبيانات NPS](/ar/modules/nps-surveys) و[التحليلات](/ar/modules/analytics).
+
+<Note>
+  تحتاج **واجهة** الملاحظات وNPS إلى **iOS 15+** أو **macOS 12+**. ولا تتضمن
+  نافذة الملاحظات على macOS خطوة لقطات الشاشة. أما بقية ما في هذه الصفحة، بما
+  فيه الإرسال المباشر `Lerix.feedback.submit`، فيعمل على iOS 13+ وmacOS 11+.
+  وعلى الأنظمة الأقدم تُرجع `show` القيمة `submitted: false` وتُرجع
+  `maybeShowNps` القيمة `false`.
+</Note>
+
+## الإعداد
+
+تبدأ التحليلات عند تنفيذ `Lerix.initialize`. ويضبط معاملان اختياريان هذه
+الوحدات:
+
+```swift AppDelegate.swift
+Lerix.initialize(
+    apiKey: "your-api-key",
+    projectId: "your-project-id",
+    environment: "staging",   // default: "dev" for debug builds and the simulator, else "prod"
+    analytics: LerixAnalyticsOptions(
+        enabled: true,
+        autoSessions: true,
+        autoScreens: true,
+        uikitScreenTracking: false   // true: a $screen_view per UIViewController
+    )
+)
+```
+
+| المعامل | النوع | الوصف |
+|-----------|------|-------------|
+| `environment` | `String?` | يُرسل مع الملاحظات وإجابات الاستبيان والأحداث |
+| `analytics` | `LerixAnalyticsOptions` | `enabled` و`autoSessions` و`autoScreens` (افتراضياً `true`)، و`uikitScreenTracking` (افتراضياً `false`) |
+
+## الملاحظات داخل التطبيق
+
+استدعِ `show` من أي مكان، في UIKit أو SwiftUI. تُلتقط الشاشة الحالية أولاً، ثم
+تُفتح النافذة:
+
+```swift
+Lerix.feedback.show { result in
+    print(result.submitted, result.id ?? "queued")
+}
+```
+
+يمرّ النموذج بالرسالة، ثم التصنيفات، ثم لقطات الشاشة (انقر إحداها للرسم عليها
+بـ PencilKit، أو أضِف لقطة أخرى لشاشة مختلفة)، ثم البريد، ثم مراجعة يسرد فيها
+زر **عرض التفاصيل** كل ما سيُرسل. تُعرض `show` من أعلى view controller في
+النافذة الرئيسية؛ مرّر `from:` لاختيار غيره.
+
+### الخيارات
+
+تأتي التصنيفات ووضع البريد ووضع لقطات الشاشة من لوحة التحكم. ويمكنك تجاوزها
+في استدعاء واحد:
+
+```swift
+Lerix.feedback.show(options: LerixFeedbackOptions(
+    labels: ["bug", "improvement"],   // offer only these label keys
+    email: .required,                 // .hidden, .optional, .required
+    screenshot: .optional,            // .hidden to skip screenshots
+    custom: ["plan": "pro"]
+))
+
+Lerix.feedback.setUserEmail(user.email)   // prefill the email step
+```
+
+### الإبلاغ بهزّ الجهاز
+
+افتح نموذج الملاحظات حين يهزّ المستخدم جهازه. الميزة متوقفة حتى تفعّلها:
+
+```swift
+Lerix.feedback.enableShakeToReport()
+// Later, to stop:
+Lerix.feedback.disableShakeToReport()
+```
+
+إن كان لديك view controller يعالج الهزّ بنفسه دون استدعاء `super`، فلن يصل
+الهزّ إلى الحزمة.
+
+### إخفاء العناصر الحساسة
+
+```swift
+cardNumberLabel.lerixConfidential = true   // UIKit
+Text(balance).lerixConfidential()           // SwiftUI
+```
+
+### واجهتك الخاصة
+
+```swift
+let result = try await Lerix.feedback.submit(
+    message: "Checkout button does nothing",
+    labels: ["bug"],
+    email: "user@example.com",
+    screenshots: [pngData]   // PNG, JPEG or WebP, up to 5 MB each
+)
+```
+
+ترمي `submit` خطأً عند رسالة فارغة أو بريد غير صالح. ودون اتصال، تبقى الملاحظة
+على الجهاز وتكون `result.id` بالقيمة `nil` حتى تُرسل.
+
+### اللغة والألوان
+
+تأتي الواجهة بالعربية (من اليمين إلى اليسار) والإنجليزية، وتتبع لغة التطبيق
+ووضعه الفاتح أو الداكن.
+
+```swift
+Lerix.ui.locale = "ar"          // default: the app's language
+Lerix.ui.tintColor = .purple    // default: the key window's tint
+Lerix.ui.setStrings(["feedback.title": "Report a problem"], locale: "en")
+```
+
+## استبيان NPS
+
+```swift
+// For example after a successful checkout
+Task { await Lerix.surveys.maybeShowNps() }
+
+// While testing: skip the eligibility rules
+Task { await Lerix.surveys.maybeShowNps(force: true) }
+```
+
+تُرجع `maybeShowNps` القيمة `true` إن عُرض الاستبيان. تُفتح اللوحة (الدرجة، ثم
+سؤال المتابعة، ثم الشكر) بنصف ارتفاع الشاشة. ولا تعرضها الحزمة إلا حين
+يستحقها هذا التثبيت (راجع [استبيانات NPS](/ar/modules/nps-surveys))، ومع
+`debugMode: true` تسجّل سبب تخطي الاستبيان.
+
+## التحليلات
+
+```swift
+Lerix.track("checkout_started", props: ["items": 3, "coupon": "EID"])
+Lerix.screen("Checkout")
+
+Lerix.analytics.flush()             // send now
+Lerix.analytics.setEnabled(false)   // opt out: stops recording, clears the queue, persisted
+```
+
+تُسجَّل الأحداث `$first_open` و`$session_start` / `$session_end`
+و`$app_update` و`$screen_view` تلقائياً. ولا يُحتسب التشغيل في الخلفية (إشعار
+صامت، أو جلب في الخلفية) جلسةً حتى يأتي التطبيق إلى الواجهة.
+
+### عرض الشاشات
+
+في SwiftUI، سمِّ كل شاشة عبر `.lerixScreen`:
+
+```swift
+struct CheckoutView: View {
+    var body: some View {
+        Form { /* ... */ }
+            .lerixScreen("Checkout")
+    }
+}
+```
+
+وفي UIKit، فعّل `uikitScreenTracking` في `LerixAnalyticsOptions` لتسجيل عرض
+شاشة في كل مرة يظهر فيها view controller. ويمكنك إعادة تسمية أي منها، أو
+تخطيه بنص فارغ:
+
+```swift
+override func viewDidLoad() {
+    super.viewDidLoad()
+    lerixScreenName = "Checkout"   // "" skips this controller
+}
+```
+
+<Note>
+  استدعِ [`Lerix.setUser`](/ar/modules/users-identity) بعد تسجيل الدخول، فتحسب
+  التحليلات الشخص عبر أجهزته، وتستطيع الرد على ملاحظاته بإشعار.
+</Note>
+
+## الخطوات السابقة (Breadcrumbs)
+
+تُرسل آخر 50 خطوة مع الملاحظات ومع تقارير الأخطاء المُعالَجة، ويُضاف عرض
+الشاشات تلقائياً.
+
+```swift
+Lerix.addBreadcrumb("Tapped pay", category: .ui, data: ["amount": 49])
+```
+
+الفئات: `.navigation` و`.log` و`.http` و`.ui` و`.custom`.

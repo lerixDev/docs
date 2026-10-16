@@ -1,0 +1,155 @@
+---
+title: "الويب — الملاحظات وNPS والتحليلات"
+description: "أضِف إلى أي تطبيق ويب نافذة ملاحظات داخل التطبيق، واستبيان NPS، وتحليلات المنتج عبر الحزمة الأساسية المستقلة عن أطر العمل."
+---
+
+لتطبيقات TypeScript أو JavaScript الخالصة، أو Vue، أو Svelte، أو أي تطبيق ويب
+لا تتوفر له حزمة Lerix مخصّصة، استخدم `@lerix-dev/lerix-core` بالإصدار 1.4.0 أو
+أحدث. إنها المحرّك الذي تقوم عليه حزم React وNext.js وAngular، وتبلّغ عن الأخطاء
+أيضاً. لمعرفة ما تقدّمه كل وحدة وما تراه في لوحة التحكم، راجع
+[الملاحظات](/ar/modules/feedback) و[استبيانات NPS](/ar/modules/nps-surveys)
+و[التحليلات](/ar/modules/analytics).
+
+<Note>
+  الحزمة `@lerix-dev/lerix-js` المذكورة في صفحة
+  [إشعارات الويب](/ar/frameworks/web/push-notifications) تغطي الإشعارات فقط. أما
+  الملاحظات وNPS والتحليلات ففي `@lerix-dev/lerix-core`. وإن كنت تستخدم React
+  أو Next.js أو Angular، فاستخدم دليل
+  [React](/ar/frameworks/react/feedback-analytics) أو
+  [Next.js](/ar/frameworks/nextjs/feedback-analytics) أو
+  [Angular](/ar/frameworks/angular/feedback-analytics) بدلاً من هذا.
+</Note>
+
+## الإعداد
+
+```bash
+npm install @lerix-dev/lerix-core
+```
+
+```ts main.ts
+import { Lerix } from '@lerix-dev/lerix-core';
+
+await Lerix.initialize({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  release: '1.4.0',            // also drives $app_update
+  environment: 'staging',      // default: dev on localhost / *.local or in debug mode, else prod
+  locale: 'ar',                // UI language; defaults to the browser's
+  analytics: { autoSessions: true, autoScreens: true },
+  feedback: { theme: 'auto', primaryColor: '#6E56CF' },
+});
+```
+
+| الخيار | الوصف |
+|---|---|
+| `environment` | يُرسل مع الملاحظات وإجابات الاستبيان والأحداث. بأحرف صغيرة، من 2 إلى 32 حرفاً. |
+| `locale` | لغة واجهة الملاحظات وNPS، مثل `ar` أو `en-US` |
+| `analytics` | `enabled` و`autoSessions` و`autoScreens`، وكلها `true` افتراضياً. يوقف `enabled: false` التتبّع لتحميل الصفحة الحالي دون المساس بإيقاف التتبّع المحفوظ. |
+| `feedback.theme` | `auto` (الافتراضي) يتبع `.dark` أو `[data-theme]` على `<html>`، ثم إعداد النظام. أو `light` / `dark`. |
+| `feedback.primaryColor` | لون التمييز للأزرار، بأي صيغة ألوان CSS |
+| `feedback.strings` | نصوص بديلة لكل لغة، مثل `{ en: { title: 'Report a problem' } }` |
+| `feedback.zIndex` | ترتيب طبقة النافذة |
+| `captureConsoleErrors` | يسجّل استدعاءات `console.error` كخطوات سابقة. متوقف افتراضياً. |
+
+## الملاحظات داخل التطبيق
+
+```ts
+const result = await Lerix.feedback.show(); // { submitted, id?, clientId? }
+```
+
+تُعرض النافذة (الرسالة، والتصنيفات، ولقطة الشاشة مع التعليق بالقلم، والبريد،
+والمراجعة عبر **عرض التفاصيل**، ثم الشكر) داخل Shadow DOM، فلا تصل إليها أنماط
+CSS لديك ولا تُفسد تخطيط صفحتك. والواجهة ومكتبة لقطات الشاشة نقطة دخول منفصلة
+(`@lerix-dev/lerix-core/feedback`) لا تُحمَّل إلا عند أول استخدام للنافذة أو
+لبطاقة NPS، فتضعها أدوات التجميع (bundlers) في جزء مستقل.
+
+تجاوز إعدادات لوحة التحكم في استدعاء واحد:
+
+```ts
+await Lerix.feedback.show({
+  labels: ['bug', 'improvement'],   // only these keys, in this order
+  email: 'required',                // 'hidden' | 'optional' | 'required'
+  screenshot: 'optional',           // 'hidden' | 'optional'
+  prefillEmail: 'user@example.com',
+  custom: { plan: 'pro' },          // up to 50 keys / 16 KB
+});
+
+Lerix.feedback.setUserEmail('user@example.com'); // prefill for every dialog
+```
+
+### إخفاء المحتوى الحساس
+
+أضِف السمة `data-lerix-mask` إلى أي عنصر لطمسه في لقطات الشاشة:
+
+```html
+<p data-lerix-mask>4242 4242 4242 4242</p>
+```
+
+وتوفّر النافذة أيضاً **الالتقاط الدقيق**، الذي يستخدم نافذة مشاركة الشاشة في
+المتصفح لالتقاط عناصر canvas والفيديو والمحتوى من نطاقات أخرى كما هي تماماً.
+
+### نموذجك الخاص
+
+```ts
+const result = await Lerix.feedback.submit({
+  message: 'Checkout button does nothing',
+  labels: ['bug'],
+  email: 'user@example.com',
+  screenshots: [blob],   // PNG, JPEG or WebP Blobs, up to 5 MB each, at most 5
+  custom: { plan: 'pro' },
+});
+// result: { clientId, id?, status: 'created' | 'duplicate' | 'queued' }
+```
+
+تُحفظ الملاحظات في IndexedDB (مع `localStorage` بديلاً) ويُعاد إرسالها حتى
+يقبلها الخادم. وما دام المتصفح غير متصل تكون `status` بالقيمة `queued` وتغيب
+`id`.
+
+## استبيان NPS
+
+```ts
+const shown = await Lerix.surveys.maybeShowNps();     // only when this install is due
+await Lerix.surveys.maybeShowNps({ force: true });    // always (testing)
+```
+
+تظهر بطاقة من أسفل الصفحة: درجة من 0 إلى 10، ثم سؤال متابعة بحسب فئة الدرجة،
+ثم الشكر. وعلى الويب يُعدّ "التشغيل" جلسةً جديدة، فيحسب `minAppStarts` الزيارات
+التي تأتي بعد 30 دقيقة من عدم النشاط. راجع [استبيانات NPS](/ar/modules/nps-surveys).
+وفي وضع التصحيح تذكر وحدة التحكم سبب تخطي الاستبيان.
+
+## التحليلات
+
+```ts
+Lerix.track('checkout_started', { items: 3, coupon: 'EID' });
+Lerix.screen('Checkout');            // a screen the URL doesn't name
+
+await Lerix.analytics.flush();       // send now
+Lerix.analytics.setEnabled(false);   // opt out: persisted, clears the queue
+```
+
+- تُسجَّل تلقائياً الأحداث `$first_open` و`$session_start` / `$session_end` (لكل
+  تبويب، وتبدأ جلسة جديدة بعد 30 دقيقة من عدم النشاط) و`$app_update` (حين
+  تتغيّر `release`) و`$screen_view` (من `pushState` و`replaceState`
+  و`popstate`).
+- إن كان الموجّه لديك لا يغيّر الرابط، أو أردت أسماء أوضح، فاستدعِ
+  `Lerix.analytics.disableAutoScreens()` وسجّل الشاشات بنفسك عبر `Lerix.screen()`.
+- لا يرمي `track` ولا `screen` أي استثناء. وتُهمل الأحداث والخصائص غير الصالحة
+  على الجهاز.
+- تُرسل الأحداث على دفعات، وعبر `fetch(..., { keepalive: true })` حين يُخفى
+  التبويب، فلا تضيع آخر أحداث الزيارة.
+- تُرجع `Lerix.analytics.getSessionId()` معرّف الجلسة الحالية، الذي تحمله
+  تقارير الأخطاء أيضاً.
+
+<Note>
+  استدعِ [`Lerix.setUser`](/ar/modules/users-identity) بعد تسجيل الدخول، فتحسب
+  التحليلات الشخص عبر أجهزته، وتستطيع الرد على ملاحظاته بإشعار.
+</Note>
+
+## الخطوات السابقة (Breadcrumbs)
+
+```ts
+Lerix.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+تُرفق آخر 50 خطوة (ويُضاف التنقّل تلقائياً) بالملاحظات. الفئات: `navigation`
+و`log` و`http` و`ui` و`custom`.

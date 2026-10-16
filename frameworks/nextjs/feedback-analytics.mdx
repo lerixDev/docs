@@ -1,0 +1,141 @@
+---
+title: "Next.js — Feedback, NPS and Analytics"
+description: "Add an in-app feedback dialog, an NPS survey and product analytics to your Next.js app, with App Router screen tracking."
+---
+
+Requires `@lerix-dev/lerix-nextjs` 1.4.0 or later. For what each module does
+and what you see in the dashboard, read [Feedback](/modules/feedback),
+[NPS surveys](/modules/nps-surveys) and [Analytics](/modules/analytics).
+
+## Setup
+
+Add `LerixScreenTracker` once, inside the `LerixNextProvider` from
+[Installation](/frameworks/nextjs/installation). It records a `$screen_view`
+per pathname through `usePathname()`, and turns off the SDK's History API
+tracking so nothing is counted twice.
+
+```tsx app/layout.tsx
+import { LerixErrorBoundary, LerixNextProvider, LerixScreenTracker } from '@lerix-dev/lerix-nextjs';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <LerixNextProvider>
+          <LerixScreenTracker
+            name={(path) => path.replace(/^\/products\/[^/]+/, '/products/[id]')}
+          />
+          <LerixErrorBoundary fallback={<p>Something went wrong.</p>}>
+            {children}
+          </LerixErrorBoundary>
+        </LerixNextProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+The optional `name` maps a pathname to a screen name. Use it to group dynamic
+routes, so `/products/42` and `/products/43` count as one screen. Return
+`null` to skip a path.
+
+Without `LerixScreenTracker` (in the Pages Router, for example), URL changes
+are still recorded through the History API.
+
+### Environment
+
+`LerixNextProvider` reads `NEXT_PUBLIC_LERIX_ENVIRONMENT` as the default
+environment. Without it, the SDK sends `dev` on `localhost` and `*.local` or in
+debug mode, and `prod` elsewhere.
+
+```bash .env.production
+NEXT_PUBLIC_LERIX_ENVIRONMENT=prod
+```
+
+The provider's `options` prop also takes `locale`, `analytics`, `feedback`
+(`theme`, `primaryColor`, `strings`, `zIndex`) and `captureConsoleErrors`. They
+work as in [React](/frameworks/react/feedback-analytics#setup).
+
+## In-app feedback
+
+```tsx components/feedback-button.tsx
+'use client';
+import { useLerixFeedback } from '@lerix-dev/lerix-nextjs';
+
+export function FeedbackButton() {
+  const feedback = useLerixFeedback();
+  return <button onClick={() => feedback.show()}>Send feedback</button>;
+}
+```
+
+The dialog renders inside a Shadow DOM and loads on first use, in its own
+chunk. `show(options?)` takes `labels`, `email`, `screenshot`, `prefillEmail`
+and `custom`, and `submit({ message, labels?, email?, screenshots?, custom? })`
+sends feedback from your own form. See [React](/frameworks/react/feedback-analytics#in-app-feedback)
+for the full option list.
+
+Mask sensitive content in screenshots:
+
+```tsx
+'use client';
+import { LerixConfidential } from '@lerix-dev/lerix-nextjs';
+
+<LerixConfidential>{user.email}</LerixConfidential>
+```
+
+## NPS survey
+
+```tsx app/(app)/home-client.tsx
+'use client';
+import { useLerixSurvey } from '@lerix-dev/lerix-nextjs';
+
+export function HomeClient() {
+  useLerixSurvey({ autoShow: true }); // the NPS card, when this install is due
+  return null;
+}
+```
+
+Or call `maybeShowNps()` from `useLerixSurvey()` yourself, with
+`{ force: true }` while testing. See
+[When the survey is shown](/modules/nps-surveys#when-the-survey-is-shown).
+
+## Analytics
+
+```tsx
+'use client';
+import { useLerixTrack } from '@lerix-dev/lerix-nextjs';
+
+export function CheckoutButton() {
+  const track = useLerixTrack();
+  return <button onClick={() => track('checkout_started', { items: 3 })}>Checkout</button>;
+}
+```
+
+- `$first_open`, `$session_start` / `$session_end`, `$app_update` and
+  `$screen_view` are recorded automatically.
+- `useLerixScreen('Settings / Billing')` names a screen the URL doesn't, such
+  as a tab or a modal step.
+- `Lerix.analytics.setEnabled(false)` is the persisted opt-out, and
+  `Lerix.analytics.flush()` sends right away. `Lerix` is re-exported from
+  `@lerix-dev/lerix-nextjs`.
+
+This package records events in the browser. For events from code on the
+Edge runtime, see [Edge Functions](/frameworks/edge/feedback-analytics).
+
+<Note>
+  Call [`setUser`](/modules/users-identity) after sign-in. Analytics then
+  counts the person across devices, and you can reply to their feedback by
+  push.
+</Note>
+
+## Breadcrumbs
+
+```ts
+'use client';
+import { Lerix } from '@lerix-dev/lerix-nextjs';
+
+Lerix.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+The last 50 breadcrumbs (navigation is added automatically) are attached to
+feedback.

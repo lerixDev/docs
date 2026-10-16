@@ -1,0 +1,173 @@
+---
+title: "React — الملاحظات وNPS والتحليلات"
+description: "أضِف إلى تطبيق React نافذة ملاحظات داخل التطبيق، واستبيان NPS، وتحليلات المنتج عبر الـ hooks."
+---
+
+يتطلب ذلك `@lerix-dev/lerix-react` بالإصدار 1.3.0 أو أحدث (مع
+`@lerix-dev/lerix-core` بالإصدار 1.4.0). لمعرفة ما تقدّمه كل وحدة وما تراه في
+لوحة التحكم، راجع [الملاحظات](/ar/modules/feedback)
+و[استبيانات NPS](/ar/modules/nps-surveys) و[التحليلات](/ar/modules/analytics).
+
+## الإعداد
+
+لا تحتاج إلى أكثر من `LerixProvider` الذي أعددته في
+[التثبيت](/ar/frameworks/react/installation). تبدأ التحليلات عند التركيب
+(mount)، وتُسجَّل تغيّرات الرابط كعرض شاشات عبر History API.
+
+ويقبل `options` في المزوّد هذه الإعدادات للوحدات الجديدة:
+
+```tsx main.tsx
+<LerixProvider
+  options={{
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    environment: 'staging',                        // default: dev on localhost / *.local or in debug mode, else prod
+    locale: 'ar',                                  // UI language; defaults to the browser's
+    analytics: { autoSessions: true, autoScreens: true },
+    feedback: { theme: 'auto', primaryColor: '#6E56CF' },
+    captureConsoleErrors: true,                    // console.error calls become breadcrumbs
+  }}
+>
+  <App />
+</LerixProvider>
+```
+
+| الخيار | الوصف |
+|---|---|
+| `environment` | يُرسل مع الملاحظات وإجابات الاستبيان والأحداث |
+| `locale` | لغة واجهة الملاحظات وNPS، مثل `ar` أو `en-US` |
+| `analytics` | `enabled` و`autoSessions` و`autoScreens`، وكلها `true` افتراضياً |
+| `feedback` | `theme` (`auto` أو `light` أو `dark`)، و`primaryColor`، و`strings` لكل لغة، و`zIndex` |
+| `captureConsoleErrors` | يسجّل استدعاءات `console.error` كخطوات سابقة. متوقف افتراضياً. |
+| `release` | يُستخدم أيضاً لـ `$app_update`: يُرسل الحدث حين تتغيّر هذه القيمة |
+
+## الملاحظات داخل التطبيق
+
+```tsx
+import { useLerixFeedback } from '@lerix-dev/lerix-react';
+
+function FeedbackButton() {
+  const feedback = useLerixFeedback();
+  return <button onClick={() => feedback.show()}>Send feedback</button>;
+}
+```
+
+تُعرض النافذة (الرسالة، والتصنيفات، ولقطة الشاشة مع التعليق بالقلم، والبريد،
+والمراجعة عبر **عرض التفاصيل**) داخل Shadow DOM، فلا تصل إليها أنماط CSS لديك
+ولا تُفسد تخطيط صفحتك. وتتبع الوضع الفاتح أو الداكن (`.dark` أو `[data-theme]`
+على `<html>`، وإلا فإعداد النظام)، وتأتي بالعربية (من اليمين إلى اليسار)
+والإنجليزية. وتُحمَّل النافذة ومكتبة لقطات الشاشة عند أول استخدام، في جزء
+(chunk) مستقل.
+
+تُرجع `useLerixFeedback()` الكائن `{ show, submit, setUserEmail, isOpen }`.
+وتُرجع `show(options?)` القيمة `{ submitted, id?, clientId? }`، وتقبل:
+
+```tsx
+await feedback.show({
+  labels: ['bug', 'improvement'],   // only these keys, in this order
+  email: 'required',                // 'hidden' | 'optional' | 'required'
+  screenshot: 'optional',           // 'hidden' | 'optional'
+  prefillEmail: user.email,
+  custom: { plan: 'pro' },          // up to 50 keys / 16 KB
+});
+```
+
+### إخفاء المحتوى الحساس
+
+يضيف `LerixConfidential` السمة `data-lerix-mask` التي تطمس العنصر في لقطات
+الشاشة. ويمكنك أيضاً وضع السمة على أي عنصر بنفسك.
+
+```tsx
+import { LerixConfidential } from '@lerix-dev/lerix-react';
+
+<LerixConfidential>{user.email}</LerixConfidential>
+<LerixConfidential as="section">...</LerixConfidential>
+```
+
+وتوفّر النافذة أيضاً **الالتقاط الدقيق**، الذي يستخدم نافذة مشاركة الشاشة في
+المتصفح لالتقاط عناصر canvas والفيديو والمحتوى من نطاقات أخرى كما هي تماماً.
+
+### نموذجك الخاص
+
+```tsx
+const { submit } = useLerixFeedback();
+
+const result = await submit({
+  message: 'Checkout button does nothing',
+  labels: ['bug'],
+  email: 'user@example.com',
+  screenshots: [blob],   // PNG, JPEG or WebP Blobs, up to 5 MB each
+});
+// result: { clientId, id?, status: 'created' | 'duplicate' | 'queued' }
+```
+
+تُحفظ الملاحظات في IndexedDB ويُعاد إرسالها حتى يقبلها الخادم.
+
+## استبيان NPS
+
+```tsx
+import { useLerixSurvey } from '@lerix-dev/lerix-react';
+
+function Home() {
+  useLerixSurvey({ autoShow: true }); // checks once, 2 seconds after mount
+  return <Dashboard />;
+}
+```
+
+أو استدعِه بنفسك في اللحظة المناسبة:
+
+```tsx
+const { maybeShowNps } = useLerixSurvey();
+
+await maybeShowNps();                  // only when this install is due
+await maybeShowNps({ force: true });   // always (testing)
+```
+
+يغيّر `useLerixSurvey({ autoShow: true, delayMs: 5000 })` مدة الانتظار. ولا
+تعرض الحزمة البطاقة إلا حين يستحقها هذا التثبيت (راجع
+[استبيانات NPS](/ar/modules/nps-surveys)).
+
+## التحليلات
+
+```tsx
+import { useLerixScreen, useLerixTrack } from '@lerix-dev/lerix-react';
+
+function Checkout() {
+  const track = useLerixTrack();
+  useLerixScreen('Checkout'); // names a screen the URL doesn't, such as a modal step
+
+  return <button onClick={() => track('checkout_started', { items: 3 })}>Pay</button>;
+}
+```
+
+تُسجَّل تلقائياً الأحداث `$first_open` و`$session_start` / `$session_end` (لكل
+تبويب، وتبدأ جلسة جديدة بعد 30 دقيقة من عدم النشاط) و`$app_update`
+و`$screen_view` (من الرابط). ولا يرمي `track` أي استثناء.
+
+ويُعاد تصدير الواجهة الأساسية لاستخدامها خارج المكوّنات:
+
+```ts
+import { Lerix } from '@lerix-dev/lerix-react';
+
+Lerix.track('export_finished', { rows: 1200 });
+await Lerix.analytics.flush();
+Lerix.analytics.setEnabled(false); // opt out: persisted, clears the queue
+```
+
+تُرسل الأحداث على دفعات، وعبر `fetch(..., { keepalive: true })` حين يُخفى
+التبويب، فلا تضيع آخر أحداث الزيارة.
+
+<Note>
+  استدعِ [`setUser`](/ar/modules/users-identity) بعد تسجيل الدخول، فتحسب
+  التحليلات الشخص عبر أجهزته، وتستطيع الرد على ملاحظاته بإشعار.
+</Note>
+
+## الخطوات السابقة (Breadcrumbs)
+
+تُرفق آخر 50 خطوة بالملاحظات، ويُضاف التنقّل تلقائياً.
+
+```ts
+Lerix.addBreadcrumb('Applied coupon', 'ui', { code: 'EID' });
+```
+
+الفئات: `navigation` و`log` و`http` و`ui` و`custom`.

@@ -1,0 +1,100 @@
+---
+title: "Python — Analytics and Feedback"
+description: "Track server-side events in the same funnels as your apps, and send feedback from your own backend to the Feedback inbox."
+---
+
+Requires `lerix` 0.5.0 or later. For what you see in the dashboard, read
+[Analytics](/modules/analytics) and [Feedback](/modules/feedback).
+
+## Analytics
+
+Record what happens on your backend as analytics events. `track` returns
+immediately and never raises: events are buffered in memory and a background
+thread sends them in batches.
+
+```python
+import lerix
+
+lerix.init(api_key="...", project_id="...")
+
+lerix.track("invoice_paid", {"amount": 42.5, "currency": "OMR", "first": True}, user_id=user.id)
+lerix.track("nightly_export_finished")
+```
+
+- **`user_id`** is your own ID for the person the event is about, the same one
+  your apps pass to [`setUser()`](/modules/users-identity). Events without it
+  belong to one anonymous service user, so pass it whenever the event is about
+  someone.
+- **Names** start with a letter, then letters, digits, spaces, `_`, `.`, `:` or
+  `-` (2 to 64 characters). An event with an invalid name is dropped (and logged
+  with `debug=True`).
+- **Props** are a `dict` of up to 25 keys. Keys start with a letter or `_`, then
+  letters, digits, `_`, `.` or `-`. Values are strings (up to 1,024
+  characters), finite numbers, bools or `None`. Invalid entries are dropped one
+  by one; nested dicts and lists aren't supported.
+
+### Delivery
+
+Events are sent every 10 seconds, as soon as 50 are waiting, on
+`lerix.flush()` or `lerix.analytics.flush()`, and when the interpreter exits.
+Each request carries up to 100 events, and up to 1,000 wait in memory (the
+oldest is dropped past that).
+
+A batch the API refuses as invalid is dropped. A network error, 401, 429 or
+5xx keeps it and retries with backoff (2 seconds up to 5 minutes). Events
+aren't kept across restarts.
+
+```python
+lerix.init(
+    api_key="...",
+    project_id="...",
+    analytics={"flush_interval": 5, "flush_at": 50, "max_batch_size": 100, "max_queue_size": 1000},
+)
+
+lerix.init(api_key="...", project_id="...", analytics=False)  # track() becomes a no-op
+
+lerix.analytics.set_enabled(False)  # stop recording and clear the buffer (e.g. a user opted out)
+lerix.analytics.flush(timeout=5)    # send now; True when it finished in time
+```
+
+### Environment
+
+Events carry `prod`, `dev` or your own value: `production` becomes `prod` and
+`development` becomes `dev`. An unset or invalid value becomes `dev` with
+`debug=True`, otherwise `prod`.
+
+## Feedback
+
+Send feedback from your backend, for example from your own support form or a
+chatbot. There is no UI on the server: `submit` posts what you give it and
+returns the feedback ID. It shows up under **Feedbacks** in the dashboard.
+
+```python
+from lerix import FeedbackAttachment
+
+feedback_id = lerix.feedback.submit(
+    message="The export button does nothing",
+    email="ana@example.com",           # optional
+    labels=["bug"],                    # label keys from the dashboard
+    user_id=user.id,                   # optional, your own ID for the person
+    custom={"plan": "pro"},            # optional, up to 50 keys / 16 KB of JSON
+    attachments=[FeedbackAttachment(data=png_bytes, width=1280, height=800)],
+)
+```
+
+- `message` is trimmed and must be 1 to 4,000 characters.
+- `attachments`: up to 5 PNG, JPEG or WebP images of up to 5 MB each, as
+  `bytes`, `FeedbackAttachment` or a dict with the same fields. The type is
+  read from the bytes; a `content_type` that disagrees is an error.
+- Inside a [traced request](/frameworks/python/request-tracing), the feedback
+  is linked to the request's trace.
+- Unlike `track`, `submit` blocks and raises `lerix.LerixApiError`: code
+  `INVALID_FEEDBACK` for bad input (nothing is sent), or the API error after
+  two retries of a network error, 429 or 5xx. Retries reuse the same client
+  ID, so the feedback is never created twice. It returns `None` with
+  `enabled=False`.
+
+<Note>
+  The `user_id` you pass is stored as *reported* by your server. Replies by
+  push only go to users verified through a client SDK's `setUser`.
+</Note>

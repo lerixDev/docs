@@ -1,0 +1,106 @@
+---
+title: "ASP.NET Core — Analytics and Feedback"
+description: "Track server-side events in the same funnels as your apps, and send feedback from your own backend to the Feedback inbox."
+---
+
+Requires `Lerix` 0.4.0 or later. Both features use the `LerixClient` singleton
+you inject after [Installation](/frameworks/aspnet/installation). For what you
+see in the dashboard, read [Analytics](/modules/analytics) and
+[Feedback](/modules/feedback).
+
+## Analytics
+
+Record what happens on the server: sign-ups, payments, jobs. Events show up
+under **Analytics** in the dashboard next to the ones your apps send.
+
+```csharp OrdersService.cs
+public class OrdersService(LerixClient lerix)
+{
+    public void Complete(Order order, User user)
+    {
+        // ...
+        lerix.Track("checkout_completed", new Dictionary<string, object?>
+        {
+            ["items"] = 3,
+            ["total"] = 49.90m,
+            ["coupon"] = "EID",
+        }, userId: user.Id);
+    }
+}
+```
+
+- `Track` never throws and never blocks on the network. It validates the
+  event and puts it in an in-memory buffer.
+- `userId` is your ID for the user the event is about, the same one your apps
+  pass to [`setUser()`](/modules/users-identity) (trimmed, up to 255
+  characters). It is sent per event, so one service can track many users.
+- **Names** start with a letter, then letters, digits, spaces, `_`, `.`, `:` or
+  `-` (2 to 64 characters). Any other name drops the event.
+- **Props**: up to 25 keys, each starting with a letter or `_`, then letters,
+  digits, `_`, `.` or `-`. Values are strings (up to 1,024 characters), finite
+  numbers (any numeric type or `decimal`), `bool` or `null`; a `JsonElement` of
+  one of those kinds works too. Anything else (nested objects, lists, dates,
+  NaN) is dropped key by key, and logged when `Debug` is on.
+
+### Delivery
+
+Events are sent every `FlushInterval` (10 seconds), as soon as `FlushAt` (50)
+are waiting, on `FlushAsync()`, and on shutdown (`IHostedService.StopAsync`, or
+disposing the client). Each request carries at most 100 events. The buffer
+holds `MaxQueueSize` (1,000) events, dropping the oldest when full. Nothing is
+written to disk.
+
+When the API is unreachable or returns a retryable error, the batch is kept and
+sending backs off from 2 seconds up to 5 minutes. Batches the API rejects as
+invalid are dropped. If the project has analytics paused on the Lerix side,
+sending waits for the time the API asks for.
+
+```csharp
+await lerix.Analytics.FlushAsync();   // also part of lerix.FlushAsync()
+lerix.Analytics.SetEnabled(false);    // stop recording and clear the buffer (until restart)
+```
+
+```json appsettings.json
+{ "Lerix": { "Analytics": { "FlushInterval": "00:00:05", "FlushAt": 20 } } }
+```
+
+`"Analytics": { "Enabled": false }` turns `Track` into a no-op. Events carry
+the environment from the `Environment` option (or `ASPNETCORE_ENVIRONMENT` /
+`DOTNET_ENVIRONMENT`), lowercased, with `Production` sent as `prod` and
+`Development` as `dev`.
+
+## Feedback
+
+Send user feedback from your own UI, a support inbox or a bot. It shows up
+under **Feedbacks** in the dashboard, like feedback sent from the app SDKs.
+
+```csharp
+var id = await lerix.Feedback.SubmitAsync(new LerixFeedback
+{
+    Message = "The export button does nothing",
+    Email = "user@example.com",
+    Labels = new[] { "bug" },
+    UserId = user.Id,
+    Custom = new Dictionary<string, object?> { ["plan"] = "pro" },
+    Attachments = new[] { new LerixFeedbackAttachment(screenshotBytes) { Width = 1280, Height = 800 } },
+});
+```
+
+- `Message` is required (1 to 4,000 characters after trimming). `Labels` are
+  the label keys set up for the project; unknown ones are dropped by the API.
+- `Custom` takes up to 50 keys and 16 KB of JSON.
+- `Attachments`: up to 5 PNG, JPEG or WebP images of at most 5 MB each. The
+  type is read from the bytes; a `ContentType` that disagrees with them is an
+  error.
+- A call made inside a [traced request](/frameworks/aspnet/request-tracing)
+  carries that request's trace ID, and the trace is kept.
+- Invalid input throws `LerixApiException` with `Code = "INVALID_FEEDBACK"`
+  before anything is sent. Network errors, 5xx and 429 are retried twice with
+  the same client ID, so a retry never creates a second entry. The last error
+  is thrown as `LerixApiException`.
+- Returns the feedback ID, or `null` when the SDK is disabled (`Enabled = false`).
+
+<Note>
+  The `UserId` you pass is stored as *reported* by your server. Replies by push
+  only go to users verified through a client SDK's `setUser`.
+</Note>

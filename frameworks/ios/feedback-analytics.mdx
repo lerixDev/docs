@@ -1,0 +1,190 @@
+---
+title: "iOS (Swift) — Feedback, NPS and Analytics"
+description: "Add in-app feedback, shake to report, an NPS survey and product analytics to your native iOS or macOS app."
+---
+
+Requires `Lerix` 1.3.0 or later. For what each module does and what you see
+in the dashboard, read [Feedback](/modules/feedback),
+[NPS surveys](/modules/nps-surveys) and [Analytics](/modules/analytics).
+
+<Note>
+  The feedback and NPS **UI** needs **iOS 15+** or **macOS 12+**. On macOS the
+  feedback sheet has no screenshot step. Everything else on this page,
+  including headless `Lerix.feedback.submit`, works on iOS 13+ and macOS 11+.
+  On older systems `show` reports `submitted: false` and `maybeShowNps`
+  returns `false`.
+</Note>
+
+## Setup
+
+Analytics starts when `Lerix.initialize` runs. Two optional parameters
+configure these modules:
+
+```swift AppDelegate.swift
+Lerix.initialize(
+    apiKey: "your-api-key",
+    projectId: "your-project-id",
+    environment: "staging",   // default: "dev" for debug builds and the simulator, else "prod"
+    analytics: LerixAnalyticsOptions(
+        enabled: true,
+        autoSessions: true,
+        autoScreens: true,
+        uikitScreenTracking: false   // true: a $screen_view per UIViewController
+    )
+)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `environment` | `String?` | Sent with feedback, survey responses and events |
+| `analytics` | `LerixAnalyticsOptions` | `enabled`, `autoSessions`, `autoScreens` (default `true`) and `uikitScreenTracking` (default `false`) |
+
+## In-app feedback
+
+Call `show` from anywhere, in UIKit or SwiftUI. The current screen is
+captured first, then the sheet opens:
+
+```swift
+Lerix.feedback.show { result in
+    print(result.submitted, result.id ?? "queued")
+}
+```
+
+The flow is message, labels, screenshots (tap one to draw on it with
+PencilKit, or **Add another screenshot** to capture a different screen),
+email, then a review where **Show details** lists everything that is sent.
+`show` presents from the top-most view controller of the key window; pass
+`from:` to choose another.
+
+### Options
+
+Labels, the email mode and the screenshot mode come from the dashboard. Override
+them for one call:
+
+```swift
+Lerix.feedback.show(options: LerixFeedbackOptions(
+    labels: ["bug", "improvement"],   // offer only these label keys
+    email: .required,                 // .hidden, .optional, .required
+    screenshot: .optional,            // .hidden to skip screenshots
+    custom: ["plan": "pro"]
+))
+
+Lerix.feedback.setUserEmail(user.email)   // prefill the email step
+```
+
+### Shake to report
+
+Open the feedback flow when the user shakes the device. It's off until you
+turn it on:
+
+```swift
+Lerix.feedback.enableShakeToReport()
+// Later, to stop:
+Lerix.feedback.disableShakeToReport()
+```
+
+A view controller that handles shakes itself without calling `super` keeps
+them from reaching the SDK.
+
+### Hide sensitive views
+
+```swift
+cardNumberLabel.lerixConfidential = true   // UIKit
+Text(balance).lerixConfidential()           // SwiftUI
+```
+
+### Your own UI
+
+```swift
+let result = try await Lerix.feedback.submit(
+    message: "Checkout button does nothing",
+    labels: ["bug"],
+    email: "user@example.com",
+    screenshots: [pngData]   // PNG, JPEG or WebP, up to 5 MB each
+)
+```
+
+`submit` throws for an empty message or an invalid email. Offline, the
+feedback is kept on the device and `result.id` is `nil` until it is sent.
+
+### Language and colours
+
+The UI ships in English and Arabic (right to left) and follows the app's
+language and light or dark mode.
+
+```swift
+Lerix.ui.locale = "ar"          // default: the app's language
+Lerix.ui.tintColor = .purple    // default: the key window's tint
+Lerix.ui.setStrings(["feedback.title": "Report a problem"], locale: "en")
+```
+
+## NPS survey
+
+```swift
+// For example after a successful checkout
+Task { await Lerix.surveys.maybeShowNps() }
+
+// While testing: skip the eligibility rules
+Task { await Lerix.surveys.maybeShowNps(force: true) }
+```
+
+`maybeShowNps` returns `true` when the survey was shown. The sheet (score,
+follow-up, thanks) opens at half height. The SDK shows it only when this
+install is due (see [When the survey is shown](/modules/nps-surveys#when-the-survey-is-shown));
+with `debugMode: true` it logs why a survey was skipped.
+
+## Analytics
+
+```swift
+Lerix.track("checkout_started", props: ["items": 3, "coupon": "EID"])
+Lerix.screen("Checkout")
+
+Lerix.analytics.flush()             // send now
+Lerix.analytics.setEnabled(false)   // opt out: stops recording, clears the queue, persisted
+```
+
+`$first_open`, `$session_start` / `$session_end`, `$app_update` and
+`$screen_view` are recorded automatically. Launches in the background (a
+silent push, a background fetch) don't count as a session until the app comes
+to the foreground.
+
+### Screen views
+
+In SwiftUI, name each screen with `.lerixScreen`:
+
+```swift
+struct CheckoutView: View {
+    var body: some View {
+        Form { /* ... */ }
+            .lerixScreen("Checkout")
+    }
+}
+```
+
+In UIKit, turn on `uikitScreenTracking` in `LerixAnalyticsOptions` to record a
+screen view each time a view controller appears. Rename a controller, or skip
+it with an empty string:
+
+```swift
+override func viewDidLoad() {
+    super.viewDidLoad()
+    lerixScreenName = "Checkout"   // "" skips this controller
+}
+```
+
+<Note>
+  Call [`Lerix.setUser`](/modules/users-identity) after sign-in. Analytics
+  then counts the person across devices, and you can reply to their feedback by
+  push.
+</Note>
+
+## Breadcrumbs
+
+The last 50 breadcrumbs are sent with feedback and with handled error
+reports. Screen views are added automatically.
+
+```swift
+Lerix.addBreadcrumb("Tapped pay", category: .ui, data: ["amount": 49])
+```
+
+Categories: `.navigation`, `.log`, `.http`, `.ui`, `.custom`.

@@ -1,0 +1,258 @@
+---
+title: "Webhooks and Slack"
+description: "Post new feedback, NPS detractors and new issues to Slack or to your own endpoint, signed so you can verify every request."
+icon: "plug"
+---
+
+## Overview
+
+A webhook sends an HTTP `POST` to a URL you choose whenever something happens
+in a project. Use it to post to a Slack channel, open a ticket in your own
+system, or start an automation in Zapier.
+
+| Event | Sent when |
+|---|---|
+| `feedback.created` | A user sends [feedback](/modules/feedback) |
+| `nps.detractor` | A user answers the [NPS survey](/modules/nps-surveys) with a score from 0 to 6 |
+| `issue.created` | A new [issue](/modules/error-tracking) is reported for the first time |
+| `webhook.test` | You click **Test** in the dashboard |
+
+`issue.created` fires once per issue, not for every occurrence, so a crash
+loop doesn't flood your channel.
+
+## Add a webhook
+
+<Steps>
+  <Step title="Open the settings">
+    In the project, open **Settings → Webhooks & Slack** and click **Add
+    webhook**. You need permission to change project settings.
+  </Step>
+  <Step title="Pick a destination">
+    - **Webhook**: any `https://` URL that is publicly reachable. Lerix signs
+      every request (see below).
+    - **Slack**: an incoming-webhook URL, created in Slack under **Apps →
+      Incoming Webhooks**. It starts with `https://hooks.slack.com/`. Lerix
+      posts a formatted message with a link back to the dashboard.
+  </Step>
+  <Step title="Pick the events">
+    Choose at least one of `feedback.created`, `nps.detractor` and
+    `issue.created`.
+  </Step>
+  <Step title="Copy the signing secret">
+    For a generic webhook, the signing secret (`whsec_...`) is shown **once**,
+    right after you create it. Store it with your endpoint's configuration.
+    If you lose it, delete the webhook and add it again to get a new one.
+  </Step>
+  <Step title="Send a test">
+    Click **Test** to send a `webhook.test` event. The dashboard shows the
+    status code your endpoint answered, or the error if it couldn't be
+    reached.
+  </Step>
+</Steps>
+
+You can pause a webhook without deleting it, and edit its URL or events at
+any time.
+
+## Payload
+
+Every generic webhook request has a JSON body with the same envelope:
+
+```json
+{
+  "type": "feedback.created",
+  "projectSlug": "my-shop",
+  "createdAt": "2026-10-13T08:00:00.000Z",
+  "data": { }
+}
+```
+
+And these headers:
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` |
+| `Lerix-Event` | The event type, the same as `type` in the body |
+| `Lerix-Delivery` | A UUID for this delivery. Retries of the same delivery keep it, so use it to ignore duplicates. |
+| `Lerix-Signature` | `t=<unix seconds>,v1=<hex signature>` |
+
+### `data` by event
+
+<Tabs>
+  <Tab title="feedback.created">
+    ```json
+    {
+      "id": "6f1c2a3e-...",
+      "message": "Checkout button does nothing",
+      "labels": ["bug"],
+      "email": "user@example.com",
+      "status": "new",
+      "platform": "ios",
+      "appVersion": "1.4.0",
+      "environment": "prod",
+      "externalId": "user-42",
+      "attachmentCount": 1,
+      "bugId": "b7d0...",
+      "createdAt": "2026-10-13T08:00:00.000Z",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/feedbacks/6f1c2a3e-..."
+    }
+    ```
+
+    `email`, `externalId` and `bugId` are `null` when they don't apply.
+    `bugId` is set when the same install reported an error just before the
+    feedback.
+  </Tab>
+  <Tab title="nps.detractor">
+    ```json
+    {
+      "surveyId": "2a9e...",
+      "responseId": "c41b...",
+      "score": 4,
+      "message": "Too many steps to pay",
+      "platform": "android",
+      "appVersion": "1.4.0",
+      "environment": "prod",
+      "externalId": "user-42",
+      "answeredAt": "2026-10-13T08:00:00.000Z",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/feedbacks/surveys/2a9e..."
+    }
+    ```
+
+    `message` is `null` if the user didn't answer the follow-up question.
+  </Tab>
+  <Tab title="issue.created">
+    ```json
+    {
+      "id": "b7d0...",
+      "title": "TypeError: Cannot read properties of undefined",
+      "severity": "critical",
+      "type": "crash",
+      "fingerprint": "3f9a...",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/issues/b7d0..."
+    }
+    ```
+  </Tab>
+  <Tab title="webhook.test">
+    ```json
+    {
+      "message": "This is a test delivery from Lerix.",
+      "triggeredBy": "Ana"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+New fields may be added to `data` over time. Ignore fields you don't know
+rather than rejecting the request.
+
+## Verify the signature
+
+`Lerix-Signature` is an HMAC-SHA256 of the timestamp and the raw body,
+`t + "." + body`, keyed with the webhook's signing secret. Check it before you
+trust a request:
+
+1. Split the header on `,` and read `t` and `v1`.
+2. Reject the request if `t` is more than 5 minutes away from your clock. This
+   stops an old delivery from being replayed.
+3. Compute `HMAC-SHA256(secret, t + "." + rawBody)` as hex and compare it to
+   `v1` in constant time.
+
+Use the **raw** request body, exactly as received. Parsing the JSON and
+serializing it again changes the bytes and breaks the signature.
+
+<CodeGroup>
+
+```ts Node.js (Express)
+import crypto from 'node:crypto';
+import express from 'express';
+
+const secret = process.env.LERIX_WEBHOOK_SECRET!; // whsec_...
+
+function verifyLerixSignature(rawBody: string, header: string, toleranceSeconds = 300): boolean {
+  const parts = Object.fromEntries(
+    header.split(',').map((part) => {
+      const i = part.indexOf('=');
+      return [part.slice(0, i).trim(), part.slice(i + 1).trim()];
+    }),
+  );
+  const t = Number(parts.t);
+  if (!Number.isInteger(t) || Math.abs(Date.now() / 1000 - t) > toleranceSeconds) return false;
+
+  const expected = crypto.createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
+  const a = Buffer.from(parts.v1 ?? '', 'hex');
+  const b = Buffer.from(expected, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+const app = express();
+
+app.post('/lerix/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  const rawBody = req.body.toString('utf8');
+  if (!verifyLerixSignature(rawBody, req.header('Lerix-Signature') ?? '')) {
+    return res.status(400).send('invalid signature');
+  }
+  const event = JSON.parse(rawBody);
+  // Use req.header('Lerix-Delivery') to skip deliveries you've already handled.
+  console.log(event.type, event.data);
+  res.sendStatus(200);
+});
+```
+
+```python Python (Flask)
+import hashlib
+import hmac
+import json
+import os
+import time
+
+from flask import Flask, abort, request
+
+SECRET = os.environ["LERIX_WEBHOOK_SECRET"]  # whsec_...
+
+
+def verify_lerix_signature(raw_body: bytes, header: str, tolerance_seconds: int = 300) -> bool:
+    parts = dict(part.strip().split("=", 1) for part in header.split(",") if "=" in part)
+    try:
+        t = int(parts.get("t", ""))
+    except ValueError:
+        return False
+    if abs(time.time() - t) > tolerance_seconds:
+        return False
+    signed = f"{t}.".encode() + raw_body
+    expected = hmac.new(SECRET.encode(), signed, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, parts.get("v1", ""))
+
+
+app = Flask(__name__)
+
+
+@app.post("/lerix/webhook")
+def lerix_webhook():
+    raw_body = request.get_data()  # the raw bytes, before any JSON parsing
+    if not verify_lerix_signature(raw_body, request.headers.get("Lerix-Signature", "")):
+        abort(400)
+    event = json.loads(raw_body)
+    # Use request.headers["Lerix-Delivery"] to skip deliveries you've already handled.
+    print(event["type"], event["data"])
+    return "", 200
+```
+
+</CodeGroup>
+
+Slack deliveries aren't signed: Slack's incoming-webhook URL is itself the
+secret, so keep it private.
+
+## Delivery and retries
+
+- Lerix waits up to **5 seconds** for your endpoint. Answer with any `2xx`
+  status quickly, and do slow work after responding.
+- On a network error, a timeout, `429` or a `5xx`, Lerix retries up to **3
+  times**, after 2, 10 and 30 seconds. Every attempt is signed again with a
+  fresh timestamp and keeps the same `Lerix-Delivery` ID.
+- Any other status (for example `400` or `404`) is not retried.
+- Redirects aren't followed.
+- The URL must use `https` and resolve to a public address. Private,
+  loopback and link-local addresses are refused, both when you save the
+  webhook and when each request is sent.
+
+Deliveries are not guaranteed to arrive in order. Use `createdAt` in the body
+if order matters to you.

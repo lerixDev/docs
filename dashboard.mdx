@@ -13,7 +13,10 @@ Organization
 ├── Billing & subscription
 └── Projects
     ├── Issues (Error Tracking)
+    ├── Requests (Request Tracing)
     ├── Notifications
+    ├── Feedbacks (Feedback and NPS surveys)
+    ├── Analytics and Events
     └── Project settings
 ```
 
@@ -49,6 +52,8 @@ per environment.
   project.
 - **Integrations** — connect external tools (e.g. GitHub, for linking issues
   to repositories).
+- **Webhooks & Slack**: post new feedback, NPS detractors and new issues to
+  Slack or your own endpoint. See [Webhooks and Slack](/developers/webhooks).
 
 ### Issues (Error Tracking)
 
@@ -82,6 +87,26 @@ Everything related to push notifications for this project:
 | **Settings** | Upload your Apple `.p8` key and Android `google-services.json` (a platform shows a **Configured** badge once it has credentials), and set up [identity verification](/modules/users-identity#identity-verification) |
 
 See [Push Notifications](/modules/push-notifications) for the full picture.
+
+### Feedbacks
+
+What your users report from inside your apps, and how they answer your NPS
+survey:
+
+| Tab | What it's for |
+|---|---|
+| **Inbox** | Every feedback report, with screenshots, device details, breadcrumbs and the linked error. Filter, assign, change status, add internal notes, reply by email or push, or create a GitHub issue. |
+| **Surveys** | Your NPS survey: its wording, cadence, sampling and targeting, the score and its trend, and every response. |
+| **Settings** | The feedback form your apps show: email and screenshot modes, and labels. Changes reach your apps without a release. |
+
+See [Feedback](/modules/feedback) and [NPS surveys](/modules/nps-surveys).
+
+### Analytics and Events
+
+**Analytics** shows active users (DAU, WAU, MAU), installs, sessions,
+crash-free rates per version, breakdowns you can click to filter, retention
+cohorts and funnels. **Events** lists every event your apps send, with a
+breakdown by property. See [Analytics](/modules/analytics).
 
 ## Account settings
 

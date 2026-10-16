@@ -1,0 +1,93 @@
+---
+title: "NestJS — التحليلات والملاحظات"
+description: "سجّل أحداث الخادم في مسارات التحويل نفسها التي تغذّيها تطبيقاتك، وأرسل الملاحظات من خادمك إلى صندوق الملاحظات."
+---
+
+يتطلب ذلك `@lerix-dev/lerix-nestjs` بالإصدار 1.5.0 أو أحدث. تستخدم الميزتان
+`LerixService` الذي تحقنه بعد [التثبيت](/ar/frameworks/nestjs/installation).
+ولمعرفة ما تراه في لوحة التحكم، راجع [التحليلات](/ar/modules/analytics)
+و[الملاحظات](/ar/modules/feedback).
+
+## التحليلات
+
+سجّل ما لا يعرفه إلا خادمك، كعملية دفع ناجحة. يصل الحدث إلى مسارات التحويل
+وقوائم الأحداث وأعداد المستخدمين نفسها التي تغذّيها أحداث تطبيقاتك:
+
+```ts orders.service.ts
+import { Injectable } from '@nestjs/common';
+import { LerixService } from '@lerix-dev/lerix-nestjs';
+
+@Injectable()
+export class OrdersService {
+  constructor(private readonly lerix: LerixService) {}
+
+  async markPaid(order: Order) {
+    // ...
+    this.lerix.track('payment_succeeded', { plan: 'pro', amount: 49 }, { userId: order.userId });
+  }
+}
+```
+
+- `userId` هو معرّفك الخاص للمستخدم، وهو نفسه الذي تمرّره تطبيقاتك إلى
+  [`setUser()`](/ar/modules/users-identity). اتركه للأحداث التي لا تخص مستخدماً.
+- تبدأ الأسماء بحرف، ثم حروف أو أرقام أو مسافات أو `_` أو `.` أو `:` أو `-`
+  (من 2 إلى 64 حرفاً). حتى 25 خاصية، قيمها نصوص (حتى 1024 حرفاً) أو أرقام
+  منتهية أو قيم منطقية أو `null`. الاسم غير الصالح يُسقط الحدث، والخاصية غير
+  الصالحة تُسقط وحدها. ولا يرمي `track()` أي استثناء.
+- لا تسجّل أحداث الخادم جلسات ولا شاشات.
+
+### الإرسال
+
+تُخزَّن الأحداث في الذاكرة (حتى 1000 حدث، ويُحذف الأقدم أولاً) وتُرسل على دفعات
+حتى 100 حدث: كل 10 ثوانٍ، وفور تجمّع 50 حدثاً، وعند استدعاء
+`this.lerix.analytics.flush()`، وعند إيقاف التطبيق. استدعِ
+`app.enableShutdownHooks()` في `main.ts` ليُرسل الإيقافُ المنظّم ما تبقى منها.
+
+إن تعذّر الوصول إلى الواجهة أو أجابت بـ 401 أو 429 أو 5xx، تُحفظ الأحداث ويُعاد
+إرسالها على فترات متزايدة (من ثانيتين حتى 5 دقائق). وتُحذف الدفعة التي تُرفض
+لعدم صلاحيتها. ولا يُكتب شيء على القرص، فتضيع الأحداث المنتظرة إن أُنهيت
+العملية قسراً.
+
+### البيئة وإيقاف التتبّع
+
+تحمل الأحداث `platform: "server"` وإصدار تطبيقك ورقم البناء والبيئة: خيار
+`environment`، أو `NODE_ENV`، حيث تُرسل `production` باسم `prod`
+و`development` باسم `dev` (و`prod` إن لم تُضبط).
+
+```ts
+this.lerix.analytics.setEnabled(false); // stop recording and clear the buffer
+```
+
+ويوقف `analytics: false` في خيارات `LerixModule.forRoot()` التحليلات من
+البداية.
+
+## الملاحظات
+
+أرسل الملاحظات التي يجمعها خادمك، من نموذج دعم أو روبوت محادثة أو بوابة بريد،
+إلى صندوق **الملاحظات** في المشروع:
+
+```ts
+const id = await this.lerix.feedback.submit({
+  message: 'Checkout button does nothing',
+  email: 'user@example.com',           // optional, used for email replies
+  labels: ['bug'],                     // label keys configured for the project
+  userId: user.id,                     // optional, your ID for the user
+  custom: { plan: 'pro' },             // optional, up to 50 keys / 16 KB
+  attachments: [{ data: pngBytes }],   // optional, up to 5 PNG/JPEG/WebP images of 5 MB
+});
+```
+
+- تُرفع المرفقات أولاً، ثم تُنشأ الملاحظة بمعرّفاتها.
+- يُعاد إرسال الطلب الفاشل مرتين بمعرّف العميل نفسه، فلا تُنشئ إعادة المحاولة
+  نسخة مكررة.
+- ترفض `submit()` بخطأ `LerixApiException`: الرمز `INVALID_FEEDBACK` لمدخلات لا
+  يمكن إرسالها (رسالة فارغة أو طويلة جداً، أو بريد غير صالح، أو مرفق ليس صورة
+  PNG أو JPEG أو WebP)، أو خطأ الواجهة فيما عدا ذلك. ومع `enabled: false` تُرجع
+  `null`.
+- داخل [طلب مُتتبَّع](/ar/frameworks/nestjs/request-tracing)، تُربط الملاحظة
+  بتتبّع الطلب.
+
+<Note>
+  يُخزَّن `userId` الذي تمرّره على أنه *مُبلَّغ عنه* من خادمك. ولا تُرسل الردود
+  بالإشعارات إلا للمستخدمين المُتحقَّق منهم عبر `setUser` في حزم العميل.
+</Note>
