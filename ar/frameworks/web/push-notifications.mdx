@@ -14,9 +14,9 @@ description: "إشعارات المتصفح لـ Lerix — Web Push القياس
   هذه حزمة منفصلة عن SDK الخاص بـ Flutter — `@lerix-dev/lerix-js` مكتبة
   JS/TS صغيرة ومستقلة عن أي إطار عمل، مخصّصة لتطبيقات الويب **غير المبنية
   بـ Flutter** (React، Vue، HTML عادي، إلخ). إذا كان تطبيقك مبنياً بـ
-  Flutter — بما في ذلك Flutter Web — لا تستخدم هذه الحزمة؛ حزمة `lerix_flutter`
-  الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة وبـ API
-  واحد. راجع [Flutter — الإشعارات](/ar/frameworks/flutter/push-notifications)
+  Flutter — بما في ذلك Flutter Web — لا تستخدم هذه الحزمة؛ الـ SDK الخاص بـ
+  Flutter (`lerix_flutter` ومعها `lerix_messaging` للإشعارات) يدعم iOS وAndroid
+  والويب أصلياً وبـ API واحد. راجع [Flutter — الإشعارات](/ar/frameworks/flutter/push-notifications)
   بدلاً من ذلك.
 </Note>
 
@@ -148,8 +148,8 @@ await Lerix.clearUser();         // on logout
 
 ## Flutter Web
 
-لا تستخدم JS SDK هذا لتطبيق Flutter، حتى لو كان بناء Flutter Web — حزمة
-`lerix` الخاصة بـ Flutter تدعم iOS وAndroid والويب أصلياً من حزمة واحدة،
+لا تستخدم JS SDK هذا لتطبيق Flutter، حتى لو كان بناء Flutter Web — الـ SDK
+الخاص بـ Flutter (`lerix_flutter` ومعها `lerix_messaging` للإشعارات) يدعم iOS وAndroid والويب أصلياً،
 وتتواصل مباشرةً مع Push API الخاصة بالمتصفح بدون أي اعتماد JS منفصل إطلاقاً.
 نفس استدعاءات `Lerix.notifications.*`، ونفس شكل `LerixNotificationPayload`،
 على كل منصة:

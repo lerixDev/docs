@@ -1,0 +1,207 @@
+---
+title: "Update rules"
+description: "Tell users a new version is out, recommend it, or require it, with blocked versions, deadlines and store links."
+icon: "circle-up"
+---
+
+Open **Release control → Updates** in the project sidebar. Each platform your
+project ships on has its own card, and each card holds one rule per
+environment (`prod` unless you choose another).
+
+## The rule
+
+Click **Create rule** (or **Edit rule**) on a platform card. The rule has
+these fields:
+
+| Field | What it does |
+|---|---|
+| **Latest version** and **Latest build** | Devices below it are asked to update. |
+| **Minimum version** and **Minimum build** | Devices below it must update to continue. |
+| **Blocked versions** | Exact versions that must update, even when they are above the minimum. |
+| **Below latest** | How devices between the minimum and the latest are asked: **Optional** (they can postpone or skip) or **Recommended** (they can postpone, never skip). |
+| **Becomes required on** | Optional date and time, in your local time. After it, devices below the latest version must update. |
+| **Remind again after (hours)** | How long **Later** hides the prompt, from 1 to 720. Default 72. |
+| **Allow “Skip this version”** | Shows **Skip this version** on optional updates. Recommended updates can't be skipped. |
+| **Countries** | Optional. Only devices in these countries get the rule. Empty means all countries. |
+| **Store link for this rule** | Optional. Overrides the app's store link. See [Store links](#store-links). |
+| **Message** | Title, message and release notes, in English and Arabic. |
+| **Enabled** | Turn the rule off without losing it. |
+
+A rule needs at least a latest version, a minimum version or a blocked
+version (or a build), and **Becomes required on** needs a latest version.
+
+## How a device's state is decided
+
+For each device, Lerix checks the rule for its platform and environment, in
+this order. The first match wins.
+
+<Steps>
+  <Step title="Does the rule apply?">
+    No state when there is no rule, the rule is off, the device didn't send a
+    version, or the rule has countries and the device isn't in one of them.
+  </Step>
+  <Step title="Is the version blocked?">
+    A version on the blocked list is **required**.
+  </Step>
+  <Step title="Is it below the minimum?">
+    Below the minimum version (or minimum build) is **required**.
+  </Step>
+  <Step title="Is it below the latest?">
+    Below the latest version (or latest build) is **optional** or
+    **recommended**, depending on **Below latest**. If the **Becomes required
+    on** date has passed, it is **required** instead.
+  </Step>
+  <Step title="Otherwise">
+    The device is up to date. Nothing is shown.
+  </Step>
+</Steps>
+
+The four states and what the user sees are listed in the
+[overview](/modules/release-control/overview#update-prompts).
+
+### Versions and build numbers
+
+- Versions are compared as numbers, part by part, so `1.10.0` is newer than
+  `1.9.2`. They are never compared as text.
+- When both the rule and the device have a build number, the build number
+  decides. iOS and macOS send `CFBundleVersion`, Android sends `versionCode`,
+  and Flutter sends the number after `+` in `pubspec.yaml`.
+- A version with no digit in it can't be compared. Such a device is never
+  blocked.
+- The minimum version can't be higher than the latest version.
+
+### Blocked versions
+
+Use the blocked list when one release is bad but the ones around it are
+fine. For example, with a minimum of `3.0.0` and `3.2.0` blocked, users on
+`3.1.4` keep going while users on `3.2.0` must update.
+
+### Escalation with a deadline
+
+Set **Becomes required on** to move from a gentle prompt to a forced update
+without coming back to the dashboard. Until the date, users see the soft
+prompt. After it, users still below the latest version get the
+required-update screen.
+
+### Countries
+
+Lerix finds the device's country from its IP address. A device whose country
+can't be determined never matches a rule that lists countries. Leave the list
+empty to apply the rule everywhere.
+
+## Reminders and skipping
+
+- **Later** hides the prompt for the **Remind again after** hours. It is
+  saved on the device for that latest version.
+- **Skip this version** hides it until you set a newer latest version.
+- A soft prompt is shown at most once per app session.
+- Required updates can't be postponed or skipped.
+
+## Store links
+
+**Update** opens the first link that exists:
+
+1. **Store link for this rule**. Use it for TestFlight, an enterprise build,
+   or another store such as Huawei AppGallery.
+2. The app's **Store link**, under the platform card (**Edit link**).
+3. A link Lerix builds itself:
+   - **Android**: `https://play.google.com/store/apps/details?id=<package name>`.
+   - **iOS and macOS**: `https://apps.apple.com/app/id<App Store ID>`, once
+     the App Store ID is known.
+
+To fill in the App Store ID, click **Look up on App Store** on an iOS or
+macOS app. Lerix searches the App Store by bundle ID and saves the ID it
+finds. If the app isn't found (not released yet, or not in the stores Lerix
+searches), paste the store link yourself.
+
+When no link exists, the card says the update button will be hidden, and
+the required-update screen shows your message without an **Update** button.
+On Android with Google Play in-app updates turned on, the button can still
+appear for Play installs.
+
+On Android, apps installed from Google Play can use Play's own in-app update
+screen instead of opening the store. Your app opts in through the SDK, see
+[Kotlin](/frameworks/android/release-control) and
+[Flutter](/frameworks/flutter/release-control).
+
+## Web apps
+
+A web app has no store, and a store link never applies on the web. When an
+update applies, **Update** reloads the page to load your newest deployment.
+
+- **Optional or recommended**: a bar at the bottom of the page with
+  **Update**, **Later** and, when allowed, **Skip this version**.
+- **Required**: with the built-in screens, the SDK reloads the page by
+  itself, at most once every 5 minutes per tab. If the page is still out of
+  date after a reload, a full-screen message stays with a **Reload** button,
+  so a stale cache can't cause a reload loop. Clicking **Reload** always
+  reloads.
+
+The web SDKs only know their version from the `release` option. Without it,
+update rules never apply to web users. Use a version number that contains
+digits, such as `1.4.0`, rather than a commit SHA.
+
+```ts
+await Lerix.initialize({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  release: '1.4.0',
+});
+```
+
+In Next.js, set `NEXT_PUBLIC_LERIX_RELEASE` at build time instead.
+
+## Copy
+
+Each rule has a title, a message and release notes in English and in Arabic.
+The SDK sends the device language, and Lerix picks the closest match: the
+exact language tag, then the language, then English. Empty fields fall back
+to these defaults:
+
+| State | Title | Message |
+|---|---|---|
+| Required | Update required | This version is no longer supported. Please update to continue. |
+| Optional or recommended | Update available | A new version is available with improvements and fixes. |
+
+Limits: title 80 characters, message 500, release notes 2,000. The buttons
+(**Update**, **Later**, **Skip this version**, **Reload**) and the "What's
+new" heading above release notes are built into the SDK in English and
+Arabic.
+
+## Versions in the wild
+
+Below the rule, **Versions in the wild** lists the versions seen on devices
+in the last 30 days, by each device's current version, newest first. When a
+new version has reached at least 5 devices or 1% of the platform, Lerix
+suggests it ("3.4.0 is live on 37 devices. Make it the latest version?"):
+click **Set as latest** to fill it into the rule.
+
+## Preview and safety checks
+
+While you edit a rule, the card shows how many of the devices active in the
+last 30 days it would affect, for example "This will block 1,240 devices
+(31%)", split into must update, recommended, offered an update, up to date
+and unknown version. The preview uses each device's version only: it ignores
+**Countries**, and a rule with only build numbers previews as up to date.
+
+Before saving, Lerix asks you to confirm when the rule would:
+
+- stop half or more of the platform's active devices, or
+- set a minimum version above every version seen in the wild, which would
+  block everyone.
+
+Lerix also checks that every version contains a digit, the minimum is not
+above the latest, and countries are two-letter ISO codes.
+
+## Turning a rule off
+
+- **Enabled** off keeps the rule but stops it from applying.
+- **Delete rule** removes it.
+- **Lift all**, on the **Emergency** tab, ends every maintenance window and
+  turns off every forced-update rule (one with a minimum, a blocked version
+  or a deadline). Optional and recommended prompts stay as they are. See
+  [Maintenance mode](/modules/release-control/maintenance-mode#lift-all).
+
+Every change is recorded in the history, and changes that block or unblock
+users are pushed to devices right away. See
+[Delivery and offline behaviour](/modules/release-control/delivery-offline).

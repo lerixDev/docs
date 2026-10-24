@@ -1,0 +1,68 @@
+---
+title: "التحكم بالإصدارات في Next.js"
+sidebarTitle: "التحكم بالإصدارات"
+description: "اطلب من المستخدمين إعادة التحميل لنشر جديد، أو اجعله إلزامياً، أو اعرض شاشة صيانة في تطبيق Next.js."
+---
+
+لمعرفة ما يقدّمه التحكم بالإصدارات وكيف تضبط القواعد في لوحة التحكم، راجع
+[التحكم بالإصدارات](/ar/modules/release-control/overview).
+
+## الإعداد
+
+يعمل التحكم بالإصدارات افتراضياً داخل `LerixNextProvider` الذي أعددته في
+[التثبيت](/ar/frameworks/nextjs/installation)، مع الشاشات الجاهزة. اضبط الإصدار وقت
+البناء لتتمكن قواعد التحديث من مقارنة الإصدارات:
+
+```bash .env.production
+NEXT_PUBLIC_LERIX_RELEASE=1.4.0
+```
+
+استخدم إصداراً يحتوي على أرقام، مثل `1.4.0`، لا معرّف commit. ومن دون إصدار لا تنطبق
+قواعد التحديث على الويب أبداً. أما وضع الصيانة فيعمل في الحالتين، ما لم تكن النافذة
+مقصورة على إصدارات معينة.
+
+لتغيير الإعدادات الافتراضية، مرّر `appControl` في `options` الخاصة بالمزوّد:
+
+```tsx app/layout.tsx
+<LerixNextProvider options={{ appControl: { enabled: true, ui: true } }}>
+  {children}
+</LerixNextProvider>
+```
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `appControl.enabled` | `true` | يتحقق من التحديثات والصيانة. `false` يوقف الوحدة. |
+| `appControl.ui` | `true` | يعرض الشاشات الجاهزة. `false` يترك الرسم لك. |
+
+## ما يراه المستخدمون
+
+الشاشات نفسها التي في [React](/ar/frameworks/react/release-control#ما-يراه-المستخدمون):
+طبقة صيانة مع زر **حاول مرة أخرى**، وتحديث إلزامي يعيد تحميل الصفحة مرة كل 5 دقائق
+على الأكثر ثم يعرض زر **إعادة التحميل**، وشريط قابل للإغلاق للتحديثات الاختيارية أو
+المُوصى بها.
+
+## شاشاتك الخاصة
+
+اضبط `appControl: { ui: false }`، ثم استخدم `useLerixAppControl()` من مكوّن عميل
+(client component). وهو يعمل كما في
+[React](/ar/frameworks/react/release-control#شاشاتك-الخاصة).
+
+```tsx components/release-gate.tsx
+'use client';
+import { useLerixAppControl } from '@lerix-dev/lerix-nextjs';
+
+export function ReleaseGate({ children }: { children: React.ReactNode }) {
+  const { maintenance, update, refresh, openStore } = useLerixAppControl();
+
+  if (maintenance) {
+    return <Maintenance title={maintenance.title} onRetry={() => refresh()} />;
+  }
+  if (update?.state === 'required') {
+    return <ForceUpdate message={update.message} onUpdate={() => openStore()} />;
+  }
+  return <>{children}</>;
+}
+```
+
+ضع `ReleaseGate` داخل `LerixNextProvider` في التخطيط الجذري (root layout)، حول
+`{children}`.

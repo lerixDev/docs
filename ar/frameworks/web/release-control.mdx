@@ -1,0 +1,106 @@
+---
+title: "التحكم بالإصدارات على الويب"
+sidebarTitle: "التحكم بالإصدارات"
+description: "اطلب من المستخدمين إعادة التحميل لنشر جديد، أو اجعله إلزامياً، أو اعرض شاشة صيانة في أي تطبيق ويب عبر الحزمة الأساسية."
+---
+
+لتطبيقات TypeScript أو JavaScript العادية، أو Vue، أو Svelte، أو أي تطبيق ويب ليس له
+حزمة Lerix مخصصة، استخدم `@lerix-dev/lerix-core`. تستخدم React أو Next.js أو
+Angular؟ راجع [React](/ar/frameworks/react/release-control) أو
+[Next.js](/ar/frameworks/nextjs/release-control) أو
+[Angular](/ar/frameworks/angular/release-control). ولمعرفة ما يقدّمه التحكم
+بالإصدارات وكيف تضبط القواعد في لوحة التحكم، راجع
+[التحكم بالإصدارات](/ar/modules/release-control/overview).
+
+## الإعداد
+
+يعمل التحكم بالإصدارات افتراضياً مع الشاشات الجاهزة. اضبط `release` لتتمكن قواعد
+التحديث من مقارنة الإصدارات:
+
+```ts main.ts
+import { Lerix } from '@lerix-dev/lerix-core';
+
+await Lerix.initialize({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  release: '1.4.0',                          // required for update rules
+  appControl: { enabled: true, ui: true },
+});
+```
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `release` | لا شيء | الإصدار الذي يحمله هذا النشر. من دونه لا تنطبق قواعد التحديث على الويب أبداً. استخدم إصداراً يحتوي على أرقام، مثل `1.4.0`، لا معرّف commit. |
+| `appControl.enabled` | `true` | يتحقق من التحديثات والصيانة. `false` يوقف الوحدة. |
+| `appControl.ui` | `true` | يعرض الشاشات الجاهزة. `false` يترك الرسم لك. |
+
+يعمل وضع الصيانة دون `release`، ما لم تكن النافذة مقصورة على إصدارات معينة.
+
+## ما يراه المستخدمون
+
+- **الصيانة**: طبقة ثابتة فوق كل ما في الصفحة. لا يمكن النقر على بقية الصفحة ولا
+  التركيز عليها، ويبقى التركيز داخل الطبقة. ويتحقق زر **حاول مرة أخرى** فوراً.
+- **التحديث الإلزامي**: تعيد الحزمة تحميل الصفحة لتحميل أحدث نشر، مرة واحدة كل 5
+  دقائق على الأكثر في كل تبويب (يُتتبَّع ذلك في `sessionStorage`). وإذا بقيت الصفحة
+  قديمة بعد إعادة التحميل، تبقى رسالة على كامل الشاشة مع زر **إعادة التحميل**. والنقر
+  على **إعادة التحميل** يعيد التحميل دائماً، فالحد يسري على إعادة التحميل التلقائية
+  وحدها. وبهذا لا تتسبب ذاكرة تخزين مؤقت قديمة أو CDN في حلقة إعادة تحميل.
+- **الاختياري أو المُوصى به**: شريط أسفل الصفحة فيه **تحديث** (يعيد التحميل)
+  و**لاحقاً**، و**تخطي هذا الإصدار** إن كان مسموحاً. يظهر مرة واحدة في كل جلسة
+  تبويب، بعد تحميل الصفحة بقليل.
+
+تُحمَّل الشاشات عند الحاجة من مدخل منفصل (`@lerix-dev/lerix-core/app-control-ui`)،
+فلا تكلّف شيئاً حتى يلزم عرض شيء. وتتبع خيار `locale`، أو لغة المتصفح: الإنجليزية،
+أو العربية من اليمين إلى اليسار.
+
+### كيف تعلم تطبيقات الويب بالتغييرات
+
+لا تتلقى صفحات الويب الإشعار الصامت. تتحقق الحزمة عند التحميل، وعند عودة التبويب إلى
+الظهور أو عودة اتصال المتصفح (إذا مضى على الإجابة المحفوظة أكثر من 5 دقائق)، وكل
+دقيقة ما دام التبويب ظاهراً أثناء الطوارئ.
+راجع [وصول التغييرات والعمل دون اتصال](/ar/modules/release-control/delivery-offline).
+
+## شاشاتك الخاصة
+
+اضبط `appControl: { ui: false }`، ثم اقرأ الحالة عبر `getState()` وتابع تغيّرها عبر
+`subscribe()`. للحالة الأجزاء `update` و`maintenance` و`sdk`، وكل منها `null` حين
+لا ينطبق شيء (الحقول في [الحالة](/ar/modules/release-control/custom-ui#الحالة)).
+
+```ts release-gate.ts
+import { Lerix } from '@lerix-dev/lerix-core';
+
+function render(state = Lerix.appControl.getState()) {
+  if (state.maintenance) {
+    showMaintenance(state.maintenance.title, state.maintenance.message);
+  } else if (state.update?.state === 'required') {
+    showForceUpdate(state.update.message);
+  } else if (state.update) {
+    showUpdateBar(state.update);
+  } else {
+    hideReleaseScreens();
+  }
+}
+
+render();
+const unsubscribe = Lerix.appControl.subscribe(render);
+```
+
+وتتولى الدوال المساعدة عمل الأزرار:
+
+```ts
+await Lerix.appControl.refresh(); // Try again
+Lerix.appControl.openStore();     // Update: reloads the page
+Lerix.appControl.later();         // hide for remindAfterHours
+Lerix.appControl.skip();          // hide until a newer version (available only)
+```
+
+## التحقق الآن
+
+```ts
+const state = await Lerix.appControl.refresh();
+```
+
+تتجاهل `refresh()` مدة صلاحية الإجابة المحفوظة، فتجلب الحالة وتعيدها.
+
+ومع `ui: false` لا تحدث إعادة تحميل تلقائية للتحديث الإلزامي: استدعِ `openStore()`
+من زر **إعادة التحميل** الخاص بك.

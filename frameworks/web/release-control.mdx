@@ -1,0 +1,113 @@
+---
+title: "Release control on the web"
+sidebarTitle: "Release control"
+description: "Ask users to reload for a new deployment, require it, or show a maintenance screen in any web app with the core SDK."
+---
+
+For plain TypeScript or JavaScript, Vue, Svelte or any web app without a
+dedicated Lerix package, use `@lerix-dev/lerix-core`. Using React, Next.js or
+Angular? See [React](/frameworks/react/release-control),
+[Next.js](/frameworks/nextjs/release-control) or
+[Angular](/frameworks/angular/release-control). For what release control does
+and how to set rules in the dashboard, read
+[Release control](/modules/release-control/overview).
+
+## Setup
+
+Release control is on by default, with the built-in screens. Set `release`
+so update rules can compare versions:
+
+```ts main.ts
+import { Lerix } from '@lerix-dev/lerix-core';
+
+await Lerix.initialize({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  release: '1.4.0',                          // required for update rules
+  appControl: { enabled: true, ui: true },
+});
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `release` | none | The version this deployment ships as. Without it, update rules never apply on the web. Use a version with digits, such as `1.4.0`, not a commit SHA. |
+| `appControl.enabled` | `true` | Checks for updates and maintenance. `false` turns the module off. |
+| `appControl.ui` | `true` | Shows the built-in screens. `false` leaves the drawing to you. |
+
+Maintenance mode works without `release`, unless the window is limited to
+certain versions.
+
+## What users see
+
+- **Maintenance**: a fixed overlay above everything on the page. The rest of
+  the page can't be clicked or focused, and focus stays inside the overlay.
+  **Try again** checks right away.
+- **Required update**: the SDK reloads the page to load your newest
+  deployment, at most once every 5 minutes per tab (tracked in
+  `sessionStorage`). If the page is still out of date after the reload, a
+  full-screen message stays with a **Reload** button. Clicking **Reload**
+  always reloads; only the automatic reload is limited. This keeps a stale
+  cache or CDN from causing a reload loop.
+- **Optional or recommended**: a bar at the bottom of the page with
+  **Update** (reloads), **Later** and, when allowed, **Skip this version**.
+  It appears once per tab session, shortly after the page has loaded.
+
+The screens load on demand from a separate entry
+(`@lerix-dev/lerix-core/app-control-ui`), so they cost nothing until
+something must show. They follow the `locale` option, or the browser's
+language: English, or Arabic right to left.
+
+### How web apps hear about changes
+
+Web pages don't receive silent push. The SDK checks on load, when the tab
+becomes visible again or the browser comes back online (if the saved answer
+is older than 5 minutes), and every minute while the tab is visible during an
+emergency. See
+[Delivery and offline behaviour](/modules/release-control/delivery-offline).
+
+## Your own screens
+
+Set `appControl: { ui: false }`, then read the state with `getState()` and
+follow changes with `subscribe()`. The state has `update`, `maintenance` and
+`sdk`, each `null` when nothing applies (fields in
+[The state](/modules/release-control/custom-ui#the-state)).
+
+```ts release-gate.ts
+import { Lerix } from '@lerix-dev/lerix-core';
+
+function render(state = Lerix.appControl.getState()) {
+  if (state.maintenance) {
+    showMaintenance(state.maintenance.title, state.maintenance.message);
+  } else if (state.update?.state === 'required') {
+    showForceUpdate(state.update.message);
+  } else if (state.update) {
+    showUpdateBar(state.update);
+  } else {
+    hideReleaseScreens();
+  }
+}
+
+render();
+const unsubscribe = Lerix.appControl.subscribe(render);
+```
+
+The helpers drive the buttons:
+
+```ts
+await Lerix.appControl.refresh(); // Try again
+Lerix.appControl.openStore();     // Update: reloads the page
+Lerix.appControl.later();         // hide for remindAfterHours
+Lerix.appControl.skip();          // hide until a newer version (available only)
+```
+
+## Check now
+
+```ts
+const state = await Lerix.appControl.refresh();
+```
+
+`refresh()` ignores the saved answer's lifetime, fetches, and resolves with
+the new state.
+
+With `ui: false` there is no automatic reload for a required update: call
+`openStore()` from your own **Reload** button.

@@ -1,0 +1,185 @@
+---
+title: "Maintenance mode"
+description: "Cover your app with a full-screen maintenance message, now or on a schedule, for everyone or only part of your audience."
+icon: "screwdriver-wrench"
+---
+
+Maintenance mode puts a screen over your whole app that the user can't get
+past. Use it for a database migration, an outage, or any time the app
+shouldn't be used. It lives on the **Emergency** tab of **Release control**.
+
+## What the user sees
+
+- Your **title** and **message**, in English or Arabic depending on the
+  device language.
+- **Expected back at** followed by the end time in the device's own time
+  zone, unless you turn it off.
+- A **Try again** button that checks again right away.
+
+The screen can't be dismissed. On Android, **Back** sends the app to the
+background instead of returning to it. On the web, the rest of the page can't
+be focused or clicked. The screen disappears by itself as soon as the window
+ends or you end it.
+
+If you leave the copy empty, the defaults are:
+
+| | English | Arabic |
+|---|---|---|
+| Title | We'll be right back | سنعود قريباً |
+| Message | The app is under maintenance. Please try again later. | التطبيق تحت الصيانة حالياً. يرجى المحاولة لاحقاً. |
+
+## Start a maintenance window
+
+<Steps>
+  <Step title="Open the dialog">
+    Click **Maintenance mode** on the **Emergency** tab. The dialog **Turn
+    on maintenance mode** opens.
+  </Step>
+  <Step title="Who sees it">
+    Pick the scope (see [Scope](#scope)). Leave a field empty to include
+    everyone.
+  </Step>
+  <Step title="Screen">
+    Title and message in English and Arabic, and whether to **Show “Expected
+    back at …” on the screen**.
+  </Step>
+  <Step title="When">
+    **Start now**, or **Schedule** a start time up to 30 days ahead. Choose
+    when it ends (1 hour to 7 days, see [Automatic end](#automatic-end)).
+  </Step>
+  <Step title="Allow-list (optional)">
+    Let your team through, or test the screen on your own devices first (see
+    [Allow-list and test mode](#allow-list-and-test-mode)).
+  </Step>
+  <Step title="Confirm">
+    Review who will be locked out, give a reason (3 to 500 characters), type
+    the project slug, and click **Turn on maintenance** or **Schedule
+    maintenance**.
+  </Step>
+</Steps>
+
+While a window is on, a red **Maintenance mode is ON** banner shows on both
+tabs of **Release control**.
+
+## Scope
+
+| Field | Matches |
+|---|---|
+| **Platforms** | iOS, Android, macOS, Windows, Linux, web. None selected means every platform. |
+| **Environment** | One environment, `prod` by default. |
+| **Only these versions** | Exact app versions, such as `3.2.0`. |
+| **Versions below** | Every version lower than this one. `3.2.0` covers `3.1.x` and older. |
+| **Countries** | Two-letter country codes, found from the device's IP address. A device whose country is unknown never matches a window that lists countries. |
+
+With both version fields empty, every version matches, including devices
+that didn't report one. When either is set, a device without a version
+doesn't match.
+
+The scope can't be changed once the window exists. To change it, end the
+window and start a new one.
+
+## Scheduling
+
+A scheduled window shows as **Scheduled** under **Active and scheduled**,
+with a countdown, and starts by itself at its start time. Devices learn about
+it up to 24 hours before it starts and keep it to themselves until then, so
+it begins on time even on a device that has gone offline in the meantime.
+**Cancel** removes a scheduled window before it starts.
+
+## Automatic end
+
+Every window has an end time, so a forgotten window can't lock users out for
+good.
+
+- By default it ends 24 hours after it starts.
+- You can set it up to 7 days after the start.
+- A device that saved the window ends it on its own at the end time, even
+  with no network.
+
+**Extend** moves the end time later (+1 hour, +4 hours, +24 hours or a time
+you pick), within the same 7-day limit.
+
+## Allow-list and test mode
+
+The **Allow-list** holds the people and devices the window treats
+differently, one ID per line:
+
+- **External user IDs**: the IDs you pass to `setUser` (see
+  [Identify users](/modules/users-identity)).
+- **Install IDs**: single installations of your app, such as your test
+  phones.
+- **Lerix user IDs**: the IDs Lerix gives each registered device.
+
+By default, devices on the allow-list are never blocked, so your team can
+keep using and checking the app.
+
+Turn on **Test on allow-listed devices only** to do the opposite: the window
+applies **only** to devices on the list (it needs at least one). Use it to
+see the real screen, with your real copy, on your own phone before anyone
+else does.
+
+### Go live
+
+When the test looks right, click **Go live** on the window. Test mode turns
+off and every device in scope sees the maintenance screen within a minute. You can also edit
+the copy, the expected end time and the allow-list of a running window.
+
+## End a window
+
+- **End now** ends one window. Devices drop the screen at their next check,
+  which is within about a minute for apps in the foreground.
+- A window also ends by itself at its end time.
+
+### Lift all
+
+**Lift all** is the undo button for when something went wrong and users must
+get back into the app now. One click:
+
+- ends every scheduled and active maintenance window, and
+- turns off every forced-update rule (a minimum version or build, a blocked
+  version, or a deadline).
+
+Optional and recommended update prompts stay as they are. The confirmation
+shows how many windows it will end and how many rules it will turn off, and
+asks for a reason.
+
+## How fast devices react
+
+When you start, change or end a window, or use **Lift all**:
+
+1. Lerix sends a silent push to every device of the project that has a Lerix
+   push token, at most once a minute. Apps in the background refresh without
+   showing anything to the user. A scheduled window starting or ending by
+   itself sends the push too.
+2. For the next 30 minutes, apps in the foreground check every minute.
+3. While a window applies to a device, or starts within the hour, that device
+   keeps checking every minute.
+
+Web pages, and apps that don't set up Lerix push notifications, don't get
+the silent push. They rely on the one-minute checks and on checking when the
+app or tab comes back to the foreground. See
+[Delivery and offline behaviour](/modules/release-control/delivery-offline).
+
+### Propagation meter
+
+**Propagation**, on the **Emergency** tab, shows how many devices have picked
+up your latest change, for example "1,830 of 2,240 active devices have the
+latest config (82%)".
+
+- **Active devices** are those seen, or that checked release control, in the
+  last 24 hours.
+- A device counts as updated once it has fetched the configuration after
+  your last change.
+- Only devices that identify their user to Lerix are counted.
+
+## History and alerts
+
+Every start, edit, end and **Lift all** is recorded in **History**, with who
+did it, when, the reason, and the values before and after. Windows that start
+or end on schedule are recorded too, by **System**.
+
+Project members who can manage app updates get an in-app notification and an
+email when a window is turned on or scheduled, starts on schedule, goes
+live, or ends, and when someone uses **Lift all**. Each member can turn the
+email off in their notification preferences. See
+[Events, webhooks and permissions](/modules/release-control/events-webhooks).

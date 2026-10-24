@@ -1,0 +1,115 @@
+---
+title: "Release control in Swift"
+sidebarTitle: "Release control"
+description: "Show update prompts, required updates and maintenance screens in your native iOS or macOS app, or build your own."
+---
+
+Release control works on iOS, iPadOS and macOS (Mac Catalyst apps count as
+macOS). For what it does and how to set rules in the dashboard, read
+[Release control](/modules/release-control/overview).
+
+## Setup
+
+Release control is on by default once `Lerix.initialize` runs, with the
+built-in screens. To change it, pass `appControl`:
+
+```swift AppDelegate.swift
+Lerix.initialize(
+    apiKey: "your-api-key",
+    projectId: "your-project-id",
+    appControl: LerixAppControlOptions(
+        enabled: true,   // false: no checks, no screens, no events
+        ui: true         // false: draw your own screens
+    )
+)
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `enabled` | `true` | Checks for updates and maintenance. `false` turns the module off. |
+| `ui` | `true` | Shows the built-in screens. `false` leaves the drawing to you. |
+
+### Version
+
+The SDK sends `CFBundleShortVersionString` as the version and
+`CFBundleVersion` as the build number, and the bundle ID so Lerix can pick the
+right store link. Rules compare build numbers when both sides have one.
+
+### Instant changes with silent push
+
+When you start or end a maintenance window or force an update, Lerix sends
+a silent push so apps in the background refresh too. It needs the setup from
+[Push Notifications](/frameworks/ios/push-notifications): the **Remote
+notifications** background mode, and
+`didReceiveRemoteNotification` forwarding to
+`Lerix.notifications.handleRemoteNotification(userInfo:)`. The SDK recognises
+the refresh message and checks right away. Without push, apps pick up the
+change at their next check.
+
+## Built-in screens
+
+- **Maintenance**: on iOS, a window of its own above everything else in the
+  app, including alerts, with a **Try again** button. On macOS, an opaque
+  layer over every app window that takes all clicks and keys; the menu bar
+  (for example **Quit**) stays usable.
+- **Required update**: the same full-screen host, with release notes and an
+  **Update** button that opens the App Store.
+- **Update prompt**: an alert (macOS: a sheet) with **Update**, **Later**
+  and, when allowed, **Skip this version**. Release notes are added to the
+  message.
+
+Buttons and server copy follow the app's language (English, or Arabic right
+to left). See
+[Custom UI](/modules/release-control/custom-ui#built-in-screens) for when
+each one appears.
+
+## Your own screens
+
+Set `ui: false`, then read `Lerix.appControl.state` and observe changes. The
+state has `update` (`LerixAppUpdate`), `maintenance` (`LerixMaintenance`) and
+`sdk` (`LerixSdkControl`), each `nil` when nothing applies (fields in
+[The state](/modules/release-control/custom-ui#the-state)). Changes arrive on
+the main thread.
+
+```swift
+Lerix.appControl.onChange = { state in
+    if let maintenance = state.maintenance {
+        showMaintenance(title: maintenance.title, message: maintenance.message)
+    } else if let update = state.update, update.state == .required {
+        showForceUpdate(message: update.message)
+    } else {
+        hideReleaseScreens()
+    }
+}
+```
+
+`onChange` holds one closure. To observe from several places, use
+`addListener`, which returns a token for `removeListener`:
+
+```swift
+let token = Lerix.appControl.addListener { state in /* ... */ }
+Lerix.appControl.removeListener(token)
+```
+
+The helpers drive the buttons:
+
+```swift
+await Lerix.appControl.refresh()       // Try again
+Lerix.appControl.openStore()           // Update; returns whether the link opened
+Lerix.appControl.later()               // hide for remindAfterHours
+Lerix.appControl.skip()                // hide until a newer version (optional updates only)
+```
+
+## Check now
+
+```swift
+let state = await Lerix.appControl.refresh()
+
+// Without async/await
+Lerix.appControl.refresh { state in /* ... */ }
+```
+
+`refresh()` ignores the saved answer's lifetime, fetches, and returns the new
+state. The SDK already checks on launch, when the app returns to the
+foreground, and every minute during an emergency (see
+[Delivery and offline behaviour](/modules/release-control/delivery-offline)).

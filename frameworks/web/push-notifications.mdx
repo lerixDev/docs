@@ -147,9 +147,9 @@ or iOS 16.4+ — older Safari doesn't support the standard at all.
 ## Flutter Web
 
 Don't use this JS SDK for a Flutter app, even a Flutter Web build — the
-`lerix` Flutter package supports iOS, Android, and Web natively from a
-single package, calling the browser's Push API directly with no separate JS
-dependency at all. Same `Lerix.notifications.*` calls, same
+Flutter SDK (`lerix_flutter` with `lerix_messaging` for push) supports iOS,
+Android, and Web natively, calling the browser's Push API directly with no
+separate JS dependency at all. Same `Lerix.notifications.*` calls, same
 `LerixNotificationPayload` shape, on every platform:
 
 ```dart

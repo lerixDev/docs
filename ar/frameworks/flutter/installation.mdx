@@ -19,12 +19,22 @@ description: "أضف Lerix إلى تطبيق Flutter الخاص بك في خطو
 
 ## 1. أضف الاعتمادية (Dependency)
 
-أضف `lerix` إلى ملف `pubspec.yaml`:
+أضف `lerix_flutter` إلى ملف `pubspec.yaml`، ومعه الحزم الاختيارية للميزات التي تستخدمها:
 
 ```yaml pubspec.yaml
 dependencies:
-  lerix_flutter: ^0.2.0
+  lerix_flutter: ^0.7.0
+  lerix_messaging: ^0.7.0   # الإشعارات
+  lerix_app_update: ^0.7.0  # تحديثات Google Play داخل التطبيق (Android)
 ```
+
+| الحزمة | أضفها من أجل |
+|---|---|
+| `lerix_flutter` | تتبّع الأعطال، المستخدمين، التحليلات، الملاحظات، استبيانات NPS والتقييم، التحكم بالإصدارات |
+| `lerix_messaging` | [الإشعارات](/ar/frameworks/flutter/push-notifications) |
+| `lerix_app_update` | [تحديثات Play داخل التطبيق](/ar/frameworks/flutter/release-control) للتحديثات الإلزامية |
+
+اجعل الحزم الثلاث على الإصدار نفسه. الحزم الاختيارية تسجّل نفسها قبل تشغيل `main()`، فلا يوجد كود Dart إضافي. التطبيق الذي لا يضيف `lerix_messaging` لا يحمل Firebase ولا صلاحية الإشعارات ولا Windows App SDK.
 
 ثم نفّذ:
 

@@ -19,6 +19,7 @@ The Dart API is the same as on every other platform; there is no Windows-specifi
 
 ## Requirements
 
+- The `lerix_messaging` package next to `lerix_flutter` (see [Push notifications](/frameworks/flutter/push-notifications#add-the-package)). Only apps with it download the Windows App SDK at build time; `lerix_flutter` alone builds offline.
 - Windows 10 version 2004 or later, or Windows 11.
 - The **Windows App Runtime 1.7** on the user's machine. Bundle Microsoft's `WindowsAppRuntimeInstall-x64.exe` with your installer.
 - A Microsoft Entra ID app registration (free).

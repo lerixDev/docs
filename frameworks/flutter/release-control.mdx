@@ -1,0 +1,141 @@
+---
+title: "Release control in Flutter"
+sidebarTitle: "Release control"
+description: "Show update prompts, required updates and maintenance screens in your Flutter app, or build your own."
+---
+
+Release control works on iOS, Android, macOS, Windows and the web. For
+what it does and how to set rules in the dashboard, read
+[Release control](/modules/release-control/overview).
+
+## Setup
+
+Release control is on by default once `Lerix.init` runs, with the built-in
+screens. There is nothing to add for the default behaviour. To change it, pass
+`LerixAppControlOptions`:
+
+```dart main.dart
+Lerix.init(
+  url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  appControl: const LerixAppControlOptions(
+    enabled: true,               // false: no checks, no screens, no events
+    ui: true,                    // false: draw your own screens
+    usePlayInAppUpdate: true,    // Android + lerix_app_update: Google Play's in-app update for required updates
+  ),
+  builder: () => runApp(const MyApp()),
+);
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `enabled` | `true` | Checks for updates and maintenance. `false` turns the module off. |
+| `ui` | `true` | Shows the built-in screens. `false` leaves the drawing to you. |
+| `usePlayInAppUpdate` | `true` | On Android, with the `lerix_app_update` package added: when the app was installed from Google Play and Play offers the update, a required update starts Play's full-screen in-app update instead of opening the store page, and resumes it if the user leaves. Without the package it does nothing, and the app never ships Play's update library. |
+
+### Version
+
+The SDK sends the version and build number from your `pubspec.yaml`
+(`version: 3.4.0+412` sends `3.4.0` and build `412`). On the web it sends the
+platform `web`, and the version only when the build has a `version.json`
+(`flutter build web` writes one). Rules compare build numbers when both sides
+have one.
+
+### Instant changes with silent push
+
+When you start or end a maintenance window or force an update, Lerix sends a
+silent push so apps in the background refresh too. It reaches apps that call
+`Lerix.notifications.init()`, as in
+[Push Notifications](/frameworks/flutter/push-notifications), and the SDK
+handles it for you: it is never shown, and never passed to
+`setOnNotificationReceived`. On iOS and macOS it needs the
+`lerix_didReceiveRemoteNotification` hook in your `AppDelegate` from that
+guide, and the **Remote notifications** background mode. Without push, and on
+the web, apps pick up the change at their next check.
+
+## Built-in screens
+
+There is no widget to add. The SDK inserts its screens into your app's
+top-level `Overlay`, above every route your navigator pushes.
+
+- **Maintenance**: covers the whole app, with a **Try again** button. Back on
+  Android sends the app to the background.
+- **Required update**: the same full-screen host, with release notes under
+  "What's new" and an **Update** button that opens the store (web:
+  **Reload**).
+- **Update prompt**: a dialog (web: a bar at the bottom) with **Update**,
+  **Later** and, when allowed, **Skip this version**. It appears at most once
+  per app run. Back closes it without saving **Later**.
+
+The screens follow your app's theme and the device language (English, or
+Arabic right to left). If you use `LerixFeedback`, its `theme` and `locale`
+apply here too. Widgets that you place above the navigator in
+`MaterialApp.builder` are not covered. See
+[Custom UI](/modules/release-control/custom-ui#built-in-screens) for when
+each screen appears.
+
+## Your own screens
+
+Set `ui: false`, then listen to `Lerix.appControl`, a
+`ValueListenable<LerixAppControlState>`. The state has `update`
+(`LerixUpdateInfo`), `maintenance` (`LerixMaintenanceInfo`) and `sdk`
+(`LerixSdkControl`), each `null` when nothing applies (fields in
+[The state](/modules/release-control/custom-ui#the-state)).
+
+```dart release_gate.dart
+class ReleaseGate extends StatelessWidget {
+  const ReleaseGate({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<LerixAppControlState>(
+      valueListenable: Lerix.appControl,
+      builder: (context, state, _) {
+        final maintenance = state.maintenance;
+        final update = state.update;
+
+        if (maintenance != null) {
+          return MaintenanceScreen(
+            title: maintenance.title,
+            message: maintenance.message,
+            onRetry: () => Lerix.appControl.refresh(),
+          );
+        }
+        if (update != null && update.state == LerixUpdateState.required) {
+          return ForceUpdateScreen(
+            message: update.message,
+            onUpdate: () => Lerix.appControl.openStore(),
+          );
+        }
+        return child;
+      },
+    );
+  }
+}
+```
+
+`update.isRequired` is a shortcut for the same check. For a soft prompt,
+call the helpers from your own dialog:
+
+```dart
+Lerix.appControl.reportPromptShown(update); // records $update_prompt_shown
+await Lerix.appControl.openStore();         // Update; returns whether something opened
+await Lerix.appControl.later();             // hide for remindAfterHours
+await Lerix.appControl.skip();              // hide until a newer version (optional updates only)
+```
+
+`Lerix.appControl.stream` emits every new state, if you prefer a stream.
+
+## Check now
+
+```dart
+final state = await Lerix.appControl.refresh();
+```
+
+`refresh()` (or its alias `checkNow()`) ignores the saved answer's lifetime,
+fetches, and returns the new state. It never throws: offline, it returns the
+saved state. The SDK already checks on launch, when the app returns to the
+foreground, and every minute during an emergency (see
+[Delivery and offline behaviour](/modules/release-control/delivery-offline)).

@@ -1,0 +1,77 @@
+---
+title: "Release control in Angular"
+sidebarTitle: "Release control"
+description: "Ask users to reload for a new deployment, require it, or show a maintenance screen in your Angular app."
+---
+
+For what release control does and how to set rules in the dashboard, read
+[Release control](/modules/release-control/overview).
+
+## Setup
+
+Release control is on by default once `provideLerix()` from
+[Installation](/frameworks/angular/installation) runs, with the built-in
+screens. Set `release` so update rules can compare versions:
+
+```ts app.config.ts
+provideLerix({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  release: '1.4.0',                         // required for update rules
+  appControl: { enabled: true, ui: true },
+}),
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `release` | none | The version this deployment ships as. Without it, update rules never apply on the web. Use a version with digits, such as `1.4.0`, not a commit SHA. |
+| `appControl.enabled` | `true` | Checks for updates and maintenance. `false` turns the module off. |
+| `appControl.ui` | `true` | Shows the built-in screens. `false` leaves the drawing to you. |
+
+## What users see
+
+The same screens as in [React](/frameworks/react/release-control#what-users-see):
+a maintenance overlay with **Try again**, a required update that reloads the
+page at most once every 5 minutes and then shows a **Reload** button, and a
+dismissible bar for optional or recommended updates.
+
+## Your own screens
+
+Set `appControl: { ui: false }` and inject `LerixAppControlService`. Its
+`state` is a signal and `state$` an observable of the same value: `update`,
+`maintenance` and `sdk`, each `null` when nothing applies (fields in
+[The state](/modules/release-control/custom-ui#the-state)).
+
+```ts release-gate.component.ts
+import { Component, inject } from '@angular/core';
+import { LerixAppControlService } from '@lerix-dev/lerix-angular';
+
+@Component({
+  selector: 'app-release-gate',
+  template: `
+    @if (appControl.state().maintenance; as maintenance) {
+      <app-maintenance [title]="maintenance.title" (retry)="appControl.refresh()" />
+    } @else if (appControl.state().update?.state === 'required') {
+      <app-force-update
+        [message]="appControl.state().update!.message"
+        (update)="appControl.openStore()"
+      />
+    } @else {
+      <ng-content />
+    }
+  `,
+})
+export class ReleaseGateComponent {
+  readonly appControl = inject(LerixAppControlService);
+}
+```
+
+| Member | What it does |
+|---|---|
+| `state` | Signal of the current state |
+| `state$` | Observable: the current state on subscribe, then every change |
+| `getState()` | The current state, read once |
+| `refresh()` | Checks now and resolves the new state. Never rejects. |
+| `openStore()` | Reloads the page |
+| `later()` | Hides the soft prompt for `remindAfterHours` |
+| `skip()` | Hides the soft prompt until a newer version (optional updates only) |

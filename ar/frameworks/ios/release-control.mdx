@@ -1,0 +1,109 @@
+---
+title: "التحكم بالإصدارات في Swift"
+sidebarTitle: "التحكم بالإصدارات"
+description: "اعرض تنبيهات التحديث والتحديثات الإلزامية وشاشات الصيانة في تطبيق iOS أو macOS الأصلي، أو ابنِ شاشاتك الخاصة."
+---
+
+يعمل التحكم بالإصدارات على iOS وiPadOS وmacOS (تُعامَل تطبيقات Mac Catalyst
+معاملة macOS). لمعرفة ما يقدّمه وكيف تضبط القواعد في لوحة التحكم، راجع
+[التحكم بالإصدارات](/ar/modules/release-control/overview).
+
+## الإعداد
+
+يعمل التحكم بالإصدارات افتراضياً بمجرد تشغيل `Lerix.initialize`، مع الشاشات
+الجاهزة. لتغييره، مرّر `appControl`:
+
+```swift AppDelegate.swift
+Lerix.initialize(
+    apiKey: "your-api-key",
+    projectId: "your-project-id",
+    appControl: LerixAppControlOptions(
+        enabled: true,   // false: no checks, no screens, no events
+        ui: true         // false: draw your own screens
+    )
+)
+```
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `enabled` | `true` | يتحقق من التحديثات والصيانة. `false` يوقف الوحدة. |
+| `ui` | `true` | يعرض الشاشات الجاهزة. `false` يترك الرسم لك. |
+
+### الإصدار
+
+ترسل الحزمة `CFBundleShortVersionString` بوصفه الإصدار و`CFBundleVersion` بوصفه
+رقم البناء، ومعرّف الحزمة (bundle ID) ليختار Lerix رابط المتجر الصحيح. تقارن القواعد
+أرقام البناء حين تتوفر لدى الطرفين.
+
+### تغييرات فورية بالإشعار الصامت
+
+حين تبدأ نافذة صيانة أو تنهيها، أو تفرض تحديثاً، يرسل Lerix إشعاراً صامتاً
+لتتحدث التطبيقات العاملة في الخلفية أيضاً. يتطلب ذلك إعداد
+[الإشعارات](/ar/frameworks/ios/push-notifications): وضع الخلفية **Remote
+notifications**، وتمرير `didReceiveRemoteNotification` إلى
+`Lerix.notifications.handleRemoteNotification(userInfo:)`. تتعرف الحزمة على رسالة
+التحديث وتتحقق فوراً. ومن دون الإشعارات، تلتقط التطبيقات التغيير عند تحققها التالي.
+
+## الشاشات الجاهزة
+
+- **الصيانة**: على iOS، نافذة مستقلة فوق كل ما في التطبيق، بما في ذلك التنبيهات،
+  مع زر **حاول مرة أخرى**. وعلى macOS، طبقة معتمة فوق كل نوافذ التطبيق تستقبل كل
+  النقرات والمفاتيح، ويبقى شريط القوائم (مثل **Quit**) متاحاً.
+- **التحديث الإلزامي**: الحاوية نفسها على كامل الشاشة، مع ملاحظات الإصدار وزر
+  **تحديث** يفتح App Store.
+- **مطالبة التحديث**: تنبيه (على macOS: ورقة sheet) فيه **تحديث** و**لاحقاً**،
+  و**تخطي هذا الإصدار** إن كان مسموحاً. وتُضاف ملاحظات الإصدار إلى الرسالة.
+
+تتبع الأزرار ونص الخادم لغة التطبيق (العربية من اليمين إلى اليسار، أو الإنجليزية).
+راجع [واجهة مخصصة](/ar/modules/release-control/custom-ui#الشاشات-الجاهزة) لمعرفة
+متى تظهر كل منها.
+
+## شاشاتك الخاصة
+
+اضبط `ui: false`، ثم اقرأ `Lerix.appControl.state` وراقب التغييرات. للحالة الأجزاء
+`update` (`LerixAppUpdate`) و`maintenance` (`LerixMaintenance`) و`sdk`
+(`LerixSdkControl`)، وكل منها `nil` حين لا ينطبق شيء (الحقول في
+[الحالة](/ar/modules/release-control/custom-ui#الحالة)). وتصل التغييرات على الخيط
+الرئيسي (main thread).
+
+```swift
+Lerix.appControl.onChange = { state in
+    if let maintenance = state.maintenance {
+        showMaintenance(title: maintenance.title, message: maintenance.message)
+    } else if let update = state.update, update.state == .required {
+        showForceUpdate(message: update.message)
+    } else {
+        hideReleaseScreens()
+    }
+}
+```
+
+تحمل `onChange` دالة واحدة. وللمراقبة من أكثر من مكان، استخدم `addListener` التي
+تعيد رمزاً تمرّره إلى `removeListener`:
+
+```swift
+let token = Lerix.appControl.addListener { state in /* ... */ }
+Lerix.appControl.removeListener(token)
+```
+
+وتتولى الدوال المساعدة عمل الأزرار:
+
+```swift
+await Lerix.appControl.refresh()       // Try again
+Lerix.appControl.openStore()           // Update; returns whether the link opened
+Lerix.appControl.later()               // hide for remindAfterHours
+Lerix.appControl.skip()                // hide until a newer version (optional updates only)
+```
+
+## التحقق الآن
+
+```swift
+let state = await Lerix.appControl.refresh()
+
+// Without async/await
+Lerix.appControl.refresh { state in /* ... */ }
+```
+
+تتجاهل `refresh()` مدة صلاحية الإجابة المحفوظة، فتجلب الحالة وتعيدها. والحزمة تتحقق
+أصلاً عند التشغيل، وعند عودة التطبيق إلى الواجهة، وكل دقيقة أثناء الطوارئ (راجع
+[وصول التغييرات والعمل دون اتصال](/ar/modules/release-control/delivery-offline)).

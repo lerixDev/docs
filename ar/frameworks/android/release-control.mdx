@@ -1,0 +1,126 @@
+---
+title: "التحكم بالإصدارات في Kotlin"
+sidebarTitle: "التحكم بالإصدارات"
+description: "اعرض تنبيهات التحديث والتحديثات الإلزامية وشاشات الصيانة في تطبيق أندرويد الأصلي، مع دعم اختياري لتحديثات Google Play داخل التطبيق."
+---
+
+لمعرفة ما يقدّمه التحكم بالإصدارات وكيف تضبط القواعد في لوحة التحكم، راجع
+[التحكم بالإصدارات](/ar/modules/release-control/overview).
+
+## الإعداد
+
+يعمل التحكم بالإصدارات افتراضياً بمجرد تشغيل `Lerix.initialize()`، مع الشاشات
+الجاهزة. لتغييره، مرّر `appControl`:
+
+```kotlin MyApplication.kt
+Lerix.initialize(
+    context = this,
+    apiKey = "your-api-key",
+    projectId = "your-project-id",
+    appControl = LerixAppControlOptions(
+        enabled = true,              // false: no checks, no screens, no events
+        ui = true,                   // false: draw your own screens
+        usePlayInAppUpdate = false,  // true: Google Play's in-app update for required updates
+    ),
+)
+```
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `enabled` | `true` | يتحقق من التحديثات والصيانة. `false` يوقف الوحدة. |
+| `ui` | `true` | يعرض الشاشات الجاهزة. `false` يترك الرسم لك. |
+| `usePlayInAppUpdate` | `false` | إذا ثُبّت التطبيق من Google Play وعرض Play التحديث، يبدأ التحديث الإلزامي شاشة التحديث الخاصة بـ Play داخل التطبيق بدلاً من فتح صفحة المتجر. أما التثبيتات الأخرى فتفتح رابط المتجر. |
+
+### تحديثات Google Play داخل التطبيق
+
+يتطلب `usePlayInAppUpdate` وجود مكتبة Play للتحديث داخل التطبيق في تطبيقك. لا تضمّها
+الحزمة، فأضفها بنفسك:
+
+```kotlin app/build.gradle.kts
+dependencies {
+    implementation("com.google.android.play:app-update:2.1.0")
+}
+```
+
+ومن دون المكتبة، أو للتطبيقات غير المثبتة من Google Play، يفتح زر **تحديث** رابط
+المتجر كالمعتاد.
+
+### الإصدار
+
+ترسل الحزمة `versionName` بوصفه الإصدار و`versionCode` بوصفه رقم البناء، واسم
+الحزمة (package name) ليبني Lerix رابط Google Play. تقارن القواعد أرقام البناء حين
+تتوفر لدى الطرفين.
+
+### تغييرات فورية بالإشعار الصامت
+
+حين تبدأ نافذة صيانة أو تنهيها، أو تفرض تحديثاً، يرسل Lerix رسالة بيانات
+صامتة عبر FCM لتتحدث التطبيقات العاملة في الخلفية أيضاً. تصل إلى التطبيقات التي
+أُعدّت فيها [الإشعارات](/ar/frameworks/android/push-notifications)، وتتولى الحزمة
+معالجتها: لا تُعرض أبداً كإشعار. ومن دون الإشعارات، تلتقط التطبيقات التغيير عند تحققها التالي.
+
+## الشاشات الجاهزة
+
+- **الصيانة**: نشاط (activity) على كامل الشاشة فوق تطبيقك، مع زر **حاول مرة أخرى**.
+  يرسل زر **الرجوع** التطبيق إلى الخلفية، ولا يعيد المستخدم إلى التطبيق أبداً. وإذا
+  عاد نشاط آخر من تطبيقك إلى الواجهة، تعود الشاشة فوقه.
+- **التحديث الإلزامي**: الحاوية نفسها على كامل الشاشة، مع ملاحظات الإصدار وزر
+  **تحديث**.
+- **مطالبة التحديث**: نافذة حوار على النشاط الحالي فيها **تحديث** و**لاحقاً**،
+  و**تخطي هذا الإصدار** إن كان مسموحاً. ويغلقها زر الرجوع دون حفظ **لاحقاً**.
+
+تعلن الحزمة عن نشاطها عبر دمج ملفات manifest، فلا حاجة إلى إضافة شيء إلى
+`AndroidManifest.xml`. تتبع الأزرار لغة الجهاز (العربية من اليمين إلى اليسار، أو
+الإنجليزية). راجع [واجهة مخصصة](/ar/modules/release-control/custom-ui#الشاشات-الجاهزة)
+لمعرفة متى تظهر كل منها.
+
+## شاشاتك الخاصة
+
+اضبط `ui = false`، ثم اجمع `Lerix.appControl.state`، وهو
+`StateFlow<LerixAppControlState>`. للحالة الأجزاء `update` (`LerixAppUpdate`)
+و`maintenance` (`LerixMaintenance`) و`sdk` (`LerixSdkControl`)، وكل منها `null` حين
+لا ينطبق شيء (الحقول في [الحالة](/ar/modules/release-control/custom-ui#الحالة)).
+وتقرأ `Lerix.appControl.currentState` الحالة مرة واحدة.
+
+```kotlin MainActivity.kt
+lifecycleScope.launch {
+    repeatOnLifecycle(Lifecycle.State.STARTED) {
+        Lerix.appControl.state.collect { state ->
+            val maintenance = state.maintenance
+            val update = state.update
+            when {
+                maintenance != null -> showMaintenance(maintenance.title, maintenance.message)
+                update != null && update.state == LerixUpdateState.REQUIRED -> showForceUpdate(update.message)
+                else -> hideReleaseScreens()
+            }
+        }
+    }
+}
+```
+
+وخارج الـ coroutines، استخدم مستمعاً يُستدعى على الخيط الرئيسي:
+
+```kotlin
+val listener = LerixAppControlListener { state -> render(state) }
+Lerix.appControl.addListener(listener)
+Lerix.appControl.removeListener(listener)
+```
+
+وتتولى الدوال المساعدة عمل الأزرار:
+
+```kotlin
+Lerix.appControl.refresh { state -> render(state) } // Try again (or the suspend refresh())
+Lerix.appControl.openStore(activity)                // Update; returns whether something opened
+Lerix.appControl.later()                            // hide for remindAfterHours
+Lerix.appControl.skip()                             // hide until a newer version (optional updates only)
+```
+
+مرّر النشاط الحالي إلى `openStore` لتبدأ منه شاشة التحديث الخاصة بـ Play. ومن دونه
+تستخدم الحزمة النشاط الموجود في الواجهة.
+
+## التحقق الآن
+
+الدالة `Lerix.appControl.refresh()` من نوع `suspend`، وتتجاهل مدة صلاحية الإجابة
+المحفوظة، فتجلب الحالة وتعيدها. وتفعل `refresh(callback)` الشيء نفسه من شيفرة لا
+تستخدم الـ coroutines. والحزمة تتحقق أصلاً عند التشغيل، وعند عودة التطبيق إلى الواجهة، وكل دقيقة
+أثناء الطوارئ (راجع
+[وصول التغييرات والعمل دون اتصال](/ar/modules/release-control/delivery-offline)).

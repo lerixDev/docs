@@ -1,0 +1,136 @@
+---
+title: "Release control"
+sidebarTitle: "Overview"
+description: "Prompt or require app updates, put your app into maintenance, and reach devices without shipping a release."
+icon: "shield-check"
+---
+
+## What it does
+
+Release control lets you change what your users see when they open your app,
+from the dashboard, without publishing a new build. It covers three
+situations:
+
+- **An update is out.** Tell users on older versions that a new one is
+  available, recommend it, or require it before they can continue.
+- **A version is broken.** Block one or more exact versions, such as a build
+  that crashes on launch or leaks data, and send those users to the store.
+- **The service is down.** Put the whole app, or part of your audience, into
+  maintenance mode with a full-screen message until you lift it.
+
+The Lerix SDK you already ship checks the project's settings when the app
+starts and when it comes back to the foreground. It shows built-in screens in
+English and Arabic, or hands the state to your own UI.
+
+## Update prompts
+
+An update rule per platform describes which versions are current. Every
+device compares its own version against it and lands in one of four states:
+
+| State | What the user sees | Can they keep using the app? |
+|---|---|---|
+| **None** | Nothing | Yes |
+| **Optional** (`available`) | A prompt with **Update**, **Later** and, when allowed, **Skip this version** | Yes |
+| **Recommended** (`recommended`) | The same prompt, without **Skip this version** | Yes |
+| **Required** (`required`) | A full-screen block with an **Update** button | No |
+
+The dashboard calls a rule that blocks users a **Forced update**.
+
+Soft prompts (optional and recommended) respect a reminder interval and are
+shown at most once per app session. A recommended update can carry a
+deadline: after that date it becomes required. See
+[Update rules](/modules/release-control/update-rules).
+
+## Maintenance mode
+
+Maintenance mode covers the app with a screen it can't get past: your title,
+your message, an optional "Expected back at" time and a **Try again** button.
+Start it now or schedule it, limit it to some platforms, versions or
+countries, and let your own team through with an allow-list. Every window
+ends by itself, at most 7 days after it starts. See
+[Maintenance mode](/modules/release-control/maintenance-mode).
+
+## Which screen wins
+
+When more than one state applies, the SDK shows one screen, in this order:
+
+1. **Maintenance**
+2. **Required update**
+3. **Recommended or optional update**
+
+A soft prompt never appears on top of a maintenance or required-update
+screen, and never before your app has drawn its first screen.
+
+## Platforms
+
+| SDK | Built-in screens | Guide |
+|---|---|---|
+| Flutter (iOS, Android, macOS, Windows, web) | Yes | [Flutter](/frameworks/flutter/release-control) |
+| Swift (iOS, iPadOS, macOS) | Yes | [Swift](/frameworks/ios/release-control) |
+| Kotlin (Android) | Yes, plus optional Google Play in-app updates | [Kotlin](/frameworks/android/release-control) |
+| React, Next.js, Angular, Web (JS) | Yes | [React](/frameworks/react/release-control), [Next.js](/frameworks/nextjs/release-control), [Angular](/frameworks/angular/release-control), [Web](/frameworks/web/release-control) |
+
+Server and edge SDKs have no screens to show, so release control doesn't
+apply to them.
+
+## How fast a change arrives
+
+- Apps check on launch, and again when they return to the foreground if
+  their last check is more than 5 minutes old.
+- For a change that blocks or unblocks users (maintenance, a forced update,
+  **Lift all**), Lerix also sends a silent push to every device with a Lerix
+  push token, so mobile and desktop apps in the background refresh too.
+- For 30 minutes after any change, and while a maintenance window applies,
+  apps in the foreground check every minute. Web pages and apps without
+  Lerix push rely on these checks.
+
+The dashboard shows how many active devices have picked up the latest change.
+See [Delivery and offline behaviour](/modules/release-control/delivery-offline).
+
+## A switch for the Lerix SDK itself
+
+The same channel protects you from us. If a Lerix SDK release ever
+misbehaves in your app, the Lerix team can pause that SDK's own work
+remotely, for the affected SDK versions only, without you shipping an app
+update.
+
+- **What stops**: Lerix's own traffic and hooks, such as error reports,
+  analytics, tracing, feedback, surveys and push token registration. It can be
+  one module or all of them.
+- **What keeps running**: your app, its own network calls, and the Lerix
+  configuration check, so the switch can be lifted again.
+- **What happens to queued data**: it stays on the device and is sent after
+  the switch is lifted.
+- **How long it lasts**: every switch carries an end time and lifts itself
+  then, even on a device that is offline.
+
+This is a safety net that we hope never to use. You don't need to configure
+anything to have it.
+
+## Who can change it
+
+Any project member can open **Release control** and see the rules, the
+maintenance windows and the history. Changing them needs the **Manage app
+updates** permission, which the **Owner** and **Admin** roles have. See
+[Events, webhooks and permissions](/modules/release-control/events-webhooks).
+
+<Note>
+  Release control runs inside your app, so a modified or very old build can
+  ignore it. Treat it as the way to reach your users, and keep enforcing
+  anything security-critical on your own backend too.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Update rules" icon="circle-up" href="/modules/release-control/update-rules">
+    Latest and minimum versions, blocked versions, deadlines and store links.
+  </Card>
+  <Card title="Maintenance mode" icon="screwdriver-wrench" href="/modules/release-control/maintenance-mode">
+    Schedule, scope, test on your own devices, then go live.
+  </Card>
+  <Card title="Delivery and offline behaviour" icon="tower-broadcast" href="/modules/release-control/delivery-offline">
+    When apps check, and what they do without a network.
+  </Card>
+  <Card title="Custom UI" icon="palette" href="/modules/release-control/custom-ui">
+    Draw your own screens from the same state.
+  </Card>
+</CardGroup>

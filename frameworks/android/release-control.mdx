@@ -1,0 +1,131 @@
+---
+title: "Release control in Kotlin"
+sidebarTitle: "Release control"
+description: "Show update prompts, required updates and maintenance screens in your native Android app, with optional Google Play in-app updates."
+---
+
+For what release control does and how to set rules in the dashboard, read
+[Release control](/modules/release-control/overview).
+
+## Setup
+
+Release control is on by default once `Lerix.initialize()` runs, with the
+built-in screens. To change it, pass `appControl`:
+
+```kotlin MyApplication.kt
+Lerix.initialize(
+    context = this,
+    apiKey = "your-api-key",
+    projectId = "your-project-id",
+    appControl = LerixAppControlOptions(
+        enabled = true,              // false: no checks, no screens, no events
+        ui = true,                   // false: draw your own screens
+        usePlayInAppUpdate = false,  // true: Google Play's in-app update for required updates
+    ),
+)
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `enabled` | `true` | Checks for updates and maintenance. `false` turns the module off. |
+| `ui` | `true` | Shows the built-in screens. `false` leaves the drawing to you. |
+| `usePlayInAppUpdate` | `false` | When the app was installed from Google Play and Play offers the update, a required update starts Play's full-screen in-app update instead of opening the store page. Other installs still open the store link. |
+
+### Google Play in-app updates
+
+`usePlayInAppUpdate` needs Play's in-app update library in your app. The SDK
+doesn't bundle it, so add it yourself:
+
+```kotlin app/build.gradle.kts
+dependencies {
+    implementation("com.google.android.play:app-update:2.1.0")
+}
+```
+
+Without the library, or for apps not installed from Google Play, **Update**
+opens the store link as usual.
+
+### Version
+
+The SDK sends `versionName` as the version and `versionCode` as the build
+number, and the package name so Lerix can build the Google Play link. Rules
+compare build numbers when both sides have one.
+
+### Instant changes with silent push
+
+When you start or end a maintenance window or force an update, Lerix sends
+a silent FCM data message so apps in the background refresh too. It reaches
+apps with [push notifications](/frameworks/android/push-notifications) set up,
+and the SDK handles it for you: it is never shown as a notification. Without push, apps pick up the change at
+their next check.
+
+## Built-in screens
+
+- **Maintenance**: a full-screen activity over your app, with a **Try
+  again** button. **Back** sends the app to the background; it never returns
+  into the app. If another of your activities comes to the front, the screen
+  comes back on top.
+- **Required update**: the same full-screen host, with release notes and an
+  **Update** button.
+- **Update prompt**: a dialog on the current activity with **Update**,
+  **Later** and, when allowed, **Skip this version**. Back closes it without
+  saving **Later**.
+
+The SDK declares its activity through manifest merging, so there's nothing to
+add to your `AndroidManifest.xml`. Buttons follow the device language
+(English, or Arabic right to left). See
+[Custom UI](/modules/release-control/custom-ui#built-in-screens) for when
+each one appears.
+
+## Your own screens
+
+Set `ui = false`, then collect `Lerix.appControl.state`, a
+`StateFlow<LerixAppControlState>`. The state has `update` (`LerixAppUpdate`),
+`maintenance` (`LerixMaintenance`) and `sdk` (`LerixSdkControl`), each `null`
+when nothing applies (fields in
+[The state](/modules/release-control/custom-ui#the-state)).
+`Lerix.appControl.currentState` reads it once.
+
+```kotlin MainActivity.kt
+lifecycleScope.launch {
+    repeatOnLifecycle(Lifecycle.State.STARTED) {
+        Lerix.appControl.state.collect { state ->
+            val maintenance = state.maintenance
+            val update = state.update
+            when {
+                maintenance != null -> showMaintenance(maintenance.title, maintenance.message)
+                update != null && update.state == LerixUpdateState.REQUIRED -> showForceUpdate(update.message)
+                else -> hideReleaseScreens()
+            }
+        }
+    }
+}
+```
+
+Outside a coroutine, use a listener. It is called on the main thread:
+
+```kotlin
+val listener = LerixAppControlListener { state -> render(state) }
+Lerix.appControl.addListener(listener)
+Lerix.appControl.removeListener(listener)
+```
+
+The helpers drive the buttons:
+
+```kotlin
+Lerix.appControl.refresh { state -> render(state) } // Try again (or the suspend refresh())
+Lerix.appControl.openStore(activity)                // Update; returns whether something opened
+Lerix.appControl.later()                            // hide for remindAfterHours
+Lerix.appControl.skip()                             // hide until a newer version (optional updates only)
+```
+
+Pass the current activity to `openStore` so Play's in-app update can start
+from it. Without one, the SDK uses the activity in the foreground.
+
+## Check now
+
+`Lerix.appControl.refresh()` is a `suspend` function that ignores the saved
+answer's lifetime, fetches, and returns the new state. `refresh(callback)`
+does the same from Java-style code. The SDK already checks on launch, when the app
+returns to the foreground, and every minute during an emergency (see
+[Delivery and offline behaviour](/modules/release-control/delivery-offline)).

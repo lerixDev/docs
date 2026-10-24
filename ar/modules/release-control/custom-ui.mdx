@@ -1,0 +1,190 @@
+---
+title: "واجهة مخصصة"
+description: "استخدم شاشات التحديث والصيانة الجاهزة، أو ارسم شاشاتك الخاصة من الحالة نفسها."
+icon: "palette"
+---
+
+## الشاشات الجاهزة
+
+تأتي الحزمة بثلاث شاشات وتعرضها افتراضياً:
+
+| الشاشة | تظهر عند | الأزرار |
+|---|---|---|
+| **الصيانة** | وجود نافذة صيانة جارية | **حاول مرة أخرى**، مع "العودة المتوقعة الساعة" إن كانت مفعّلة |
+| **التحديث الإلزامي** | تحديث إلزامي | **تحديث** (الويب: **إعادة التحميل**) |
+| **مطالبة التحديث** | تحديث اختياري أو مُوصى به. نافذة حوار على الجوال وسطح المكتب، وشريط أسفل الصفحة على الويب | **تحديث** و**لاحقاً**، و**تخطي هذا الإصدار** إن كان مسموحاً |
+
+- تغطي شاشتا الصيانة والتحديث الإلزامي التطبيق كله ولا يمكن إغلاقهما، وتختفيان
+  من تلقاء نفسيهما حين تزول الحالة.
+- لا تظهر مطالبة التحديث أكثر من مرة في الجلسة الواحدة، ولا فوق شاشة منع، ولا قبل
+  أن تجهز الشاشة الأولى في تطبيقك.
+- تأتي العناوين والرسائل وملاحظات الإصدار من لوحة التحكم. أما نصوص الأزرار وعنوان
+  «ما الجديد» وسطر "العودة المتوقعة الساعة" فمدمجة بالعربية (من اليمين إلى اليسار) والإنجليزية،
+  وتُختار بحسب لغة الجهاز.
+
+## شاشاتك الخاصة
+
+أوقف الشاشات الجاهزة بـ `ui: false` واستمع إلى الحالة بدلاً منها. تواصل الحزمة
+الجلب والحفظ وتطبيق
+[قواعد العمل دون اتصال](/ar/modules/release-control/delivery-offline#العمل-دون-اتصال)،
+والرسم وحده عليك.
+
+### الحالة
+
+للحالة ثلاثة أجزاء، وكل منها فارغ (`null` أو `nil`) حين لا ينطبق شيء. وهي مصفّاة مسبقاً بحسب الوقت
+الحالي و**لاحقاً** و**التخطي**، فارسم ما يصلك كما هو.
+
+| الجزء | الحقول |
+|---|---|
+| `update` | `state` (`available` أو `recommended` أو `required`)، و`reason` (`outdated` أو `below_minimum` أو `blocked_version` أو `deadline_passed`)، و`ruleId`، و`latestVersion`، و`minVersion`، و`storeUrl`، و`title`، و`message`، و`releaseNotes`، و`remindAfterHours`، و`allowSkip`، و`requiredAt` |
+| `maintenance` | `id`، و`title`، و`message`، و`startsAt`، و`endsAt`، و`showEndsAt` |
+| `sdk` | `disabled` (وحدات Lerix الموقوفة) و`until`. للعلم فقط: تطبّقه الحزمة بنفسها. |
+
+- لا يُضبط `maintenance` إلا ما دامت النافذة جارية. أما النافذة المجدولة فتبقى
+  داخل الحزمة حتى موعد بدئها.
+- قيمة `storeUrl` فارغة دائماً على الويب.
+- أسماء الحقول واحدة في كل الحزم. وفي الحزم الأصلية، `state` و`reason` من نوع
+  enum: ‏`LerixUpdateState` (في Flutter ‏`.required`، وفي Swift ‏`.required`، وفي
+  Kotlin ‏`REQUIRED`)، و`LerixUpdateReason` (يستخدم Flutter وSwift القيم
+  `belowMinimum` و`blockedVersion` و`deadlinePassed`). أما Kotlin وحزم الويب
+  فتُبقي `reason` نصاً كما في الجدول. والسبب الذي لا تعرفه الحزمة يُقرأ `null`.
+- الأوقات من نوع `DateTime` في Flutter، و`Date` في Swift، وعدد الميلي ثانية منذ
+  epoch في Kotlin، ونصوص ISO على الويب.
+
+اعرضها بترتيب الواجهة الجاهزة نفسه: الصيانة أولاً، ثم التحديث الإلزامي، ثم المطالبة
+غير الإلزامية.
+
+### الدوال المساعدة
+
+| الدالة | وظيفتها |
+|---|---|
+| `refresh()` | تتحقق الآن متجاهلةً مدة صلاحية الإجابة المحفوظة، وتعيد الحالة الجديدة. استخدمها لزر **حاول مرة أخرى**. |
+| `openStore()` | تفتح رابط المتجر الخاص بالتحديث. وعلى أندرويد مع تحديثات Play داخل التطبيق تبدأ تحديث Play للتحديث الإلزامي. وعلى الويب تعيد تحميل الصفحة. |
+| `later()` | تخفي المطالبة طوال `remindAfterHours`. |
+| `skip()` | تخفي المطالبة إلى أن يُحدَّد إصدار أحدث. للتحديثات الاختيارية (`available`) فقط. |
+
+تسجّل الدوال المساعدة أيضاً حدث `$update_prompt_action` المقابل، فيبقى مسار تحويل
+التحديث في التحليلات مكتملاً مع واجهتك الخاصة. أما `$update_prompt_shown` فلا
+تسجّله إلا الواجهة الجاهزة؛ وفي Flutter استدعِ `Lerix.appControl.reportPromptShown(update)`
+حين تظهر مطالبتك الخاصة. راجع
+[الأحداث والـ Webhooks والصلاحيات](/ar/modules/release-control/events-webhooks#أحداث-التحليلات).
+
+### بحسب الحزمة
+
+<Tabs>
+  <Tab title="Flutter">
+    ```dart
+    Lerix.init(
+      // ...
+      appControl: const LerixAppControlOptions(ui: false),
+      builder: () => runApp(const MyApp()),
+    );
+
+    // A ValueListenable<LerixAppControlState>
+    final state = Lerix.appControl.state;
+    Lerix.appControl.addListener(() {
+      final state = Lerix.appControl.value; // update, maintenance, sdk
+    });
+    Lerix.appControl.stream.listen((state) { /* ... */ });
+
+    await Lerix.appControl.refresh();
+    await Lerix.appControl.openStore();
+    await Lerix.appControl.later();
+    await Lerix.appControl.skip();
+    ```
+
+    مثال كامل: [Flutter](/ar/frameworks/flutter/release-control#شاشاتك-الخاصة).
+  </Tab>
+  <Tab title="Swift">
+    ```swift
+    Lerix.initialize(
+        apiKey: "your-api-key",
+        projectId: "your-project-id",
+        appControl: LerixAppControlOptions(enabled: true, ui: false)
+    )
+
+    let state = Lerix.appControl.state
+    Lerix.appControl.onChange = { state in
+        // state.update, state.maintenance, state.sdk (main thread)
+    }
+
+    let fresh = await Lerix.appControl.refresh()
+    let opened = Lerix.appControl.openStore()
+    ```
+
+    مثال كامل: [Swift](/ar/frameworks/ios/release-control#شاشاتك-الخاصة).
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    Lerix.initialize(
+        context = this,
+        apiKey = "your-api-key",
+        projectId = "your-project-id",
+        appControl = LerixAppControlOptions(enabled = true, ui = false),
+    )
+
+    // A StateFlow<LerixAppControlState>: collect it from a lifecycle-aware scope
+    Lerix.appControl.state.collect { state ->
+        // state.update, state.maintenance, state.sdk
+    }
+
+    Lerix.appControl.openStore(activity)
+    ```
+
+    مثال كامل: [Kotlin](/ar/frameworks/android/release-control#شاشاتك-الخاصة).
+  </Tab>
+  <Tab title="React">
+    ```tsx
+    import { useLerixAppControl } from '@lerix-dev/lerix-react';
+
+    function ReleaseGate({ children }: { children: React.ReactNode }) {
+      const { maintenance, update, refresh, openStore } = useLerixAppControl();
+      if (maintenance) return <Maintenance onRetry={refresh} />;
+      if (update?.state === 'required') return <ForceUpdate onUpdate={openStore} />;
+      return <>{children}</>;
+    }
+    ```
+
+    مرّر `appControl: { ui: false }` في `options` الخاصة بالمزوّد. مثال كامل:
+    [React](/ar/frameworks/react/release-control#شاشاتك-الخاصة).
+  </Tab>
+  <Tab title="Angular">
+    ```ts
+    import { inject } from '@angular/core';
+    import { LerixAppControlService } from '@lerix-dev/lerix-angular';
+
+    const appControl = inject(LerixAppControlService);
+    appControl.state();     // a signal
+    appControl.state$;      // an observable
+    appControl.refresh();
+    ```
+
+    مثال كامل: [Angular](/ar/frameworks/angular/release-control#شاشاتك-الخاصة).
+  </Tab>
+  <Tab title="Web (JS)">
+    ```ts
+    import { Lerix } from '@lerix-dev/lerix-core';
+
+    await Lerix.initialize({
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      release: '1.4.0',
+      appControl: { enabled: true, ui: false },
+    });
+
+    render(Lerix.appControl.getState());
+    const unsubscribe = Lerix.appControl.subscribe((state) => render(state));
+    ```
+
+    مثال كامل: [الويب](/ar/frameworks/web/release-control#شاشاتك-الخاصة).
+    ويستخدم Next.js الـ hook نفسه الذي في React: راجع
+    [Next.js](/ar/frameworks/nextjs/release-control).
+  </Tab>
+</Tabs>
+
+## الإيقاف الكامل
+
+يوقف `enabled: false` التحكم بالإصدارات في ذلك التطبيق: لا تحقق ولا شاشات ولا
+أحداث. لكن مفتاح إيقاف حزمة Lerix الذي حفظه الجهاز سابقاً يبقى سارياً حتى وقت
+انتهائه (راجع
+[وصول التغييرات والعمل دون اتصال](/ar/modules/release-control/delivery-offline#مفتاح-إيقاف-حزمة-lerix)).

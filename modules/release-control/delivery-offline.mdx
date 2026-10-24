@@ -1,0 +1,101 @@
+---
+title: "Delivery and offline behaviour"
+description: "When apps check for release control changes, how they reach devices in the background, and what happens without a network."
+icon: "tower-broadcast"
+---
+
+Every client SDK asks Lerix for its project's release control state and keeps
+the last answer on the device. Lerix evaluates the rules on the server and
+sends each device only the result that applies to it, so the SDK holds no
+rule logic of its own.
+
+## When an app checks
+
+| Moment | What happens |
+|---|---|
+| **App start** | The saved answer is applied at once, before any network request, so a blocking screen is up from the first frame. Then the SDK fetches a fresh one. |
+| **Back to the foreground** (web: tab visible again, or back online) | The SDK fetches again if the saved answer is older than its lifetime. |
+| **In the foreground, while the lifetime is 60 seconds** | The SDK fetches every 60 seconds. |
+| **Silent push** (mobile and desktop apps with Lerix push) | The SDK fetches right away, even in the background. |
+| **Your code** | `refresh()` fetches right away and returns the new state. |
+
+The lifetime of an answer is set by Lerix:
+
+- **60 seconds** while a maintenance window applies to the device or starts
+  within the hour.
+- **60 seconds** for 30 minutes after any release control change in the
+  project, so lifting a block reaches open apps within a minute.
+- **5 minutes** the rest of the time. Apps don't poll then: they check again
+  on the next return to the foreground.
+
+Unchanged answers cost almost nothing: the SDK sends the version it already
+has, and Lerix replies "not modified" with an empty body.
+
+### Silent push
+
+When a change blocks or unblocks users, Lerix sends a silent push to every
+Lerix push token in the project, on iOS, Android and macOS. It shows nothing
+to the user; the app wakes, checks for the new state, and goes back to sleep.
+
+- It reaches apps that set up Lerix push notifications (they call the SDK's
+  notifications init), as in the [push notifications](/modules/push-notifications)
+  guide of your framework. Apps without a Lerix push token pick up changes at
+  their next check.
+- It is best-effort. The operating system can delay or drop silent pushes,
+  for example in low-power mode, which is why the regular checks continue.
+- Lerix sends at most one per minute per project, and combines changes made
+  in quick succession.
+- Web pages don't receive it. They use the checks above.
+
+## Offline behaviour
+
+Each part of the state has its own rule for what happens when the network
+fails or the saved answer gets old. Blocking states fail safe for you,
+temporary ones fail open for your users:
+
+| State | Network fails or device offline | Saved answer older than its expiry |
+|---|---|---|
+| **Required update** | Keeps blocking from the saved answer | Keeps blocking. Only a successful check that says otherwise lifts it. |
+| **Optional or recommended update** | Shown from the saved answer, respecting **Later** and **Skip** | Dropped 7 days after the last successful check |
+| **Maintenance** | Applies from its start time until its end time, using the device clock corrected by the server's time | Lifts at its end time, even with no network |
+| **Lerix SDK switch** | Applies until its end time | Lifts at its end time |
+
+The SDK corrects for a wrong device clock: each answer carries the server's
+time, and the SDK stores the difference to decide when a window starts and
+ends.
+
+Two more rules keep the saved answer honest:
+
+- **A saved update belongs to one app version.** When the user installs a new
+  version or build, the SDK drops the saved update and checks again, so an
+  app that was just updated is never blocked by its old answer while offline.
+- **Deadlines pass offline too.** On Android and Flutter, a saved recommended
+  update whose **Becomes required on** time has passed turns into a required
+  update without a network, as the server would have answered.
+
+## Built to fail safely
+
+- **A bad answer can't break your app.** Unknown fields, unknown values and
+  wrong types are ignored part by part. Any error while reading the answer is
+  caught inside the SDK.
+- **A device without a version is never blocked** by an update rule.
+- **Maintenance always ends.** Every window has an end time at most 7 days
+  after its start.
+- **Lift all** clears every blocking state in one click.
+
+## The Lerix SDK switch
+
+The same answer can tell the SDK to pause its own work, if the Lerix team
+ever has to switch off a misbehaving SDK version (see the
+[overview](/modules/release-control/overview#a-switch-for-the-lerix-sdk-itself)).
+While it applies:
+
+- the paused modules (errors, analytics, tracing, feedback, surveys, push
+  token registration, or all of them) send nothing;
+- anything they had queued stays on the device and is sent after the end
+  time;
+- the release control check keeps running, so the switch can be lifted.
+
+Your own settings don't change this. If you turn release control off in your
+app (`enabled: false`), the SDK stops checking, but a switch it already saved
+still applies until its end time.

@@ -1,0 +1,90 @@
+---
+title: "Events, webhooks and permissions"
+description: "The analytics events release control records, the webhook it sends, and who can change it."
+icon: "bell"
+---
+
+## Analytics events
+
+The SDK records these events through the same queue as your other
+[analytics](/modules/analytics) events. They are skipped when analytics is
+turned off in the app.
+
+| Event | Properties | When |
+|---|---|---|
+| `$update_prompt_shown` | `state`, `reason`, `ruleId`, `latestVersion` | Each time the built-in UI shows an update screen or prompt (Flutter custom UIs: `reportPromptShown(update)`) |
+| `$update_prompt_action` | `action` (`update`, `later` or `skip`), `state`, `ruleId` | The user taps a button, or your code calls `openStore()`, `later()` or `skip()` |
+| `$maintenance_shown` | `maintenanceId` | When a window becomes active on the device, once per app session for each window, also with `ui: false` |
+| `$config_applied` | `etag` | Once each time the device receives a new release control state |
+
+The existing `$app_update` event (`from`, `to`) is recorded when the app
+starts on a new version. Together they make a funnel: prompt shown, **Update**
+tapped, app actually updated. Build it in **Analytics → Funnels**, and break
+it down by version, platform or country.
+
+## Webhook
+
+Every change to release control sends the `release_control.changed` event to
+the project's [webhooks](/developers/webhooks), so your team channel hears
+about a maintenance window or a forced update as soon as it happens.
+
+```json
+{
+  "type": "release_control.changed",
+  "projectSlug": "my-shop",
+  "createdAt": "2026-10-23T10:00:00.000Z",
+  "data": {
+    "action": "maintenance.create",
+    "targetId": "0b6f3c1e-...",
+    "actor": { "id": "5d2a...", "name": "Ana", "kind": "user" },
+    "reason": "Database migration",
+    "url": "https://app.lerix.dev/dashboard/project/my-shop/release-control"
+  }
+}
+```
+
+| `action` | Meaning |
+|---|---|
+| `rule.upsert` | An update rule was created or changed |
+| `rule.delete` | An update rule was deleted |
+| `maintenance.create` | A maintenance window was started or scheduled |
+| `maintenance.update` | A window was edited, extended, taken live from test mode, or started on schedule |
+| `maintenance.end` | A window was ended |
+| `lift_all` | Someone used **Lift all** |
+| `app.store_update` | An app's store link or App Store ID changed |
+
+`actor.kind` is `user` for a project member. When a scheduled window starts
+or reaches its end time, Lerix sends the event itself as
+`"actor": { "id": null, "name": "Lerix", "kind": "system" }`, with action
+`maintenance.update` (reason "Scheduled start") or `maintenance.end` (reason
+"Reached its end time"). `reason` is `null` when none was given. `url` links
+to the **Updates** tab of the project's release control page.
+
+## In-app and email notifications
+
+Project members with the **Manage app updates** permission get an in-app
+notification and an email when a maintenance window is turned on or
+scheduled, starts on schedule, goes live from test mode, or ends, and when
+someone uses **Lift all**. Each member can turn the email off in their
+notification preferences.
+
+## Permissions
+
+| Action | Who can do it |
+|---|---|
+| Open **Release control**, see rules, windows, the propagation meter and history | Every member of the project |
+| Create, edit or delete update rules, edit store links | Members with **Manage app updates** |
+| Start, schedule, edit, extend or end maintenance, use **Lift all** | Members with **Manage app updates** |
+
+The **Owner** and **Admin** roles have **Manage app updates**. For everyone
+else, the pages are read-only, with the note "You can view release control,
+but changing it needs the “Manage app updates” permission."
+
+## History
+
+**History**, on the **Emergency** tab, lists every change to update rules,
+maintenance windows and store links: what changed, who changed it, when, the
+reason, and the values before and after (**Before / after**). Changes Lerix
+makes on schedule show **System** as the author. If the Lerix team ever uses
+the [SDK switch](/modules/release-control/overview#a-switch-for-the-lerix-sdk-itself)
+for your project, that change is listed too, by **Lerix**.

@@ -1,0 +1,67 @@
+---
+title: "Release control in Next.js"
+sidebarTitle: "Release control"
+description: "Ask users to reload for a new deployment, require it, or show a maintenance screen in your Next.js app."
+---
+
+For what release control does and how to set rules in the dashboard, read
+[Release control](/modules/release-control/overview).
+
+## Setup
+
+Release control is on by default inside the `LerixNextProvider` from
+[Installation](/frameworks/nextjs/installation), with the built-in screens.
+Set the release at build time so update rules can compare versions:
+
+```bash .env.production
+NEXT_PUBLIC_LERIX_RELEASE=1.4.0
+```
+
+Use a version with digits, such as `1.4.0`, not a commit SHA. Without a
+release, update rules never apply on the web. Maintenance mode works either
+way, unless a window is limited to certain versions.
+
+To change the defaults, pass `appControl` in the provider's `options`:
+
+```tsx app/layout.tsx
+<LerixNextProvider options={{ appControl: { enabled: true, ui: true } }}>
+  {children}
+</LerixNextProvider>
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `appControl.enabled` | `true` | Checks for updates and maintenance. `false` turns the module off. |
+| `appControl.ui` | `true` | Shows the built-in screens. `false` leaves the drawing to you. |
+
+## What users see
+
+The same screens as in [React](/frameworks/react/release-control#what-users-see):
+a maintenance overlay with **Try again**, a required update that reloads the
+page at most once every 5 minutes and then shows a **Reload** button, and a
+dismissible bar for optional or recommended updates.
+
+## Your own screens
+
+Set `appControl: { ui: false }`, then use `useLerixAppControl()` from a client
+component. It works as in [React](/frameworks/react/release-control#your-own-screens).
+
+```tsx components/release-gate.tsx
+'use client';
+import { useLerixAppControl } from '@lerix-dev/lerix-nextjs';
+
+export function ReleaseGate({ children }: { children: React.ReactNode }) {
+  const { maintenance, update, refresh, openStore } = useLerixAppControl();
+
+  if (maintenance) {
+    return <Maintenance title={maintenance.title} onRetry={() => refresh()} />;
+  }
+  if (update?.state === 'required') {
+    return <ForceUpdate message={update.message} onUpdate={() => openStore()} />;
+  }
+  return <>{children}</>;
+}
+```
+
+Put `ReleaseGate` inside `LerixNextProvider` in your root layout, around
+`{children}`.

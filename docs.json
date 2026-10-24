@@ -54,7 +54,8 @@
                       "frameworks/ios/installation",
                       "frameworks/ios/push-notifications",
                       "frameworks/ios/error-tracking",
-                      "frameworks/ios/feedback-analytics"
+                      "frameworks/ios/feedback-analytics",
+                      "frameworks/ios/release-control"
                     ]
                   },
                   {
@@ -64,7 +65,8 @@
                       "frameworks/android/installation",
                       "frameworks/android/push-notifications",
                       "frameworks/android/error-tracking",
-                      "frameworks/android/feedback-analytics"
+                      "frameworks/android/feedback-analytics",
+                      "frameworks/android/release-control"
                     ]
                   },
                   {
@@ -76,7 +78,8 @@
                       "frameworks/flutter/windows",
                       "frameworks/flutter/error-tracking",
                       "frameworks/flutter/source-maps",
-                      "frameworks/flutter/feedback-analytics"
+                      "frameworks/flutter/feedback-analytics",
+                      "frameworks/flutter/release-control"
                     ]
                   }
                 ]
@@ -93,7 +96,8 @@
                       "frameworks/react/push-notifications",
                       "frameworks/react/error-tracking",
                       "frameworks/react/source-maps",
-                      "frameworks/react/feedback-analytics"
+                      "frameworks/react/feedback-analytics",
+                      "frameworks/react/release-control"
                     ]
                   },
                   {
@@ -104,7 +108,8 @@
                       "frameworks/nextjs/push-notifications",
                       "frameworks/nextjs/error-tracking",
                       "frameworks/nextjs/source-maps",
-                      "frameworks/nextjs/feedback-analytics"
+                      "frameworks/nextjs/feedback-analytics",
+                      "frameworks/nextjs/release-control"
                     ]
                   },
                   {
@@ -115,7 +120,8 @@
                       "frameworks/angular/push-notifications",
                       "frameworks/angular/error-tracking",
                       "frameworks/angular/source-maps",
-                      "frameworks/angular/feedback-analytics"
+                      "frameworks/angular/feedback-analytics",
+                      "frameworks/angular/release-control"
                     ]
                   },
                   {
@@ -123,7 +129,8 @@
                     "icon": "js",
                     "pages": [
                       "frameworks/web/push-notifications",
-                      "frameworks/web/feedback-analytics"
+                      "frameworks/web/feedback-analytics",
+                      "frameworks/web/release-control"
                     ]
                   }
                 ]
@@ -198,8 +205,19 @@
               "modules/analytics",
               "modules/feedback",
               "modules/nps-surveys",
-              "modules/in-app-messages",
-              "modules/updates"
+              {
+                "group": "Release control",
+                "icon": "shield-check",
+                "pages": [
+                  "modules/release-control/overview",
+                  "modules/release-control/update-rules",
+                  "modules/release-control/maintenance-mode",
+                  "modules/release-control/delivery-offline",
+                  "modules/release-control/custom-ui",
+                  "modules/release-control/events-webhooks"
+                ]
+              },
+              "modules/in-app-messages"
             ]
           },
           {
@@ -274,7 +292,8 @@
                       "ar/frameworks/ios/installation",
                       "ar/frameworks/ios/push-notifications",
                       "ar/frameworks/ios/error-tracking",
-                      "ar/frameworks/ios/feedback-analytics"
+                      "ar/frameworks/ios/feedback-analytics",
+                      "ar/frameworks/ios/release-control"
                     ]
                   },
                   {
@@ -284,7 +303,8 @@
                       "ar/frameworks/android/installation",
                       "ar/frameworks/android/push-notifications",
                       "ar/frameworks/android/error-tracking",
-                      "ar/frameworks/android/feedback-analytics"
+                      "ar/frameworks/android/feedback-analytics",
+                      "ar/frameworks/android/release-control"
                     ]
                   },
                   {
@@ -296,7 +316,8 @@
                       "ar/frameworks/flutter/windows",
                       "ar/frameworks/flutter/error-tracking",
                       "ar/frameworks/flutter/source-maps",
-                      "ar/frameworks/flutter/feedback-analytics"
+                      "ar/frameworks/flutter/feedback-analytics",
+                      "ar/frameworks/flutter/release-control"
                     ]
                   }
                 ]
@@ -313,7 +334,8 @@
                       "ar/frameworks/react/push-notifications",
                       "ar/frameworks/react/error-tracking",
                       "ar/frameworks/react/source-maps",
-                      "ar/frameworks/react/feedback-analytics"
+                      "ar/frameworks/react/feedback-analytics",
+                      "ar/frameworks/react/release-control"
                     ]
                   },
                   {
@@ -324,7 +346,8 @@
                       "ar/frameworks/nextjs/push-notifications",
                       "ar/frameworks/nextjs/error-tracking",
                       "ar/frameworks/nextjs/source-maps",
-                      "ar/frameworks/nextjs/feedback-analytics"
+                      "ar/frameworks/nextjs/feedback-analytics",
+                      "ar/frameworks/nextjs/release-control"
                     ]
                   },
                   {
@@ -335,7 +358,8 @@
                       "ar/frameworks/angular/push-notifications",
                       "ar/frameworks/angular/error-tracking",
                       "ar/frameworks/angular/source-maps",
-                      "ar/frameworks/angular/feedback-analytics"
+                      "ar/frameworks/angular/feedback-analytics",
+                      "ar/frameworks/angular/release-control"
                     ]
                   },
                   {
@@ -343,7 +367,8 @@
                     "icon": "js",
                     "pages": [
                       "ar/frameworks/web/push-notifications",
-                      "ar/frameworks/web/feedback-analytics"
+                      "ar/frameworks/web/feedback-analytics",
+                      "ar/frameworks/web/release-control"
                     ]
                   }
                 ]
@@ -418,8 +443,19 @@
               "ar/modules/analytics",
               "ar/modules/feedback",
               "ar/modules/nps-surveys",
-              "ar/modules/in-app-messages",
-              "ar/modules/updates"
+              {
+                "group": "التحكم بالإصدارات",
+                "icon": "shield-check",
+                "pages": [
+                  "ar/modules/release-control/overview",
+                  "ar/modules/release-control/update-rules",
+                  "ar/modules/release-control/maintenance-mode",
+                  "ar/modules/release-control/delivery-offline",
+                  "ar/modules/release-control/custom-ui",
+                  "ar/modules/release-control/events-webhooks"
+                ]
+              },
+              "ar/modules/in-app-messages"
             ]
           },
           {
@@ -550,6 +586,14 @@
     {
       "source": "/ar/api-reference/introductaion",
       "destination": "/ar/api-reference/introduction"
+    },
+    {
+      "source": "/modules/updates",
+      "destination": "/modules/release-control/overview"
+    },
+    {
+      "source": "/ar/modules/updates",
+      "destination": "/ar/modules/release-control/overview"
     }
   ]
 }

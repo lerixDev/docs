@@ -15,6 +15,7 @@ system, or start an automation in Zapier.
 | `feedback.created` | A user sends [feedback](/modules/feedback) |
 | `nps.detractor` | A user answers the [NPS survey](/modules/nps-surveys) with a score from 0 to 6 |
 | `issue.created` | A new [issue](/modules/error-tracking) is reported for the first time |
+| `release_control.changed` | An update rule, a maintenance window or **Lift all** changes [release control](/modules/release-control/overview) |
 | `webhook.test` | You click **Test** in the dashboard |
 
 `issue.created` fires once per issue, not for every occurrence, so a crash
@@ -35,8 +36,8 @@ loop doesn't flood your channel.
       posts a formatted message with a link back to the dashboard.
   </Step>
   <Step title="Pick the events">
-    Choose at least one of `feedback.created`, `nps.detractor` and
-    `issue.created`.
+    Choose at least one of `feedback.created`, `nps.detractor`,
+    `issue.created` and `release_control.changed`.
   </Step>
   <Step title="Copy the signing secret">
     For a generic webhook, the signing secret (`whsec_...`) is shown **once**,
@@ -130,6 +131,22 @@ And these headers:
       "url": "https://app.lerix.dev/dashboard/project/my-shop/issues/b7d0..."
     }
     ```
+  </Tab>
+  <Tab title="release_control.changed">
+    ```json
+    {
+      "action": "maintenance.create",
+      "targetId": "0b6f3c1e-...",
+      "actor": { "id": "5d2a...", "name": "Ana", "kind": "user" },
+      "reason": "Database migration",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/release-control"
+    }
+    ```
+
+    `action` is one of `rule.upsert`, `rule.delete`, `maintenance.create`,
+    `maintenance.update`, `maintenance.end`, `lift_all` and
+    `app.store_update`. See
+    [Events, webhooks and permissions](/modules/release-control/events-webhooks#webhook).
   </Tab>
   <Tab title="webhook.test">
     ```json

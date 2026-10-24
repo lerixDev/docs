@@ -19,12 +19,22 @@ description: "Add Lerix to your Flutter app in a few steps."
 
 ## 1. Add the dependency
 
-Add `lerix_flutter` to your `pubspec.yaml`:
+Add `lerix_flutter` to your `pubspec.yaml`, plus the optional packages for the features you use:
 
 ```yaml pubspec.yaml
 dependencies:
-  lerix_flutter: ^0.2.0
+  lerix_flutter: ^0.7.0
+  lerix_messaging: ^0.7.0   # push notifications
+  lerix_app_update: ^0.7.0  # Google Play in-app updates (Android)
 ```
+
+| Package | Add it for |
+|---|---|
+| `lerix_flutter` | Crash reporting, users, analytics, feedback, NPS and rating surveys, release control |
+| `lerix_messaging` | [Push notifications](/frameworks/flutter/push-notifications) |
+| `lerix_app_update` | [Play in-app updates](/frameworks/flutter/release-control) for required updates |
+
+Keep all three on the same version. The optional packages register themselves before `main()` runs: there is no extra Dart code to add. An app without `lerix_messaging` ships without Firebase, the notification permission or the Windows App SDK.
 
 Then run:
 

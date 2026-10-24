@@ -15,6 +15,7 @@ icon: "plug"
 | `feedback.created` | حين يرسل مستخدم [ملاحظة](/ar/modules/feedback) |
 | `nps.detractor` | حين يجيب مستخدم عن [استبيان NPS](/ar/modules/nps-surveys) بدرجة من 0 إلى 6 |
 | `issue.created` | حين يُبلَّغ عن [مشكلة](/ar/modules/error-tracking) جديدة لأول مرة |
+| `release_control.changed` | حين تتغير قاعدة تحديث أو نافذة صيانة في [التحكم بالإصدارات](/ar/modules/release-control/overview)، أو يُستخدم **رفع الكل** |
 | `webhook.test` | حين تنقر **اختبار** في لوحة التحكم |
 
 يُرسل `issue.created` مرة واحدة لكل مشكلة، لا مع كل تكرار لها، فلا تُغرق حلقة
@@ -36,7 +37,7 @@ icon: "plug"
   </Step>
   <Step title="اختر الأحداث">
     اختر واحداً على الأقل من `feedback.created` و`nps.detractor`
-    و`issue.created`.
+    و`issue.created` و`release_control.changed`.
   </Step>
   <Step title="انسخ سرّ التوقيع">
     في الـ Webhook العام، يظهر سرّ التوقيع (`whsec_...`) **مرة واحدة** فقط بعد
@@ -127,6 +128,21 @@ icon: "plug"
       "url": "https://app.lerix.dev/dashboard/project/my-shop/issues/b7d0..."
     }
     ```
+  </Tab>
+  <Tab title="release_control.changed">
+    ```json
+    {
+      "action": "maintenance.create",
+      "targetId": "0b6f3c1e-...",
+      "actor": { "id": "5d2a...", "name": "Ana", "kind": "user" },
+      "reason": "Database migration",
+      "url": "https://app.lerix.dev/dashboard/project/my-shop/release-control"
+    }
+    ```
+
+    قيمة `action` واحدة من `rule.upsert` و`rule.delete` و`maintenance.create`
+    و`maintenance.update` و`maintenance.end` و`lift_all` و`app.store_update`.
+    راجع [الأحداث والـ Webhooks والصلاحيات](/ar/modules/release-control/events-webhooks#webhook).
   </Tab>
   <Tab title="webhook.test">
     ```json

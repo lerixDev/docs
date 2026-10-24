@@ -11,6 +11,22 @@ Lerix delivers push notifications using each platform's native service — Fireb
   Make sure you have initialized the SDK with `Lerix.init()` before configuring push notifications.
 </Note>
 
+## Add the package
+
+Push lives in its own package, `lerix_messaging`, next to `lerix_flutter` and on the same version:
+
+```yaml pubspec.yaml
+dependencies:
+  lerix_flutter: ^0.7.0
+  lerix_messaging: ^0.7.0
+```
+
+That's all on the Dart side: the package registers itself before `main()` runs, and `Lerix.notifications` works as described below. Without it, `Lerix.notifications.init()` throws `ERR_MESSAGING_NOT_INSTALLED`.
+
+<Note>
+  Coming from `lerix_flutter` 0.4? Add `lerix_messaging`, and in `AppDelegate.swift` (iOS and macOS) change `import lerix_messaging` to `import lerix_messaging`. The service worker and `NotificationService.swift` now come from `lerix_messaging`; the files themselves didn't change.
+</Note>
+
 ## Android configuration
 
 No additional SDK setup is required for Android. You only need to add your Firebase `google-services.json` file to the project.
@@ -65,7 +81,7 @@ macOS uses APNs with the same key you uploaded for iOS; no extra dashboard setup
 3. **AppDelegate:** forward the APNs callbacks in `macos/Runner/AppDelegate.swift`:
 
 ```swift
-import lerix_flutter
+import lerix_messaging
 
 override func application(_ application: NSApplication,
                           didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -89,7 +105,7 @@ override func application(_ application: NSApplication,
 
 Flutter Web is supported by the same `lerix_flutter` package — no separate JS SDK, no Firebase project. Two steps instead of Xcode's:
 
-1. **Copy the service worker.** A Flutter package can't add a file to your app's `web/` folder for you — copy the `lerix_flutter` package's `web_sw/lerix-sw.js` into your app's `web/lerix-sw.js`, so it's served at your site's root (e.g. `https://yoursite.com/lerix-sw.js`).
+1. **Copy the service worker.** A Flutter package can't add a file to your app's `web/` folder for you — copy the `lerix_messaging` package's `web_sw/lerix-sw.js` into your app's `web/lerix-sw.js`, so it's served at your site's root (e.g. `https://yoursite.com/lerix-sw.js`).
 2. **Generate a Web Push key** from the dashboard: **Notifications → Settings → Web Push → Generate keys**. One click — Lerix generates and stores the VAPID key pair for you; there's nothing to copy into your code.
 
 <Note>
@@ -232,7 +248,7 @@ Set `imageUrl` when sending a notification — from the dashboard's **Send notif
 - **Web**: works automatically, no extra setup — the service worker renders it as the notification's icon/image directly.
 - **iOS**: requires your app to have a **Notification Service Extension** — APNs has no native "image" field, so the OS needs a small extension to download and attach the image before displaying the notification. This is a one-time setup step per app:
   1. In Xcode: **File → New → Target… → Notification Service Extension**. Name it (e.g. `NotificationServiceExtension`).
-  2. Replace the generated `NotificationService.swift` with the one from the `lerix_flutter` package at `ios/NotificationServiceExtension/NotificationService.swift`.
+  2. Replace the generated `NotificationService.swift` with the one from the `lerix_messaging` package at `ios/NotificationServiceExtension/NotificationService.swift`.
   3. Build and run — no other configuration needed. The backend automatically sets APNs' `mutable-content` flag whenever a notification carries an `imageUrl`, which is what triggers your extension to run.
 
 <Note>

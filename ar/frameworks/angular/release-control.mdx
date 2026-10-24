@@ -1,0 +1,77 @@
+---
+title: "التحكم بالإصدارات في Angular"
+sidebarTitle: "التحكم بالإصدارات"
+description: "اطلب من المستخدمين إعادة التحميل لنشر جديد، أو اجعله إلزامياً، أو اعرض شاشة صيانة في تطبيق Angular."
+---
+
+لمعرفة ما يقدّمه التحكم بالإصدارات وكيف تضبط القواعد في لوحة التحكم، راجع
+[التحكم بالإصدارات](/ar/modules/release-control/overview).
+
+## الإعداد
+
+يعمل التحكم بالإصدارات افتراضياً بمجرد تشغيل `provideLerix()` الذي أعددته في
+[التثبيت](/ar/frameworks/angular/installation)، مع الشاشات الجاهزة. اضبط `release`
+لتتمكن قواعد التحديث من مقارنة الإصدارات:
+
+```ts app.config.ts
+provideLerix({
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  release: '1.4.0',                         // required for update rules
+  appControl: { enabled: true, ui: true },
+}),
+```
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `release` | لا شيء | الإصدار الذي يحمله هذا النشر. من دونه لا تنطبق قواعد التحديث على الويب أبداً. استخدم إصداراً يحتوي على أرقام، مثل `1.4.0`، لا معرّف commit. |
+| `appControl.enabled` | `true` | يتحقق من التحديثات والصيانة. `false` يوقف الوحدة. |
+| `appControl.ui` | `true` | يعرض الشاشات الجاهزة. `false` يترك الرسم لك. |
+
+## ما يراه المستخدمون
+
+الشاشات نفسها التي في [React](/ar/frameworks/react/release-control#ما-يراه-المستخدمون):
+طبقة صيانة مع زر **حاول مرة أخرى**، وتحديث إلزامي يعيد تحميل الصفحة مرة كل 5 دقائق
+على الأكثر ثم يعرض زر **إعادة التحميل**، وشريط قابل للإغلاق للتحديثات الاختيارية أو
+المُوصى بها.
+
+## شاشاتك الخاصة
+
+اضبط `appControl: { ui: false }` وحقن `LerixAppControlService`. الخاصية `state` فيها
+signal، و`state$` هي observable للقيمة نفسها: `update` و`maintenance` و`sdk`، وكل
+منها `null` حين لا ينطبق شيء (الحقول في
+[الحالة](/ar/modules/release-control/custom-ui#الحالة)).
+
+```ts release-gate.component.ts
+import { Component, inject } from '@angular/core';
+import { LerixAppControlService } from '@lerix-dev/lerix-angular';
+
+@Component({
+  selector: 'app-release-gate',
+  template: `
+    @if (appControl.state().maintenance; as maintenance) {
+      <app-maintenance [title]="maintenance.title" (retry)="appControl.refresh()" />
+    } @else if (appControl.state().update?.state === 'required') {
+      <app-force-update
+        [message]="appControl.state().update!.message"
+        (update)="appControl.openStore()"
+      />
+    } @else {
+      <ng-content />
+    }
+  `,
+})
+export class ReleaseGateComponent {
+  readonly appControl = inject(LerixAppControlService);
+}
+```
+
+| العضو | وظيفته |
+|---|---|
+| `state` | signal للحالة الحالية |
+| `state$` | observable: الحالة الحالية عند الاشتراك، ثم كل تغيير |
+| `getState()` | الحالة الحالية، تُقرأ مرة واحدة |
+| `refresh()` | تتحقق الآن وتعيد الحالة الجديدة، ولا تُرفض أبداً |
+| `openStore()` | تعيد تحميل الصفحة |
+| `later()` | تخفي المطالبة طوال `remindAfterHours` |
+| `skip()` | تخفي المطالبة إلى أن يُحدَّد إصدار أحدث (للتحديثات الاختيارية فقط) |

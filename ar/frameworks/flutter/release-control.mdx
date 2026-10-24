@@ -1,0 +1,133 @@
+---
+title: "التحكم بالإصدارات في Flutter"
+sidebarTitle: "التحكم بالإصدارات"
+description: "اعرض تنبيهات التحديث والتحديثات الإلزامية وشاشات الصيانة في تطبيق Flutter، أو ابنِ شاشاتك الخاصة."
+---
+
+يعمل التحكم بالإصدارات على iOS وأندرويد وmacOS وWindows والويب. لمعرفة ما يقدّمه
+وكيف تضبط القواعد في لوحة التحكم، راجع
+[التحكم بالإصدارات](/ar/modules/release-control/overview).
+
+## الإعداد
+
+يعمل التحكم بالإصدارات افتراضياً بمجرد تشغيل `Lerix.init`، مع الشاشات الجاهزة، ولا
+يلزمك إضافة شيء للسلوك الافتراضي. لتغييره، مرّر `LerixAppControlOptions`:
+
+```dart main.dart
+Lerix.init(
+  url: 'https://api.lerix.dev/v1/YOUR_PROJECT_ID',
+  apiKey: 'your-api-key',
+  projectId: 'your-project-id',
+  appControl: const LerixAppControlOptions(
+    enabled: true,               // false: no checks, no screens, no events
+    ui: true,                    // false: draw your own screens
+    usePlayInAppUpdate: true,    // Android + lerix_app_update: تحديث Google Play داخل التطبيق للتحديثات الإلزامية
+  ),
+  builder: () => runApp(const MyApp()),
+);
+```
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `enabled` | `true` | يتحقق من التحديثات والصيانة. `false` يوقف الوحدة. |
+| `ui` | `true` | يعرض الشاشات الجاهزة. `false` يترك الرسم لك. |
+| `usePlayInAppUpdate` | `true` | على أندرويد، مع إضافة حزمة `lerix_app_update`: إذا ثُبّت التطبيق من Google Play وعرض Play التحديث، يبدأ التحديث الإلزامي شاشة التحديث الخاصة بـ Play داخل التطبيق بدلاً من فتح صفحة المتجر، ويستأنفها إذا خرج المستخدم. بدون الحزمة لا يفعل شيئاً، ولا يحمل التطبيق مكتبة Play للتحديث أصلاً. |
+
+### الإصدار
+
+ترسل الحزمة الإصدار ورقم البناء من `pubspec.yaml` (فالقيمة `version: 3.4.0+412`
+ترسل `3.4.0` ورقم البناء `412`). وعلى الويب ترسل المنصة `web`، ولا ترسل الإصدار إلا
+إذا احتوى البناء على `version.json` (ينشئه `flutter build web`). تقارن القواعد أرقام
+البناء حين تتوفر لدى الطرفين.
+
+### تغييرات فورية بالإشعار الصامت
+
+حين تبدأ نافذة صيانة أو تنهيها، أو تفرض تحديثاً، يرسل Lerix إشعاراً صامتاً لتتحدث
+التطبيقات العاملة في الخلفية أيضاً. يصل إلى التطبيقات التي تستدعي
+`Lerix.notifications.init()` كما في [الإشعارات](/ar/frameworks/flutter/push-notifications)،
+وتتولى الحزمة معالجته: لا يُعرض أبداً، ولا يُمرَّر إلى `setOnNotificationReceived`.
+وعلى iOS وmacOS يتطلب الدالة `lerix_didReceiveRemoteNotification` في `AppDelegate`
+كما في ذلك الدليل، ووضع الخلفية **Remote notifications**. ومن دون الإشعارات، وعلى
+الويب، تلتقط التطبيقات التغيير عند تحققها التالي.
+
+## الشاشات الجاهزة
+
+لا حاجة إلى إضافة أي widget. تُدرج الحزمة شاشاتها في الـ `Overlay` الأعلى في تطبيقك،
+فوق كل مسار يضيفه الـ navigator.
+
+- **الصيانة**: تغطي التطبيق كله، مع زر **حاول مرة أخرى**. وعلى أندرويد يرسل زر
+  الرجوع التطبيق إلى الخلفية.
+- **التحديث الإلزامي**: الحاوية نفسها على كامل الشاشة، مع ملاحظات الإصدار تحت «ما
+  الجديد» وزر **تحديث** يفتح المتجر (الويب: **إعادة التحميل**).
+- **مطالبة التحديث**: نافذة حوار (الويب: شريط أسفل الصفحة) فيها **تحديث**
+  و**لاحقاً**، و**تخطي هذا الإصدار** إن كان مسموحاً. تظهر مرة واحدة على الأكثر في
+  كل تشغيل للتطبيق، ويغلقها زر الرجوع دون حفظ **لاحقاً**.
+
+تتبع الشاشات سمة تطبيقك ولغة الجهاز (العربية من اليمين إلى اليسار، أو الإنجليزية).
+وإن كنت تستخدم `LerixFeedback`، فإن `theme` و`locale` الخاصين به يسريان هنا أيضاً.
+أما العناصر التي تضعها فوق الـ navigator في `MaterialApp.builder` فلا تُغطّى. راجع
+[واجهة مخصصة](/ar/modules/release-control/custom-ui#الشاشات-الجاهزة) لمعرفة متى
+تظهر كل شاشة.
+
+## شاشاتك الخاصة
+
+اضبط `ui: false`، ثم استمع إلى `Lerix.appControl`، وهو
+`ValueListenable<LerixAppControlState>`. للحالة الأجزاء `update` (`LerixUpdateInfo`)
+و`maintenance` (`LerixMaintenanceInfo`) و`sdk` (`LerixSdkControl`)، وكل منها `null`
+حين لا ينطبق شيء (الحقول في [الحالة](/ar/modules/release-control/custom-ui#الحالة)).
+
+```dart release_gate.dart
+class ReleaseGate extends StatelessWidget {
+  const ReleaseGate({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<LerixAppControlState>(
+      valueListenable: Lerix.appControl,
+      builder: (context, state, _) {
+        final maintenance = state.maintenance;
+        final update = state.update;
+
+        if (maintenance != null) {
+          return MaintenanceScreen(
+            title: maintenance.title,
+            message: maintenance.message,
+            onRetry: () => Lerix.appControl.refresh(),
+          );
+        }
+        if (update != null && update.state == LerixUpdateState.required) {
+          return ForceUpdateScreen(
+            message: update.message,
+            onUpdate: () => Lerix.appControl.openStore(),
+          );
+        }
+        return child;
+      },
+    );
+  }
+}
+```
+
+والخاصية `update.isRequired` اختصار للفحص نفسه. وللمطالبة غير الإلزامية، استدعِ
+الدوال المساعدة من نافذة الحوار الخاصة بك:
+
+```dart
+Lerix.appControl.reportPromptShown(update); // records $update_prompt_shown
+await Lerix.appControl.openStore();         // Update; returns whether something opened
+await Lerix.appControl.later();             // hide for remindAfterHours
+await Lerix.appControl.skip();              // hide until a newer version (optional updates only)
+```
+
+ويُصدر `Lerix.appControl.stream` كل حالة جديدة، إن كنت تفضّل الـ stream.
+
+## التحقق الآن
+
+```dart
+final state = await Lerix.appControl.refresh();
+```
+
+تتجاهل `refresh()` (أو اسمها البديل `checkNow()`) مدة صلاحية الإجابة المحفوظة،
+فتجلب الحالة وتعيدها. ولا ترمي استثناءً أبداً: دون اتصال تعيد الحالة المحفوظة. والحزمة تتحقق
+أصلاً عند التشغيل، وعند عودة التطبيق إلى الواجهة، وكل دقيقة أثناء الطوارئ (راجع
+[وصول التغييرات والعمل دون اتصال](/ar/modules/release-control/delivery-offline)).

@@ -1,0 +1,193 @@
+---
+title: "Custom UI"
+description: "Use the built-in update and maintenance screens, or draw your own from the same state."
+icon: "palette"
+---
+
+## Built-in screens
+
+The SDK ships three screens and shows them by default:
+
+| Screen | Shown for | Buttons |
+|---|---|---|
+| **Maintenance** | An active maintenance window | **Try again**, plus "Expected back at" when enabled |
+| **Required update** | A required update | **Update** (web: **Reload**) |
+| **Update prompt** | An optional or recommended update. A dialog on mobile and desktop, a bar at the bottom of the page on the web | **Update**, **Later**, and **Skip this version** when allowed |
+
+- The maintenance and required-update screens cover the whole app and can't
+  be dismissed. They go away by themselves when the state clears.
+- The update prompt is shown at most once per app session, never on top of a
+  blocking screen, and only after your app's first screen is ready.
+- Titles, messages and release notes come from the dashboard. Button labels,
+  the "What's new" heading and the "Expected back at" line are built in, in
+  English and Arabic (right to left), picked from the device language.
+
+## Your own screens
+
+Turn the built-in screens off with `ui: false` and listen to the state
+instead. The SDK keeps fetching, caching and applying the
+[offline rules](/modules/release-control/delivery-offline#offline-behaviour);
+only the drawing is yours.
+
+### The state
+
+The state has three parts, each one empty (`null`, `nil`) when nothing
+applies. It is already filtered for the current time, **Later** and
+**Skip**, so you can draw whatever you receive.
+
+| Part | Fields |
+|---|---|
+| `update` | `state` (`available`, `recommended` or `required`), `reason` (`outdated`, `below_minimum`, `blocked_version` or `deadline_passed`), `ruleId`, `latestVersion`, `minVersion`, `storeUrl`, `title`, `message`, `releaseNotes`, `remindAfterHours`, `allowSkip`, `requiredAt` |
+| `maintenance` | `id`, `title`, `message`, `startsAt`, `endsAt`, `showEndsAt` |
+| `sdk` | `disabled` (the paused Lerix modules) and `until`. Informational: the SDK applies it itself. |
+
+- `maintenance` is set only while a window is active. A scheduled window
+  stays inside the SDK until its start time.
+- `storeUrl` is always empty on the web.
+- Field names are the same in every SDK. `state` and `reason` are enums in
+  the native SDKs: `LerixUpdateState` (Flutter `.required`, Swift `.required`,
+  Kotlin `REQUIRED`) and `LerixUpdateReason` (Flutter and Swift use
+  `belowMinimum`, `blockedVersion` and `deadlinePassed`). Kotlin and the web
+  SDKs keep `reason` as the string above. A reason the SDK doesn't know
+  reads as `null`.
+- Times are `DateTime` (Flutter), `Date` (Swift), epoch milliseconds
+  (Kotlin), or ISO strings (web).
+
+Show them in the same order as the built-in UI: maintenance first, then a
+required update, then a soft prompt.
+
+### Helpers
+
+| Helper | What it does |
+|---|---|
+| `refresh()` | Checks now, ignoring the saved answer's lifetime, and returns the new state. Use it for a **Try again** button. |
+| `openStore()` | Opens the update's store link. On Android with Play in-app updates it starts Play's update for a required update. On the web it reloads the page. |
+| `later()` | Hides the soft prompt for `remindAfterHours`. |
+| `skip()` | Hides the soft prompt until a newer latest version is set. Only for `available` updates. |
+
+The helpers also record the matching `$update_prompt_action` event, so the
+update funnel in Analytics stays complete with your own UI.
+`$update_prompt_shown` is recorded only by the built-in UI; in Flutter, call
+`Lerix.appControl.reportPromptShown(update)` when your own prompt appears.
+See
+[Events, webhooks and permissions](/modules/release-control/events-webhooks#analytics-events).
+
+### Per SDK
+
+<Tabs>
+  <Tab title="Flutter">
+    ```dart
+    Lerix.init(
+      // ...
+      appControl: const LerixAppControlOptions(ui: false),
+      builder: () => runApp(const MyApp()),
+    );
+
+    // A ValueListenable<LerixAppControlState>
+    final state = Lerix.appControl.state;
+    Lerix.appControl.addListener(() {
+      final state = Lerix.appControl.value; // update, maintenance, sdk
+    });
+    Lerix.appControl.stream.listen((state) { /* ... */ });
+
+    await Lerix.appControl.refresh();
+    await Lerix.appControl.openStore();
+    await Lerix.appControl.later();
+    await Lerix.appControl.skip();
+    ```
+
+    Full example: [Flutter](/frameworks/flutter/release-control#your-own-screens).
+  </Tab>
+  <Tab title="Swift">
+    ```swift
+    Lerix.initialize(
+        apiKey: "your-api-key",
+        projectId: "your-project-id",
+        appControl: LerixAppControlOptions(enabled: true, ui: false)
+    )
+
+    let state = Lerix.appControl.state
+    Lerix.appControl.onChange = { state in
+        // state.update, state.maintenance, state.sdk (main thread)
+    }
+
+    let fresh = await Lerix.appControl.refresh()
+    let opened = Lerix.appControl.openStore()
+    ```
+
+    Full example: [Swift](/frameworks/ios/release-control#your-own-screens).
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    Lerix.initialize(
+        context = this,
+        apiKey = "your-api-key",
+        projectId = "your-project-id",
+        appControl = LerixAppControlOptions(enabled = true, ui = false),
+    )
+
+    // A StateFlow<LerixAppControlState>: collect it from a lifecycle-aware scope
+    Lerix.appControl.state.collect { state ->
+        // state.update, state.maintenance, state.sdk
+    }
+
+    Lerix.appControl.openStore(activity)
+    ```
+
+    Full example: [Kotlin](/frameworks/android/release-control#your-own-screens).
+  </Tab>
+  <Tab title="React">
+    ```tsx
+    import { useLerixAppControl } from '@lerix-dev/lerix-react';
+
+    function ReleaseGate({ children }: { children: React.ReactNode }) {
+      const { maintenance, update, refresh, openStore } = useLerixAppControl();
+      if (maintenance) return <Maintenance onRetry={refresh} />;
+      if (update?.state === 'required') return <ForceUpdate onUpdate={openStore} />;
+      return <>{children}</>;
+    }
+    ```
+
+    Pass `appControl: { ui: false }` in the provider's `options`. Full
+    example: [React](/frameworks/react/release-control#your-own-screens).
+  </Tab>
+  <Tab title="Angular">
+    ```ts
+    import { inject } from '@angular/core';
+    import { LerixAppControlService } from '@lerix-dev/lerix-angular';
+
+    const appControl = inject(LerixAppControlService);
+    appControl.state();     // a signal
+    appControl.state$;      // an observable
+    appControl.refresh();
+    ```
+
+    Full example: [Angular](/frameworks/angular/release-control#your-own-screens).
+  </Tab>
+  <Tab title="Web (JS)">
+    ```ts
+    import { Lerix } from '@lerix-dev/lerix-core';
+
+    await Lerix.initialize({
+      apiKey: 'your-api-key',
+      projectId: 'your-project-id',
+      release: '1.4.0',
+      appControl: { enabled: true, ui: false },
+    });
+
+    render(Lerix.appControl.getState());
+    const unsubscribe = Lerix.appControl.subscribe((state) => render(state));
+    ```
+
+    Full example: [Web](/frameworks/web/release-control#your-own-screens).
+    Next.js uses the React hook: see
+    [Next.js](/frameworks/nextjs/release-control).
+  </Tab>
+</Tabs>
+
+## Turning it off completely
+
+`enabled: false` stops release control in that app: no checks, no screens and
+no events. A Lerix SDK switch the device saved earlier still applies until its
+end time (see
+[Delivery and offline behaviour](/modules/release-control/delivery-offline#the-lerix-sdk-switch)).

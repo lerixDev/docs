@@ -1,0 +1,100 @@
+---
+title: "التحكم بالإصدارات في React"
+sidebarTitle: "التحكم بالإصدارات"
+description: "اطلب من المستخدمين إعادة التحميل لنشر جديد، أو اجعله إلزامياً، أو اعرض شاشة صيانة في تطبيق React، أو ابنِ شاشاتك الخاصة عبر hook."
+---
+
+لمعرفة ما يقدّمه التحكم بالإصدارات وكيف تضبط القواعد في لوحة التحكم، راجع
+[التحكم بالإصدارات](/ar/modules/release-control/overview).
+
+## الإعداد
+
+يعمل التحكم بالإصدارات افتراضياً داخل `LerixProvider` الذي أعددته في
+[التثبيت](/ar/frameworks/react/installation)، مع الشاشات الجاهزة. اضبط `release`
+لتتمكن قواعد التحديث من مقارنة الإصدارات:
+
+```tsx main.tsx
+<LerixProvider
+  options={{
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    release: '1.4.0',                         // required for update rules
+    appControl: { enabled: true, ui: true },
+  }}
+>
+  <App />
+</LerixProvider>
+```
+
+| الخيار | الافتراضي | الوصف |
+|---|---|---|
+| `release` | لا شيء | الإصدار الذي يحمله هذا النشر. من دونه لا تنطبق قواعد التحديث على الويب أبداً. استخدم إصداراً يحتوي على أرقام، مثل `1.4.0`، لا معرّف commit. |
+| `appControl.enabled` | `true` | يتحقق من التحديثات والصيانة. `false` يوقف الوحدة. |
+| `appControl.ui` | `true` | يعرض الشاشات الجاهزة. `false` يترك الرسم لك. |
+
+## ما يراه المستخدمون
+
+- **الصيانة**: طبقة ثابتة فوق كل ما في الصفحة، مع زر **حاول مرة أخرى**. لا يمكن
+  النقر على بقية الصفحة ولا التركيز عليها.
+- **التحديث الإلزامي**: يُعاد تحميل الصفحة تلقائياً لتحميل أحدث نشر، مرة واحدة كل 5
+  دقائق على الأكثر في كل تبويب. وإذا بقيت قديمة، تبقى رسالة على كامل الشاشة مع زر
+  **إعادة التحميل**.
+- **الاختياري أو المُوصى به**: شريط أسفل الصفحة فيه **تحديث** (يعيد التحميل)
+  و**لاحقاً**، و**تخطي هذا الإصدار** إن كان مسموحاً.
+
+لا تتلقى صفحات الويب الإشعار الصامت: تتحقق الحزمة عند التحميل، وعند عودة التبويب
+إلى الظهور، وكل دقيقة أثناء الطوارئ. راجع
+[وصول التغييرات والعمل دون اتصال](/ar/modules/release-control/delivery-offline).
+
+## شاشاتك الخاصة
+
+اضبط `appControl: { ui: false }` واستخدم `useLerixAppControl()`. يعيد الـ hook الحالة
+كاملة في `state`، وأجزاءها `update` و`maintenance` و`sdk` (وكل منها `null` حين لا
+ينطبق شيء، والحقول في [الحالة](/ar/modules/release-control/custom-ui#الحالة))،
+والدوال المساعدة. ويُعاد رسم المكوّن حين تتغير الحالة.
+
+```tsx release-gate.tsx
+import { useLerixAppControl } from '@lerix-dev/lerix-react';
+
+export function ReleaseGate({ children }: { children: React.ReactNode }) {
+  const { update, maintenance, refresh, openStore, later, skip } = useLerixAppControl();
+
+  if (maintenance) {
+    return (
+      <Maintenance
+        title={maintenance.title}
+        message={maintenance.message}
+        onRetry={() => refresh()}
+      />
+    );
+  }
+  if (update?.state === 'required') {
+    return <ForceUpdate message={update.message} onUpdate={() => openStore()} />;
+  }
+  return (
+    <>
+      {update && (
+        <UpdateBar
+          update={update}
+          onUpdate={() => openStore()}
+          onLater={() => later()}
+          onSkip={update.allowSkip ? () => skip() : undefined}
+        />
+      )}
+      {children}
+    </>
+  );
+}
+```
+
+| القيمة المُعادة | ما هي |
+|---|---|
+| `state` | `{ update, maintenance, sdk }` |
+| `update`، `maintenance`، `sdk` | الأجزاء نفسها، للتسهيل |
+| `refresh()` | تتحقق الآن وتعيد الحالة الجديدة |
+| `openStore()` | تعيد تحميل الصفحة |
+| `later()` | تخفي المطالبة طوال `remindAfterHours` |
+| `skip()` | تخفي المطالبة إلى أن يُحدَّد إصدار أحدث (للتحديثات الاختيارية فقط) |
+
+ومع `ui: false` لا تحدث إعادة تحميل تلقائية للتحديث الإلزامي: استدعِ `openStore()`
+من الزر الخاص بك.
