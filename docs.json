@@ -518,6 +518,14 @@
         "href": "https://lerix.dev"
       },
       {
+        "label": "Blog",
+        "href": "https://blog.lerix.dev"
+      },
+      {
+        "label": "Changelog",
+        "href": "https://blog.lerix.dev/changelog"
+      },
+      {
         "label": "Support",
         "href": "mailto:support@lerix.dev"
       }
